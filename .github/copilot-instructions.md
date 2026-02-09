@@ -13,12 +13,67 @@
 - **Size:** Small repository (~1.4MB total, mainly due to sound archive)
 - **Structure:** Simple flat structure with one component; designed to grow
 
+## Agent Skills Available
+
+This repository includes **Agent Skills** that provide specialized guidance for common tasks. Copilot will automatically load these skills when relevant to your work.
+
+### Raspberry Pi Zero W Hardware Skill
+
+**Location:** `.github/skills/raspi-zero-w/`
+
+**Use when:**
+- Working with GPIO pins and sensors
+- Setting up or configuring Raspberry Pi Zero W hardware
+- Implementing hardware interfaces (PIR sensors, buttons, LEDs, etc.)
+- Debugging hardware connectivity issues
+- Planning hardware wiring and connections
+
+**Provides:**
+- Complete GPIO pinout reference (40-pin header)
+- Hardware wiring diagrams and safety guidelines
+- PIR sensor setup instructions
+- Audio configuration
+- Troubleshooting guides for hardware issues
+- Best practices for hardware projects
+
+### Python Development Skill
+
+**Location:** `.github/skills/python-development/`
+
+**Use when:**
+- Developing new Python code for GPIO or hardware interactions
+- Debugging hardware-related Python applications
+- Improving existing hardware control code
+- Structuring Python projects for embedded systems
+- Planning testing strategies for hardware-dependent code
+- Deploying Python applications to Raspberry Pi
+
+**Provides:**
+- Code structure best practices and patterns
+- Hardware abstraction layer examples
+- Error handling and logging patterns
+- Mock GPIO for development without hardware
+- Testing strategies (syntax validation, unit tests, integration tests)
+- Development workflow (local development → deployment)
+- Complete example application demonstrating best practices
+
+**Note:** These skills complement each other. The `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns.
+
 ## Repository Structure
 
 ```
 luigi/
 ├── .github/
-│   └── copilot-instructions.md     # This file
+│   ├── copilot-instructions.md     # This file
+│   └── skills/                      # Agent Skills for specialized guidance
+│       ├── python-development/      # Python development patterns
+│       │   ├── SKILL.md             # Main skill file
+│       │   ├── python-patterns.md   # Advanced patterns
+│       │   └── example_application.py  # Complete example
+│       └── raspi-zero-w/            # Raspberry Pi hardware guidance
+│           ├── SKILL.md             # Main skill file
+│           ├── gpio-pinout.md       # GPIO reference
+│           └── wiring-diagram.md    # Hardware wiring
 ├── .gitignore                       # Python, IDE, and OS exclusions
 ├── README.md                        # Main project documentation
 └── motion-detection/                # Motion detection components
@@ -258,3 +313,11 @@ These instructions have been validated through exploration and testing. **Only p
 - You need to understand code logic in detail beyond structural overview
 
 For most code changes, **syntax validation is sufficient**. Save exploration time by following the validation commands documented above.
+
+### When to Use Agent Skills
+
+**Copilot will automatically load relevant skills** based on your task, but you can also reference them directly:
+- For hardware setup and wiring questions → Use `.github/skills/raspi-zero-w/`
+- For Python code development patterns → Use `.github/skills/python-development/`
+
+The skills provide deeper, specialized guidance beyond these general instructions.
