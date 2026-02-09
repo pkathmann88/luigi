@@ -395,18 +395,26 @@ class MotionDetectionApp:
         try:
             # Validate filepath before execution
             if not os.path.isfile(filepath):
-                logging.error(f"Sound file not found: {filepath}")
+                logging.error(f"Sound file not found: {os.path.basename(filepath)}")
                 return
             
-            # Ensure file is within expected sound directory
+            # Ensure file is within expected sound directory (prevent path traversal)
             real_path = os.path.realpath(filepath)
             real_sound_dir = os.path.realpath(Config.SOUND_DIR)
-            if not real_path.startswith(real_sound_dir):
-                logging.error(f"Sound file outside allowed directory: {filepath}")
+            
+            # Use os.path.commonpath to properly check directory containment
+            try:
+                common = os.path.commonpath([real_path, real_sound_dir])
+                if common != real_sound_dir:
+                    logging.error("Sound file outside allowed directory")
+                    return
+            except ValueError:
+                # Paths are on different drives (Windows) or one is relative
+                logging.error("Invalid sound file path")
                 return
             
             if MOCK_MODE:
-                print(f"[MOCK] Would play: {filepath}")
+                print(f"[MOCK] Would play: {os.path.basename(filepath)}")
                 return
             
             result = subprocess.run(
@@ -417,7 +425,9 @@ class MotionDetectionApp:
             )
             
             if result.returncode != 0:
-                logging.error(f"Audio playback failed: {result.stderr}")
+                # Sanitize stderr output (limit length, remove newlines)
+                stderr_msg = result.stderr.decode('utf-8', errors='replace')[:200].replace('\n', ' ')
+                logging.error(f"Audio playback failed: {stderr_msg}")
         except subprocess.TimeoutExpired:
             logging.error("Audio playback timed out")
         except FileNotFoundError:
