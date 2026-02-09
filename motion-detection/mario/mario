@@ -1,11 +1,11 @@
 #! /bin/sh
 ### BEGIN INIT INFO
-# Provides: motiondetection
+# Provides: mario
 # Required-Start: $syslog
 # Required-Stop: $syslog
 # Default-Start: 2 3 4 5
 # Default-Stop: 0 1 6
-# Short-Description: motion detection
+# Short-Description: mario motion detection
 # Description:
 ### END INIT INFO
  
@@ -20,10 +20,10 @@ case "$1" in
         # Beende Programm
 	#PID=$(ps aux | grep pir.py | grep -v grep | grep -v sudo | awk '{print $2}')
 	#kill $PID
-	touch /tmp/stop_motiondetection
+	touch /tmp/stop_mario
         ;;
     *)
-        echo "Benutzt: /etc/init.d/motiondetection {start|stop}"
+        echo "Benutzt: /etc/init.d/mario {start|stop}"
         exit 1
         ;;
 esac
