@@ -4,7 +4,7 @@
 
 **Luigi** is a Python-based motion detection system designed for Raspberry Pi Zero W. It uses PIR (Passive Infrared) sensors to detect motion and plays random sound effects via GPIO control. The project is currently **basic and intentionally simple**, with plans for future improvements and expansion.
 
-**Current State:** The repository contains a single sample motion detection module (Mario) as a proof of concept. Future development will expand functionality and potentially add new modules for motion detection or entirely different use cases.
+**Current State:** The repository contains a single sample motion detection module (Mario) as a proof of concept. **Future development will expand functionality to add new modules** - either for different motion detection behaviors, environmental monitoring, automation, or entirely different hardware interaction use cases. The project structure is designed to be extensible and modular.
 
 **Key Information:**
 - **Primary Language:** Python (currently Python 2.x compatible, shebang: `#!/usr/bin/python`)
@@ -78,7 +78,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Development workflow (local development → deployment)
 - Complete example application demonstrating best practices
 
-**Note:** These skills complement each other. The `system-setup` skill helps create deployment automation scripts, the `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns.
+**Note:** These skills complement each other. The `system-setup` skill helps create deployment automation scripts for Luigi modules, the `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns. Together they provide complete guidance for developing and deploying any type of Luigi module (motion detection, sensors, automation, etc.).
 
 ## Repository Structure
 
@@ -210,13 +210,19 @@ sudo apt-get update && sudo apt-get install python-rpi.gpio alsa-utils
 
 ### Adding New Components
 
-When adding new motion detection modules or features:
+The project is designed for extensibility. When adding new modules (whether for motion detection, environmental monitoring, automation, or other hardware interactions):
 
-1. **Create subdirectory** under `motion-detection/` with descriptive name
-2. **Include README.md** documenting purpose, setup, configuration, and usage
-3. **Document GPIO pins** if using different pins than GPIO 23
-4. **Follow existing patterns:** Init.d script structure, stop file mechanism, logging
+1. **Create subdirectory** under appropriate category (e.g., `motion-detection/`, `sensors/`, `automation/`)
+2. **Include README.md** documenting purpose, hardware requirements, setup, configuration, and usage
+3. **Document GPIO pins** and any hardware connections required
+4. **Follow existing patterns:** 
+   - Python script structure (GPIO setup, callbacks, cleanup)
+   - Service script structure (init.d or systemd)
+   - Stop file mechanism for graceful shutdown
+   - Logging to `/var/log/`
+   - Configuration via constants or config files
 5. **Update parent READMEs** to reference new component
+6. **Consider modularity:** Make components independent when possible, shared libraries when needed
 
 ### File Organization
 
@@ -260,26 +266,37 @@ When adding new motion detection modules or features:
 
 **Problem:** Hardcoded paths like `/usr/share/sounds/mario/` don't exist in dev environment.
 
-**Solution:** Paths are for target Raspberry Pi deployment. Change only if improving flexibility (e.g., adding environment variables or CLI arguments).
+**Solution:** Paths are for target Raspberry Pi deployment. For new modules, consider using configurable paths or environment variables for better flexibility.
 
 ## Project Expansion Guidelines
 
-**This project is intentionally basic and will evolve.** When contributing improvements:
+**This project is intentionally basic and designed for extensibility.** The current implementation (Mario motion detection) is a proof of concept. The architecture supports:
 
+**Adding New Modules:**
+1. **Motion Detection Variants:** Different sound effects, behaviors, cooldown strategies
+2. **Environmental Monitoring:** Temperature, humidity, light sensors
+3. **Automation:** Relay control, motor control, LED patterns
+4. **Security:** Door/window sensors, cameras, alerts
+5. **IoT Integration:** MQTT, webhooks, cloud services
+
+**When Contributing:**
 1. **Maintain simplicity:** Keep the barrier to entry low for embedded/IoT projects
 2. **Document thoroughly:** Each component should have clear README with setup steps
-3. **Preserve existing functionality:** The Mario module should continue to work
-4. **Consider modularity:** Design new features as separate modules when possible
-5. **Hardware compatibility:** Test on actual Raspberry Pi hardware when possible
+3. **Preserve existing functionality:** Existing modules should continue to work
+4. **Consider modularity:** Design new features as separate, independent modules
+5. **Use standard patterns:** Follow GPIO setup, cleanup, logging conventions from existing code
+6. **Hardware compatibility:** Test on actual Raspberry Pi hardware when possible
+7. **Generalize when useful:** Create shared libraries for common operations
 
-**Potential Expansion Areas:**
-- Additional motion detection modules with different behaviors
+**Potential Improvements (Applicable to All Modules):**
 - Configuration file support (YAML/JSON instead of hardcoded values)
 - Web interface for remote monitoring/control
-- Multiple sensor support
-- Integration with home automation platforms
+- Multiple sensor support per module
+- Integration with home automation platforms (Home Assistant, OpenHAB)
 - Enhanced logging and statistics
 - Proper Python package structure (setup.py, requirements.txt)
+- Module dependency management
+- Plugin architecture for dynamic module loading
 
 ## Quick Reference Commands
 

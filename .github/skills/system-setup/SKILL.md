@@ -1,12 +1,12 @@
 ---
 name: Luigi Deployment Automation
-description: Guide for creating automation scripts to configure Raspberry Pi Zero W for the Luigi project. Use this skill when generating deployment scripts, installation scripts, or system configuration automation for the Luigi motion detection system.
+description: Guide for creating automation scripts to deploy Luigi project modules on Raspberry Pi Zero W. Use this skill when generating deployment scripts for any Luigi module (motion detection, sensors, automation, etc.) including dependency installation, file deployment, and service configuration.
 license: MIT
 ---
 
 # Luigi Deployment Automation Skill
 
-This skill helps agents **create automation scripts** for deploying the Luigi motion detection system to a Raspberry Pi Zero W. The skill focuses on generating bash scripts that handle dependencies, file deployment, and service configuration.
+This skill helps agents **create automation scripts** for deploying Luigi project modules to a Raspberry Pi Zero W. The skill focuses on generating bash scripts that handle dependencies, file deployment, and service configuration for any type of Luigi module (motion detection, environmental sensors, automation, etc.).
 
 **Important**: This skill guides script CREATION, not direct execution. Agents should generate deployment scripts that users can review and run.
 
@@ -36,23 +36,30 @@ This skill helps agents **create automation scripts** for deploying the Luigi mo
 ## Luigi Project Structure
 
 The current Luigi repository contains:
-- **motion-detection/mario/**: Mario-themed motion detector module
+- **motion-detection/mario/**: Mario-themed motion detector module (example implementation)
   - `mario.py`: Python script using RPi.GPIO for motion detection
   - `mario`: init.d service script
   - `mario-sounds.tar.gz`: Audio files archive (~1.3MB, 10 WAV files)
 
-Future expansions may add more modules under `motion-detection/`.
+**Future Expansion:** The project structure supports adding more modules for various use cases:
+- Additional motion detection behaviors
+- Environmental monitoring (temperature, humidity, light)
+- Automation (relays, motors, LEDs)
+- Security sensors (door/window, cameras)
+- IoT integrations
+
+Each module follows similar deployment patterns (Python script + service + resources).
 
 ## Deployment Script Patterns
 
-### 1. Complete Deployment Script
+### 1. Complete Deployment Script Template
 
-Generate a comprehensive deployment script that handles everything:
+Generate a comprehensive deployment script for a Luigi module. This template can be adapted for any module type:
 
 ```bash
 #!/bin/bash
-# deploy_luigi.sh - Complete Luigi deployment script
-# Usage: sudo ./deploy_luigi.sh
+# deploy_{module-name}.sh - Deploy {module-name} Luigi module
+# Usage: sudo ./deploy_{module-name}.sh
 
 set -e  # Exit on error
 
@@ -682,32 +689,101 @@ fi
 
 ### Extensible Deployment Pattern
 
-When multiple modules exist:
+When the Luigi project contains multiple modules (e.g., motion detection, environmental sensors, automation):
 
 ```bash
 #!/bin/bash
-# deploy_all_modules.sh
+# deploy_all_modules.sh - Deploy all Luigi modules
+# Usage: sudo ./deploy_all_modules.sh
 
-MODULES=("mario")  # Add more modules here as they're developed
+set -e
+
+# Define all available modules (extend this array as new modules are added)
+MODULES=("mario" "temperature-sensor" "relay-controller")
+
+log_info() {
+    echo -e "\033[0;32m[INFO]\033[0m $1"
+}
 
 for MODULE in "${MODULES[@]}"; do
-    echo "Deploying module: $MODULE"
+    log_info "Deploying module: $MODULE"
+    
+    # Determine module directory (support different categories)
+    MODULE_PATH=""
+    for CATEGORY in motion-detection sensors automation; do
+        if [ -d "$CATEGORY/$MODULE" ]; then
+            MODULE_PATH="$CATEGORY/$MODULE"
+            break
+        fi
+    done
+    
+    if [ -z "$MODULE_PATH" ]; then
+        log_info "Module $MODULE not found, skipping..."
+        continue
+    fi
     
     # Deploy Python script
-    cp "motion-detection/$MODULE/$MODULE.py" "/usr/local/bin/"
-    chmod 755 "/usr/local/bin/$MODULE.py"
+    if [ -f "$MODULE_PATH/$MODULE.py" ]; then
+        cp "$MODULE_PATH/$MODULE.py" "/usr/local/bin/"
+        chmod 755 "/usr/local/bin/$MODULE.py"
+    fi
     
-    # Deploy service
-    cp "motion-detection/$MODULE/$MODULE" "/etc/init.d/"
-    chmod 755 "/etc/init.d/$MODULE"
+    # Deploy service (support both init.d and systemd)
+    if [ -f "$MODULE_PATH/$MODULE.service" ]; then
+        # Systemd service
+        cp "$MODULE_PATH/$MODULE.service" "/etc/systemd/system/"
+        systemctl daemon-reload
+        systemctl enable "$MODULE"
+        systemctl start "$MODULE"
+    elif [ -f "$MODULE_PATH/$MODULE" ]; then
+        # init.d service
+        cp "$MODULE_PATH/$MODULE" "/etc/init.d/"
+        chmod 755 "/etc/init.d/$MODULE"
+        update-rc.d "$MODULE" defaults
+        service "$MODULE" start
+    fi
     
-    # Enable service
-    update-rc.d "$MODULE" defaults
+    # Deploy additional resources (sounds, config files, etc.)
+    if [ -f "$MODULE_PATH/$MODULE-resources.tar.gz" ]; then
+        mkdir -p "/usr/share/$MODULE"
+        tar -xzf "$MODULE_PATH/$MODULE-resources.tar.gz" -C "/usr/share/$MODULE/"
+    fi
     
-    # Start service
-    service "$MODULE" start
-    
-    echo "✓ $MODULE deployed"
+    log_info "✓ $MODULE deployed successfully"
+done
+
+log_info "All modules deployed!"
+```
+
+### Selective Module Deployment
+
+Allow deployment of specific modules only:
+
+```bash
+#!/bin/bash
+# deploy_modules.sh - Deploy selected Luigi modules
+# Usage: sudo ./deploy_modules.sh mario temperature-sensor
+
+set -e
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <module1> [module2] [module3] ..."
+    echo ""
+    echo "Available modules:"
+    find motion-detection sensors automation -maxdepth 1 -type d 2>/dev/null | grep -v "^motion-detection$\|^sensors$\|^automation$" | sed 's|.*/||' | sort
+    exit 1
+fi
+
+MODULES=("$@")
+
+for MODULE in "${MODULES[@]}"; do
+    echo "Deploying $MODULE..."
+    # Call module-specific deployment if it exists
+    if [ -f "deploy_$MODULE.sh" ]; then
+        bash "deploy_$MODULE.sh"
+    else
+        echo "Warning: No deployment script for $MODULE found"
+    fi
 done
 ```
 

@@ -90,14 +90,21 @@ project-name/
 """Configuration constants for hardware project."""
 
 # GPIO Pin Assignments (BCM numbering)
-SENSOR_PIN = 23
-LED_PIN = 18
-BUTTON_PIN = 24
+SENSOR_PIN = 23         # PIR motion sensor
+TEMPERATURE_PIN = 4     # DHT22 temperature sensor  
+LED_PIN = 18           # Status LED
+BUTTON_PIN = 24        # Manual trigger button
+RELAY_PIN = 17         # Relay control
 
 # File Paths
-SOUND_DIR = "/usr/share/sounds/mario/"
-STOP_FILE = "/tmp/stop_mario"
-TIMER_FILE = "/tmp/mario_timer"
+DATA_DIR = "/usr/share/{project-name}/"
+STOP_FILE = "/tmp/stop_{project-name}"
+LOG_FILE = "/var/log/{project-name}.log"
+
+# Application Settings
+COOLDOWN_SECONDS = 5
+ENABLE_LOGGING = True
+DEBUG_MODE = False
 LOG_FILE = "/var/log/motion.log"
 
 # Timing Configuration
@@ -908,7 +915,9 @@ def safe_callback(channel):
 
 ## Project-Specific Patterns
 
-### Current Project (mario.py) Analysis
+### Current Project (Mario Module) Analysis
+
+The `mario.py` module in `motion-detection/mario/` serves as a **reference implementation** for Luigi modules.
 
 **Good Practices Used:**
 - Try/finally block for GPIO cleanup
@@ -916,23 +925,33 @@ def safe_callback(channel):
 - Cooldown logic to prevent spam
 - File-based stop mechanism
 
-**Recommended Improvements:**
-- Add configuration file instead of constants in code
-- Implement proper logging instead of print statements
+**Recommended Improvements for Any Module:**
+- Add configuration file instead of hardcoded constants
+- Implement structured logging instead of print statements
 - Use context managers for file operations
-- Add error handling for sound playback
+- Add error handling for external processes (sound playback, etc.)
 - Validate file paths before use
 - Add command-line arguments for flexibility
-- Create hardware abstraction layer
+- Create hardware abstraction layer for reusability
 
-**Example Refactored Pattern:**
+**Extending Beyond Motion Detection:**
+
+The Mario module demonstrates patterns applicable to ANY Luigi module:
+- **Environmental Sensors:** Replace PIR with DHT22, use similar event patterns
+- **Automation Controllers:** Replace sound playback with relay control
+- **Security Monitors:** Replace cooldown with alert mechanisms
+- **IoT Integrations:** Add MQTT/HTTP instead of local sounds
+
+All modules can share common patterns while implementing different hardware interfaces and behaviors.
+
+**Example Refactored Pattern (Applicable to Any Module):**
 ```python
 #!/usr/bin/env python3
-"""Motion detection with sound playback - refactored."""
+"""Generic hardware module - refactored pattern."""
 import logging
-from config import SENSOR_PIN, SOUND_DIR, COOLDOWN_SECONDS
+from config import SENSOR_PIN, DATA_DIR, COOLDOWN_SECONDS
 from hardware.gpio_manager import GPIOManager
-from hardware.sensors import PIRSensor
+from hardware.sensors import SensorFactory
 
 def main():
     # Setup logging
