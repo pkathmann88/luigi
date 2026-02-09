@@ -54,9 +54,9 @@ sudo chmod +x /usr/bin/luigi
 ### 3. Install System Service
 
 ```bash
-sudo cp mario /etc/init.d/motiondetection
-sudo chmod +x /etc/init.d/motiondetection
-sudo update-rc.d motiondetection defaults
+sudo cp mario /etc/init.d/mario
+sudo chmod +x /etc/init.d/mario
+sudo update-rc.d mario defaults
 ```
 
 This registers the motion detection as a system service that can be managed with standard init.d commands.
@@ -66,25 +66,25 @@ This registers the motion detection as a system service that can be managed with
 ### Start the Service
 
 ```bash
-sudo /etc/init.d/motiondetection start
+sudo /etc/init.d/mario start
 ```
 
 or
 
 ```bash
-sudo service motiondetection start
+sudo service mario start
 ```
 
 ### Stop the Service
 
 ```bash
-sudo /etc/init.d/motiondetection stop
+sudo /etc/init.d/mario stop
 ```
 
 or
 
 ```bash
-sudo service motiondetection stop
+sudo service mario stop
 ```
 
 ### Check Service Status
@@ -102,7 +102,7 @@ tail -f /var/log/motion.log
 3. **Cooldown Check**: The system checks if 30 minutes (1800 seconds) have passed since the last trigger
 4. **Sound Playback**: If the cooldown has expired, a random sound file is selected and played using `aplay`
 5. **Timer Update**: The current timestamp is saved to track the cooldown period
-6. **Stop Mechanism**: The service can be stopped by creating `/tmp/stop_motiondetection` file
+6. **Stop Mechanism**: The service can be stopped by creating `/tmp/stop_mario` file
 
 ## Configuration
 
@@ -111,7 +111,7 @@ Key parameters in `mario.py`:
 ```python
 SENSOR_PIN = 23                           # GPIO pin for PIR sensor
 SOUND_DIR = "/usr/share/sounds/mario/"    # Directory containing sound files
-STOP_FILE = "/tmp/stop_motiondetection"   # Stop signal file
+STOP_FILE = "/tmp/stop_mario"             # Stop signal file
 TIMER_FILE = "/tmp/mario_timer"           # Cooldown tracking file
 ```
 
@@ -169,7 +169,7 @@ The system will randomly select from all files in the directory.
 1. Check script permissions:
    ```bash
    ls -l /usr/bin/luigi
-   ls -l /etc/init.d/motiondetection
+   ls -l /etc/init.d/mario
    ```
 
 2. Verify Python dependencies:

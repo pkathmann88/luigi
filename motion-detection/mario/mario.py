@@ -7,7 +7,7 @@ import random
 
 SENSOR_PIN = 23
 SOUND_DIR = "/usr/share/sounds/mario/"
-STOP_FILE = "/tmp/stop_motiondetection"
+STOP_FILE = "/tmp/stop_mario"
 TIMER_FILE = "/tmp/mario_timer"
 
 GPIO.setmode(GPIO.BCM)

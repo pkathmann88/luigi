@@ -49,21 +49,21 @@ sudo cp motion-detection/mario/mario.py /usr/bin/luigi
 sudo chmod +x /usr/bin/luigi
 
 # Install the init.d service script
-sudo cp motion-detection/mario/mario /etc/init.d/motiondetection
-sudo chmod +x /etc/init.d/motiondetection
-sudo update-rc.d motiondetection defaults
+sudo cp motion-detection/mario/mario /etc/init.d/mario
+sudo chmod +x /etc/init.d/mario
+sudo update-rc.d mario defaults
 ```
 
 ## Usage
 
 Start the motion detection service:
 ```bash
-sudo /etc/init.d/motiondetection start
+sudo /etc/init.d/mario start
 ```
 
 Stop the motion detection service:
 ```bash
-sudo /etc/init.d/motiondetection stop
+sudo /etc/init.d/mario stop
 ```
 
 Check the logs:
@@ -98,7 +98,7 @@ luigi/
 Key configuration variables in `mario.py`:
 - `SENSOR_PIN = 23` - GPIO pin for PIR sensor
 - `SOUND_DIR = "/usr/share/sounds/mario/"` - Directory containing sound files
-- `STOP_FILE = "/tmp/stop_motiondetection"` - File used to signal service stop
+- `STOP_FILE = "/tmp/stop_mario"` - File used to signal service stop
 - `TIMER_FILE = "/tmp/mario_timer"` - File used to track cooldown period
 
 Cooldown period: 1800 seconds (30 minutes) between sound playback events
