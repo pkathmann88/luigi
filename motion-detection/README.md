@@ -50,4 +50,4 @@ When adding new motion detection components:
 ## See Also
 
 - Main project documentation: [../README.md](../README.md)
-- Mario component: [mario/REAME.md](mario/REAME.md)
+- Mario component: [mario/README.md](mario/README.md)

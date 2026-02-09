@@ -87,7 +87,7 @@ luigi/
 └── motion-detection/                  # Motion detection components
     ├── README.md                      # Motion detection documentation
     └── mario/                         # Mario-themed motion detector
-        ├── REAME.md                   # Mario component documentation
+        ├── README.md                  # Mario component documentation
         ├── mario                      # Init.d service script
         ├── mario.py                   # Python motion detection script
         └── mario-sounds.tar.gz        # Sound files archive
