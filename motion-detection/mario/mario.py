@@ -300,6 +300,9 @@ class MotionDetectionApp:
         # Remove any lingering stop signal
         remove_stop_signal()
         
+        # Validate sound directory at startup
+        self._validate_sound_directory()
+        
         # Load last trigger time
         last_time_str = safe_read_file(Config.TIMER_FILE, "0")
         try:
@@ -307,7 +310,23 @@ class MotionDetectionApp:
             logging.info(f"Last trigger: {self.last_trigger_time}")
         except ValueError:
             self.last_trigger_time = 0
-            logging.warning("Invalid timer file, reset to 0")
+            logging.warning(f"Invalid timer file content: {last_time_str!r}, reset to 0")
+    
+    def _validate_sound_directory(self):
+        """Validate sound directory exists and contains sound files."""
+        if not os.path.isdir(Config.SOUND_DIR):
+            logging.warning(f"Sound directory not found: {Config.SOUND_DIR}")
+            return
+        
+        sound_files = [
+            f for f in os.listdir(Config.SOUND_DIR)
+            if f.lower().endswith(('.wav', '.mp3'))
+        ]
+        
+        if not sound_files:
+            logging.warning(f"No sound files in {Config.SOUND_DIR}")
+        else:
+            logging.info(f"Found {len(sound_files)} sound file(s) in {Config.SOUND_DIR}")
     
     def on_motion_detected(self, channel):
         """
@@ -346,17 +365,13 @@ class MotionDetectionApp:
     def handle_motion(self):
         """Process motion detection event."""
         try:
-            if not os.path.isdir(Config.SOUND_DIR):
-                logging.error(f"Sound directory not found: {Config.SOUND_DIR}")
-                return
-            
             sound_files = [
                 f for f in os.listdir(Config.SOUND_DIR)
                 if f.lower().endswith(('.wav', '.mp3'))
             ]
             
             if not sound_files:
-                logging.error(f"No sound files in {Config.SOUND_DIR}")
+                logging.error(f"No sound files available in {Config.SOUND_DIR}")
                 return
             
             sound_file = random.choice(sound_files)
@@ -365,6 +380,8 @@ class MotionDetectionApp:
             logging.info(f"Playing sound: {sound_file}")
             self.play_sound(sound_path)
             
+        except FileNotFoundError:
+            logging.error(f"Sound directory not found: {Config.SOUND_DIR}")
         except Exception as e:
             logging.error(f"Failed to handle motion: {e}")
     
@@ -376,6 +393,18 @@ class MotionDetectionApp:
             filepath: Path to sound file
         """
         try:
+            # Validate filepath before execution
+            if not os.path.isfile(filepath):
+                logging.error(f"Sound file not found: {filepath}")
+                return
+            
+            # Ensure file is within expected sound directory
+            real_path = os.path.realpath(filepath)
+            real_sound_dir = os.path.realpath(Config.SOUND_DIR)
+            if not real_path.startswith(real_sound_dir):
+                logging.error(f"Sound file outside allowed directory: {filepath}")
+                return
+            
             if MOCK_MODE:
                 print(f"[MOCK] Would play: {filepath}")
                 return
