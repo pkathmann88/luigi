@@ -1,820 +1,908 @@
 ---
 name: system-setup
-description: Guide for configuring Raspberry Pi Zero W system for the Luigi project, including dependency installation, service setup, and module deployment. Use this skill when deploying the Luigi motion detection system to a Raspberry Pi.
+description: Guide for creating automation scripts to configure Raspberry Pi Zero W for the Luigi project. Use this skill when generating deployment scripts, installation scripts, or system configuration automation for the Luigi motion detection system.
 license: MIT
 ---
 
-# Luigi Project System Setup and Deployment Guide
+# Luigi Project System Setup Script Generation Guide
 
-This skill provides comprehensive guidance for setting up and deploying the Luigi motion detection project on a Raspberry Pi Zero W, including OS prerequisites, dependency installation, service configuration, and module deployment.
+This skill provides guidance for **creating automation scripts** to configure and deploy the Luigi motion detection project on Raspberry Pi Zero W. Use this when generating bash scripts, installation automation, or system configuration tools.
 
 ## When to Use This Skill
 
 Use this skill when:
-- Deploying the Luigi project to a new Raspberry Pi Zero W
-- Installing project-specific dependencies
-- Setting up and configuring the motion detection service
-- Troubleshooting deployment or service issues
-- Updating system packages for the project
-- Configuring system for optimal performance
-- Performing project-specific system maintenance
+- Creating deployment scripts for the Luigi project
+- Generating installation automation
+- Writing system configuration scripts
+- Building host setup and initialization scripts
+- Creating maintenance and update scripts
+- Automating service configuration
+- Generating troubleshooting scripts
 
-## Prerequisites
+**This skill helps you CREATE scripts, not execute commands directly.**
 
-### Operating System Requirements
+## OS Installation Prerequisites
 
-**Recommended: Raspberry Pi OS Lite (32-bit) - Debian 13 "Trixie"**
+### Recommended Operating System
+
+**Raspberry Pi OS Lite (32-bit) - Debian 13 "Trixie"**
 - **Release Date**: December 4, 2025
 - **Linux Kernel**: 6.12
-- **Why Lite**: Optimal for headless operation, minimal resource usage
-- **Architecture**: 32-bit (required for Pi Zero W compatibility)
+- **Architecture**: 32-bit (required for Pi Zero W)
+- **Download**: https://www.raspberrypi.com/software/operating-systems/
 
-**If you need to install the OS first**, see the OS Installation section at the end of this document or use Raspberry Pi Imager with these settings:
-- Device: Raspberry Pi Zero W
-- OS: Raspberry Pi OS Lite (32-bit)
-- Enable SSH
-- Configure Wi-Fi
-- Set username/password
+**Why Raspberry Pi OS Lite:**
+- Minimal resource usage (~100MB RAM vs 400MB+ Desktop)
+- Faster boot times (10-15 seconds)
+- Optimized for headless operation
+- No desktop environment overhead
+- Perfect for embedded/IoT projects
 
-This guide assumes you have:
-- ✅ Raspberry Pi OS installed and booted
-- ✅ SSH access enabled
-- ✅ Network connectivity (Wi-Fi configured)
-- ✅ Basic system updated (`sudo apt update && sudo apt upgrade`)
+### OS Installation Using Raspberry Pi Imager
 
-## Quick Deployment (For Experienced Users)
+**Installation Steps:**
+1. Download Raspberry Pi Imager for your OS
+2. Choose Device: Raspberry Pi Zero W
+3. Choose OS: Raspberry Pi OS Lite (32-bit)
+4. Choose Storage: Your microSD card
+5. Click gear icon (⚙️) for advanced settings:
+   - Enable SSH
+   - Set username/password
+   - Configure Wi-Fi (SSID, password, country)
+   - Set locale (timezone, keyboard)
+6. Write image and wait for completion
+7. Insert SD card into Pi Zero W and power on
 
-If you're familiar with Raspberry Pi setup, use this quick deployment:
+**After first boot, SSH will be available at:**
+- `ssh username@raspberrypi.local` (mDNS)
+- `ssh username@[IP address]` (find IP from router)
+
+## Script Generation Principles
+
+### Best Practices for Setup Scripts
+
+**1. Idempotent Operations**
+- Scripts should be safe to run multiple times
+- Check if components already exist before installing
+- Use conditional logic to skip completed steps
+
+**2. Error Handling**
+- Check exit codes after each command
+- Provide clear error messages
+- Allow graceful failure and recovery
+
+**3. User Feedback**
+- Print status messages for each step
+- Show progress indicators
+- Summarize what was accomplished
+
+**4. Validation**
+- Verify prerequisites before proceeding
+- Test installations after completion
+- Confirm services are running
+
+**5. Logging**
+- Log actions to file for debugging
+- Include timestamps
+- Capture both success and failures
+
+## Luigi Project Components
+
+### What Needs to Be Deployed
+
+**System Dependencies:**
+- python3-rpi.gpio - GPIO control library
+- python-rpi.gpio - GPIO control library (Python 2 compat)
+- alsa-utils - Audio playback utilities
+- git - Version control for cloning repository
+
+**Project Files:**
+- Repository: github.com/pkathmann88/luigi
+- Sound files: /usr/share/sounds/mario/ (from mario-sounds.tar.gz)
+- Python script: /usr/bin/luigi (from mario.py)
+- Service script: /etc/init.d/mario (init.d service)
+
+**Configuration:**
+- GPIO Pin: 23 (BCM numbering)
+- Service: Registered with update-rc.d for auto-start
+- Logs: /var/log/motion.log
+
+## Complete Deployment Script Template
+
+Generate this comprehensive deployment script:
+
+**File: `deploy_luigi.sh`**
 
 ```bash
-# Update system
-sudo apt update && sudo apt full-upgrade -y
+#!/bin/bash
+#
+# Luigi Motion Detection System - Deployment Script
+# 
+# Automates deployment of Luigi project on Raspberry Pi Zero W
+# Safe to run multiple times (idempotent)
+#
+# Usage: ./deploy_luigi.sh
+#
+
+set -e  # Exit on error
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Configuration
+PROJECT_DIR="$HOME/luigi"
+SOUND_DIR="/usr/share/sounds/mario"
+BIN_PATH="/usr/bin/luigi"
+SERVICE_PATH="/etc/init.d/mario"
+LOG_FILE="/var/log/luigi_deployment.log"
+
+# Logging function
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Success message
+success() {
+    echo -e "${GREEN}✓${NC} $1"
+    log "SUCCESS: $1"
+}
+
+# Error message
+error() {
+    echo -e "${RED}✗${NC} $1"
+    log "ERROR: $1"
+}
+
+# Warning message
+warning() {
+    echo -e "${YELLOW}!${NC} $1"
+    log "WARNING: $1"
+}
+
+# Info message
+info() {
+    echo -e "  $1"
+}
+
+# Check if running as root
+check_sudo() {
+    if [ "$EUID" -eq 0 ]; then
+        error "Do not run this script as root. It will request sudo when needed."
+        exit 1
+    fi
+}
+
+# Check prerequisites
+check_prerequisites() {
+    log "Checking prerequisites..."
+    echo "Checking prerequisites..."
+    
+    # Check OS
+    if [ ! -f /etc/os-release ]; then
+        error "Cannot determine OS version"
+        exit 1
+    fi
+    
+    # Check network connectivity
+    if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        warning "No internet connectivity detected"
+    else
+        success "Internet connection available"
+    fi
+    
+    # Check if running on Raspberry Pi
+    if [ ! -f /proc/device-tree/model ]; then
+        warning "Not running on Raspberry Pi hardware"
+    else
+        MODEL=$(cat /proc/device-tree/model)
+        info "Device: $MODEL"
+        success "Running on Raspberry Pi"
+    fi
+}
+
+# Update system packages
+update_system() {
+    log "Updating system packages..."
+    echo ""
+    echo "Step 1: Updating system packages..."
+    
+    sudo apt update || {
+        error "Failed to update package lists"
+        exit 1
+    }
+    
+    success "Package lists updated"
+}
 
 # Install dependencies
-sudo apt install -y python3-rpi.gpio python-rpi.gpio alsa-utils git
+install_dependencies() {
+    log "Installing dependencies..."
+    echo ""
+    echo "Step 2: Installing dependencies..."
+    
+    PACKAGES="python3-rpi.gpio python-rpi.gpio alsa-utils git"
+    
+    for pkg in $PACKAGES; do
+        if dpkg -l | grep -q "^ii  $pkg"; then
+            info "$pkg already installed"
+        else
+            info "Installing $pkg..."
+            sudo apt install -y "$pkg" || {
+                error "Failed to install $pkg"
+                exit 1
+            }
+        fi
+    done
+    
+    success "All dependencies installed"
+}
 
-# Clone repository
-cd ~ && git clone https://github.com/pkathmann88/luigi.git && cd luigi
+# Verify installations
+verify_dependencies() {
+    log "Verifying dependencies..."
+    echo ""
+    echo "Step 3: Verifying installations..."
+    
+    # Check Python GPIO
+    if python3 -c "import RPi.GPIO" 2>/dev/null; then
+        success "RPi.GPIO library available"
+    else
+        error "RPi.GPIO library not working"
+        exit 1
+    fi
+    
+    # Check audio
+    if command -v aplay >/dev/null 2>&1; then
+        success "Audio utilities (aplay) available"
+    else
+        error "Audio utilities not found"
+        exit 1
+    fi
+    
+    # Check git
+    if command -v git >/dev/null 2>&1; then
+        success "Git available"
+    else
+        error "Git not found"
+        exit 1
+    fi
+}
 
-# Deploy project
-sudo mkdir -p /usr/share/sounds/mario
-sudo tar -xzf motion-detection/mario/mario-sounds.tar.gz -C /usr/share/sounds/mario/
+# Clone or update repository
+setup_repository() {
+    log "Setting up repository..."
+    echo ""
+    echo "Step 4: Setting up repository..."
+    
+    if [ -d "$PROJECT_DIR/.git" ]; then
+        info "Repository already exists, updating..."
+        cd "$PROJECT_DIR"
+        git pull || {
+            warning "Failed to update repository"
+        }
+        success "Repository updated"
+    else
+        info "Cloning repository..."
+        cd ~
+        git clone https://github.com/pkathmann88/luigi.git || {
+            error "Failed to clone repository"
+            exit 1
+        }
+        success "Repository cloned"
+    fi
+}
+
+# Deploy sound files
+deploy_sounds() {
+    log "Deploying sound files..."
+    echo ""
+    echo "Step 5: Deploying sound files..."
+    
+    # Create sound directory
+    if [ ! -d "$SOUND_DIR" ]; then
+        sudo mkdir -p "$SOUND_DIR" || {
+            error "Failed to create sound directory"
+            exit 1
+        }
+    fi
+    
+    # Extract sound files
+    cd "$PROJECT_DIR"
+    if [ -f "motion-detection/mario/mario-sounds.tar.gz" ]; then
+        sudo tar -xzf motion-detection/mario/mario-sounds.tar.gz -C "$SOUND_DIR/" || {
+            error "Failed to extract sound files"
+            exit 1
+        }
+        
+        # Set permissions
+        sudo chmod 644 "$SOUND_DIR"/*.wav
+        
+        # Count files
+        FILE_COUNT=$(ls -1 "$SOUND_DIR"/*.wav 2>/dev/null | wc -l)
+        success "Deployed $FILE_COUNT sound files to $SOUND_DIR"
+    else
+        error "Sound archive not found"
+        exit 1
+    fi
+}
+
+# Test audio configuration
+test_audio() {
+    log "Testing audio..."
+    echo ""
+    echo "Step 6: Testing audio configuration..."
+    
+    # Check audio devices
+    if aplay -l >/dev/null 2>&1; then
+        success "Audio devices detected"
+        
+        # Test with first sound file
+        FIRST_SOUND=$(ls "$SOUND_DIR"/*.wav 2>/dev/null | head -1)
+        if [ -n "$FIRST_SOUND" ]; then
+            info "Testing audio playback (this may be silent if no speaker connected)..."
+            timeout 5 aplay "$FIRST_SOUND" >/dev/null 2>&1 || true
+            success "Audio test completed"
+        fi
+    else
+        warning "No audio devices found (this is OK if running headless)"
+    fi
+}
+
+# Deploy Python script
+deploy_script() {
+    log "Deploying Python script..."
+    echo ""
+    echo "Step 7: Deploying Python script..."
+    
+    cd "$PROJECT_DIR"
+    
+    # Validate syntax first
+    if ! python3 -m py_compile motion-detection/mario/mario.py 2>/dev/null; then
+        error "Python script has syntax errors"
+        exit 1
+    fi
+    
+    # Copy to system location
+    sudo cp motion-detection/mario/mario.py "$BIN_PATH" || {
+        error "Failed to copy script"
+        exit 1
+    }
+    
+    # Make executable
+    sudo chmod +x "$BIN_PATH"
+    
+    success "Python script deployed to $BIN_PATH"
+}
+
+# Deploy service
+deploy_service() {
+    log "Deploying service..."
+    echo ""
+    echo "Step 8: Deploying service..."
+    
+    cd "$PROJECT_DIR"
+    
+    # Validate service script
+    if command -v shellcheck >/dev/null 2>&1; then
+        if shellcheck motion-detection/mario/mario 2>/dev/null; then
+            success "Service script validated with shellcheck"
+        else
+            warning "Service script has shellcheck warnings"
+        fi
+    fi
+    
+    # Copy service script
+    sudo cp motion-detection/mario/mario "$SERVICE_PATH" || {
+        error "Failed to copy service script"
+        exit 1
+    }
+    
+    # Make executable
+    sudo chmod +x "$SERVICE_PATH"
+    
+    # Register service
+    sudo update-rc.d mario defaults || {
+        warning "Failed to register service for auto-start"
+    }
+    
+    success "Service deployed to $SERVICE_PATH"
+}
+
+# Test service
+test_service() {
+    log "Testing service..."
+    echo ""
+    echo "Step 9: Testing service..."
+    
+    # Start service
+    info "Starting service..."
+    sudo "$SERVICE_PATH" start || {
+        error "Failed to start service"
+        exit 1
+    }
+    
+    # Wait a moment
+    sleep 2
+    
+    # Check if running
+    if pgrep -f "$BIN_PATH" >/dev/null; then
+        success "Service is running"
+        
+        # Check log file
+        if [ -f /var/log/motion.log ]; then
+            success "Log file created"
+        fi
+        
+        # Stop service for now
+        info "Stopping service..."
+        sudo "$SERVICE_PATH" stop
+        success "Service stopped"
+    else
+        error "Service failed to start"
+        exit 1
+    fi
+}
+
+# Print summary
+print_summary() {
+    echo ""
+    echo "========================================"
+    echo "  Luigi Deployment Complete!"
+    echo "========================================"
+    echo ""
+    echo "Installation Summary:"
+    echo "  - Dependencies: Installed"
+    echo "  - Repository: $PROJECT_DIR"
+    echo "  - Sound files: $SOUND_DIR"
+    echo "  - Script: $BIN_PATH"
+    echo "  - Service: $SERVICE_PATH"
+    echo ""
+    echo "Service Management:"
+    echo "  Start:   sudo /etc/init.d/mario start"
+    echo "  Stop:    sudo /etc/init.d/mario stop"
+    echo "  Restart: sudo /etc/init.d/mario restart"
+    echo ""
+    echo "Logs:"
+    echo "  View logs: tail -f /var/log/motion.log"
+    echo "  Deployment log: $LOG_FILE"
+    echo ""
+    echo "Next Steps:"
+    echo "  1. Connect PIR sensor to GPIO 23"
+    echo "  2. Start service: sudo /etc/init.d/mario start"
+    echo "  3. Monitor logs: tail -f /var/log/motion.log"
+    echo ""
+    log "Deployment completed successfully"
+}
+
+# Main execution
+main() {
+    echo "========================================"
+    echo "  Luigi Deployment Script"
+    echo "  Raspberry Pi Zero W Setup"
+    echo "========================================"
+    echo ""
+    
+    check_sudo
+    check_prerequisites
+    update_system
+    install_dependencies
+    verify_dependencies
+    setup_repository
+    deploy_sounds
+    test_audio
+    deploy_script
+    deploy_service
+    test_service
+    print_summary
+}
+
+# Run main function
+main
+```
+
+## Additional Script Templates
+
+### Update Script
+
+**File: `update_luigi.sh`**
+
+```bash
+#!/bin/bash
+# Luigi System Update Script
+
+set -e
+
+PROJECT_DIR="$HOME/luigi"
+
+echo "Updating Luigi System..."
+
+# Stop service
+sudo /etc/init.d/mario stop || true
+
+# Update system packages
+sudo apt update
+sudo apt upgrade -y
+
+# Update repository
+cd "$PROJECT_DIR"
+git pull
+
+# Redeploy components
 sudo cp motion-detection/mario/mario.py /usr/bin/luigi
 sudo chmod +x /usr/bin/luigi
 sudo cp motion-detection/mario/mario /etc/init.d/mario
 sudo chmod +x /etc/init.d/mario
-sudo update-rc.d mario defaults
 
-# Test and start
+# Validate
 python3 -m py_compile /usr/bin/luigi
+
+# Restart service
 sudo /etc/init.d/mario start
-tail -f /var/log/motion.log
+
+echo "Update complete!"
 ```
 
-**Continue reading for detailed step-by-step instructions.**
+### Audio Configuration Script
 
-## Step-by-Step Deployment Guide
-
-### Step 1: Connect to Your Raspberry Pi
+**File: `setup_audio.sh`**
 
 ```bash
-# SSH into your Raspberry Pi
-ssh pi@raspberrypi.local
-# or use IP address
-ssh pi@192.168.1.xxx
+#!/bin/bash
+# Luigi Audio Configuration Script
 
-# Enter password when prompted
-```
+echo "Configuring audio for Luigi..."
 
-### Step 2: Update System Packages
-
-**Always start with an updated system:**
-
-```bash
-# Update package lists
-sudo apt update
-
-# Upgrade all packages (may take 10-30 minutes)
-sudo apt full-upgrade -y
-
-# Clean up
-sudo apt autoremove -y
-sudo apt clean
-
-# Reboot to apply updates
-sudo reboot
-```
-
-**Wait 30 seconds, then reconnect via SSH.**
-
-### Step 3: Install Luigi Project Dependencies
-
-**Required packages for the Luigi motion detection system:**
-
-```bash
-# GPIO Control Libraries
-sudo apt install -y python3-rpi.gpio python-rpi.gpio
-
-# Audio Playback Utilities
-sudo apt install -y alsa-utils
-
-# Version Control (for cloning repository)
-sudo apt install -y git
-
-# Optional: Development tools (if you plan to modify code)
-sudo apt install -y python3-pip python3-dev build-essential
-
-# Verify installations
-python3 -c "import RPi.GPIO; print('✓ RPi.GPIO installed')"
-aplay --version | head -1
-git --version
-```
-
-**Expected output:**
-```
-✓ RPi.GPIO installed
-aplay: version 1.2.x by Jaroslav Kysela
-git version 2.x.x
-```
-
-### Step 4: Configure Audio Output
-
-**Test and configure audio for sound playback:**
-
-```bash
-# List available audio devices
-aplay -l
-
-# Test audio output (should play test sound)
-speaker-test -t wav -c 2 -l 1
-
-# Set audio output to 3.5mm jack (if needed)
-sudo raspi-config
-# Navigate to: 1 System Options → S2 Audio → 1 Headphones
-# Or use command line:
-amixer cset numid=3 1  # Force 3.5mm jack
+# Set audio output to 3.5mm jack
+amixer cset numid=3 1
 
 # Set volume to 70%
 amixer set PCM 70%
 
-# Save audio settings
+# Save settings
 sudo alsactl store
+
+# Test audio
+if [ -f "/usr/share/sounds/mario/callingmario1.wav" ]; then
+    echo "Playing test sound..."
+    aplay "/usr/share/sounds/mario/callingmario1.wav"
+fi
+
+echo "Audio configuration complete!"
 ```
 
-**Troubleshooting audio:**
-- No sound? Check volume with `alsamixer`
-- Wrong output? Use `sudo raspi-config` to select audio device
-- Distorted sound? Use better power supply (2A+)
+### Troubleshooting Script
 
-### Step 5: Clone Luigi Repository
+**File: `diagnose_luigi.sh`**
 
 ```bash
-# Navigate to home directory
-cd ~
+#!/bin/bash
+# Luigi Troubleshooting Script
 
-# Clone the repository
-git clone https://github.com/pkathmann88/luigi.git
+echo "Luigi System Diagnostics"
+echo "========================"
+echo ""
 
-# Enter project directory
-cd luigi
+echo "1. Hardware:"
+[ -f /proc/device-tree/model ] && cat /proc/device-tree/model || echo "Not on Raspberry Pi"
+echo ""
 
-# Verify repository contents
-ls -la
-# Should show: .github/, motion-detection/, README.md, etc.
+echo "2. Python GPIO:"
+python3 -c "import RPi.GPIO; print('✓ RPi.GPIO working')" || echo "✗ RPi.GPIO not available"
+echo ""
+
+echo "3. Audio:"
+command -v aplay >/dev/null && echo "✓ aplay available" || echo "✗ aplay not found"
+aplay -l 2>&1 | grep -q "card" && echo "✓ Audio devices found" || echo "✗ No audio devices"
+echo ""
+
+echo "4. Repository:"
+[ -d "$HOME/luigi/.git" ] && echo "✓ Repository at $HOME/luigi" || echo "✗ Repository not found"
+echo ""
+
+echo "5. Deployed Components:"
+[ -f /usr/bin/luigi ] && echo "✓ Luigi script" || echo "✗ Luigi script missing"
+[ -f /etc/init.d/mario ] && echo "✓ Service script" || echo "✗ Service script missing"
+[ -d /usr/share/sounds/mario ] && echo "✓ Sound files" || echo "✗ Sound files missing"
+echo ""
+
+echo "6. Service Status:"
+pgrep -f "/usr/bin/luigi" >/dev/null && echo "✓ Service running" || echo "✗ Service not running"
+echo ""
+
+echo "7. System Resources:"
+echo "Temperature: $(vcgencmd measure_temp 2>/dev/null || echo 'N/A')"
+free -h | grep Mem
 ```
 
-**If repository is private or you need specific branch:**
-```bash
-# Clone specific branch
-git clone -b branch-name https://github.com/pkathmann88/luigi.git
+### Uninstall Script
 
-# Or if already cloned, switch branch
-cd luigi
-git checkout branch-name
-git pull
-```
-
-### Step 6: Deploy Sound Files
-
-**Extract and install sound files to system location:**
-
-```bash
-# Create sound directory
-sudo mkdir -p /usr/share/sounds/mario
-
-# Extract sound files
-sudo tar -xzf motion-detection/mario/mario-sounds.tar.gz -C /usr/share/sounds/mario/
-
-# Verify files extracted
-ls -lh /usr/share/sounds/mario/
-# Should show: callingmario1.wav through callingmario10.wav
-
-# Check permissions
-sudo chmod 644 /usr/share/sounds/mario/*.wav
-
-# Test a sound file
-aplay /usr/share/sounds/mario/callingmario1.wav
-```
-
-### Step 7: Install Python Script
-
-**Deploy the motion detection script:**
+**File: `uninstall_luigi.sh`**
 
 ```bash
-# Copy script to system binary directory
-sudo cp motion-detection/mario/mario.py /usr/bin/luigi
+#!/bin/bash
+# Luigi Uninstall Script
 
-# Make executable
-sudo chmod +x /usr/bin/luigi
+read -p "Remove all Luigi components? (yes/no): " confirm
 
-# Verify syntax
-python3 -m py_compile /usr/bin/luigi
-# No output = success!
+if [ "$confirm" != "yes" ]; then
+    echo "Cancelled"
+    exit 0
+fi
 
-# Check script is accessible
-which luigi
-# Should output: /usr/bin/luigi
+echo "Removing Luigi..."
+
+# Stop and remove service
+sudo /etc/init.d/mario stop 2>/dev/null || true
+sudo update-rc.d -f mario remove 2>/dev/null || true
+sudo rm -f /etc/init.d/mario
+
+# Remove components
+sudo rm -f /usr/bin/luigi
+sudo rm -rf /usr/share/sounds/mario
+sudo rm -f /var/log/motion.log
+sudo rm -f /tmp/stop_mario /tmp/mario_timer
+
+echo "Luigi components removed!"
+echo "Repository at ~/luigi not removed (remove manually if needed)"
 ```
 
-### Step 8: Install System Service
+## Script Generation Guidelines
 
-**Set up the init.d service for automatic startup:**
+### Structure Every Script With:
+
+1. **Shebang and description**
+2. **Error handling** (`set -e`)
+3. **Configuration variables** at top
+4. **Helper functions** for common tasks
+5. **Main functions** for each step
+6. **Main execution** function
+7. **Clear output** with colors and status
+
+### Key Patterns for Idempotency:
 
 ```bash
-# Copy service script
-sudo cp motion-detection/mario/mario /etc/init.d/mario
+# Check before creating
+if [ ! -d "$DIR" ]; then
+    mkdir -p "$DIR"
+fi
 
-# Make executable
-sudo chmod +x /etc/init.d/mario
+# Check before installing
+if ! dpkg -l | grep -q "^ii  $PKG"; then
+    sudo apt install -y "$PKG"
+fi
 
-# Validate service script with shellcheck (if available)
-shellcheck /etc/init.d/mario || echo "Shellcheck not installed, skipping validation"
-
-# Register service for automatic startup
-sudo update-rc.d mario defaults
-
-# Verify service is registered
-ls -l /etc/init.d/mario
-# Should show: -rwxr-xr-x ... /etc/init.d/mario
+# Check file age before copying
+if [ ! -f "$DEST" ] || [ "$SRC" -nt "$DEST" ]; then
+    sudo cp "$SRC" "$DEST"
+fi
 ```
 
-### Step 9: Test the Service
-
-**Verify everything works before finalizing:**
+### Error Handling Pattern:
 
 ```bash
-# Start the service
-sudo /etc/init.d/mario start
-
-# Check if process is running
-ps aux | grep luigi
-# Should show: /usr/bin/python /usr/bin/luigi
-
-# Monitor the log file
-tail -f /var/log/motion.log
-# Press Ctrl+C to exit
-
-# Trigger motion sensor (wave hand in front)
-# Should see log entry and hear sound (if PIR sensor connected)
-
-# Stop the service
-sudo /etc/init.d/mario stop
-
-# Verify service stopped
-ps aux | grep luigi
-# Should show only the grep command itself
-```
-
-**Alternative service commands:**
-```bash
-# Start service
-sudo service mario start
-
-# Stop service  
-sudo service mario stop
-
-# Check service status
-sudo service mario status
-```
-
-### Step 10: Configure Service Behavior (Optional)
-
-**Modify configuration if needed:**
-
-```bash
-# Edit the Python script to change settings
-sudo nano /usr/bin/luigi
-
-# Key configuration variables:
-# SENSOR_PIN = 23              # GPIO pin for PIR sensor
-# SOUND_DIR = "/usr/share/sounds/mario/"  # Sound files location
-# STOP_FILE = "/tmp/stop_mario"  # Stop signal file
-# TIMER_FILE = "/tmp/mario_timer"  # Cooldown tracker
-# Cooldown: Line 36: (now - ts) >= 1800  # 30 minutes in seconds
-
-# Save changes: Ctrl+X, Y, Enter
-
-# Validate syntax after changes
-python3 -m py_compile /usr/bin/luigi
-
-# Restart service to apply changes
-sudo /etc/init.d/mario restart
-```
-
-## Project Configuration Options
-
-### Changing GPIO Pin
-
-If you need to use a different GPIO pin for the PIR sensor:
-
-```bash
-# Edit the script
-sudo nano /usr/bin/luigi
-
-# Find line: SENSOR_PIN = 23
-# Change to desired BCM pin number, e.g.: SENSOR_PIN = 24
-
-# Save and validate
-python3 -m py_compile /usr/bin/luigi
-
-# Restart service
-sudo /etc/init.d/mario restart
-```
-
-**Remember to update hardware wiring accordingly!** See `.github/skills/raspi-zero-w/` for GPIO pinout.
-
-### Changing Cooldown Period
-
-Modify the cooldown between sound playback events:
-
-```bash
-sudo nano /usr/bin/luigi
-
-# Find line 36: shouldCheck = (now - ts) >= 1800
-# Change 1800 (seconds) to desired cooldown
-# Examples:
-#   300   = 5 minutes
-#   600   = 10 minutes
-#   1800  = 30 minutes (default)
-#   3600  = 1 hour
-
-# Save, validate, restart
-python3 -m py_compile /usr/bin/luigi
-sudo /etc/init.d/mario restart
-```
-
-### Adding Custom Sounds
-
-Add your own sound files:
-
-```bash
-# Copy WAV files to sound directory
-sudo cp /path/to/your/sound.wav /usr/share/sounds/mario/
-
-# Set permissions
-sudo chmod 644 /usr/share/sounds/mario/*.wav
-
-# Verify
-ls -lh /usr/share/sounds/mario/
-
-# Restart service to use new sounds
-sudo /etc/init.d/mario restart
-```
-
-**Sound file requirements:**
-- Format: WAV (recommended) or MP3
-- Place in: `/usr/share/sounds/mario/`
-- Permissions: 644 (readable by all)
-- The script randomly selects from all files in the directory
-
-## Service Management
-
-### Daily Operations
-
-```bash
-# Start motion detection
-sudo /etc/init.d/mario start
-
-# Stop motion detection
-sudo /etc/init.d/mario stop
-
-# Restart service (after config changes)
-sudo /etc/init.d/mario restart
-
-# View logs
-tail -f /var/log/motion.log
-
-# View last 50 log lines
-tail -50 /var/log/motion.log
-
-# Search logs for specific events
-grep "Motion detected" /var/log/motion.log
-```
-
-### Automatic Startup
-
-The service is configured to start automatically on boot after running `update-rc.d`.
-
-**Disable automatic startup:**
-```bash
-sudo update-rc.d -f mario remove
-```
-
-**Re-enable automatic startup:**
-```bash
-sudo update-rc.d mario defaults
-```
-
-**Check if enabled:**
-```bash
-ls /etc/rc*.d/ | grep mario
-# Should show: S01mario in various rc directories
-```
-
-### Monitoring the Service
-
-```bash
-# Check if service is running
-ps aux | grep luigi
-
-# Monitor in real-time
-watch -n 2 'ps aux | grep luigi'
-
-# Check system resource usage
-htop
-# Find luigi process and check CPU/memory usage
-
-# Monitor log file continuously
-tail -f /var/log/motion.log
-
-# Check for errors in system logs
-sudo journalctl | grep luigi
-sudo journalctl | grep mario
-```
-
-## Troubleshooting Deployment Issues
-
-### Service Won't Start
-
-**Check if script exists and is executable:**
-```bash
-ls -l /usr/bin/luigi
-ls -l /etc/init.d/mario
-
-# If missing execute permission:
-sudo chmod +x /usr/bin/luigi
-sudo chmod +x /etc/init.d/mario
-```
-
-**Verify Python syntax:**
-```bash
-python3 -m py_compile /usr/bin/luigi
-# No output = success
-# Syntax error? Fix the script and try again
-```
-
-**Check for missing dependencies:**
-```bash
-python3 -c "import RPi.GPIO"
-# ImportError? Install: sudo apt install python3-rpi.gpio
-
-aplay --version
-# Command not found? Install: sudo apt install alsa-utils
-```
-
-**Check service logs:**
-```bash
-tail -50 /var/log/motion.log
-sudo journalctl | grep luigi
-```
-
-### Motion Not Detected
-
-**Verify PIR sensor connection:**
-- Check wiring: VCC→5V, GND→GND, OUT→GPIO23
-- See `.github/skills/raspi-zero-w/wiring-diagram.md` for details
-
-**Check GPIO pin configuration:**
-```bash
-# View current pin setting in script
-grep "SENSOR_PIN" /usr/bin/luigi
-# Should show: SENSOR_PIN = 23
-
-# Verify BCM pin 23 = physical pin 16
-# See `.github/skills/raspi-zero-w/gpio-pinout.md`
-```
-
-**Test PIR sensor manually:**
-```bash
-# Stop service
-sudo /etc/init.d/mario stop
-
-# Run simple test
-sudo python3 << 'EOF'
-import RPi.GPIO as GPIO
-import time
-
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(23, GPIO.IN)
-
-print("Testing GPIO23 - Wave hand in front of sensor")
-print("Press Ctrl+C to exit")
-
-try:
-    while True:
-        if GPIO.input(23):
-            print("Motion detected!")
-        time.sleep(0.1)
-except KeyboardInterrupt:
-    GPIO.cleanup()
-    print("\nTest complete")
-EOF
-```
-
-**Check cooldown period:**
-```bash
-# View last trigger time
-cat /tmp/mario_timer
-date -d @$(cat /tmp/mario_timer)
-
-# Cooldown is 30 minutes by default
-# Delete timer to reset:
-sudo rm /tmp/mario_timer
-```
-
-### Sound Not Playing
-
-**Check sound files exist:**
-```bash
-ls -lh /usr/share/sounds/mario/
-# Should list .wav files
-```
-
-**Test audio manually:**
-```bash
-aplay /usr/share/sounds/mario/callingmario1.wav
-```
-
-**If no sound:**
-```bash
-# Check audio devices
-aplay -l
-
-# Test speaker
-speaker-test -t wav -c 2 -l 1
-
-# Adjust volume
-alsamixer
-
-# Set audio output
-amixer cset numid=3 1  # 3.5mm jack
-```
-
-**Check file permissions:**
-```bash
-ls -l /usr/share/sounds/mario/
-# Should show: -rw-r--r--
-
-# Fix if needed:
-sudo chmod 644 /usr/share/sounds/mario/*.wav
-```
-
-### High CPU Usage or Slow Performance
-
-**Check system resources:**
-```bash
-# CPU and memory usage
-htop
-
-# Temperature (should be under 80°C)
-vcgencmd measure_temp
-
-# Check throttling
-vcgencmd get_throttled
-# 0x0 = OK, anything else indicates issues
-```
-
-**Optimize system:**
-```bash
-# Reduce GPU memory (for headless)
-sudo raspi-config
-# Navigate to: 6 Advanced → A3 Memory Split → 16
-
-# Disable unnecessary services
-sudo systemctl disable bluetooth
-sudo systemctl disable avahi-daemon
-
-# Reboot
-sudo reboot
-```
-
-### Log File Growing Too Large
-
-```bash
-# Check log size
-du -h /var/log/motion.log
-
-# Truncate log file
-sudo truncate -s 0 /var/log/motion.log
-
-# Or implement log rotation
-sudo nano /etc/logrotate.d/motion
-```
-
-Add:
-```
-/var/log/motion.log {
-    weekly
-    rotate 4
-    compress
-    missingok
-    notifempty
+command || {
+    echo "Error: command failed"
+    exit 1
 }
 ```
 
-## Updating the Luigi Project
-
-### Update to Latest Version
+### Validation Pattern:
 
 ```bash
-# Navigate to repository
-cd ~/luigi
+# Validate before proceeding
+validate() {
+    python3 -m py_compile "$SCRIPT" || return 1
+    [ -f "$FILE" ] || return 1
+    return 0
+}
 
-# Save any local changes (if modified)
-git stash
-
-# Pull latest changes
-git pull origin main
-
-# Restore local changes (if any)
-git stash pop
-
-# Redeploy updated files
-sudo cp motion-detection/mario/mario.py /usr/bin/luigi
-sudo cp motion-detection/mario/mario /etc/init.d/mario
-sudo chmod +x /usr/bin/luigi /etc/init.d/mario
-
-# Validate syntax
-python3 -m py_compile /usr/bin/luigi
-shellcheck /etc/init.d/mario
-
-# Restart service
-sudo /etc/init.d/mario restart
+validate || {
+    echo "Validation failed"
+    exit 1
+}
 ```
-
-### Update Sound Files
-
-```bash
-cd ~/luigi
-
-# Extract new sound files
-sudo tar -xzf motion-detection/mario/mario-sounds.tar.gz -C /usr/share/sounds/mario/
-
-# Set permissions
-sudo chmod 644 /usr/share/sounds/mario/*.wav
-
-# Restart service
-sudo /etc/init.d/mario restart
-```
-
-## Deployment Checklist
-
-Use this checklist when deploying Luigi to a new Raspberry Pi:
-
-**Prerequisites:**
-- [ ] Raspberry Pi OS Lite (32-bit) installed
-- [ ] SSH enabled and accessible
-- [ ] Wi-Fi configured and connected
-- [ ] System updated (`sudo apt update && sudo apt full-upgrade`)
-
-**Dependencies:**
-- [ ] python3-rpi.gpio installed
-- [ ] python-rpi.gpio installed
-- [ ] alsa-utils installed
-- [ ] git installed
-
-**Audio Configuration:**
-- [ ] Audio output tested with `speaker-test`
-- [ ] Audio device configured (3.5mm jack or HDMI)
-- [ ] Volume set appropriately with `alsamixer`
-- [ ] Audio settings saved with `sudo alsactl store`
-
-**Project Deployment:**
-- [ ] Repository cloned to ~/luigi
-- [ ] Sound files extracted to /usr/share/sounds/mario/
-- [ ] Python script copied to /usr/bin/luigi
-- [ ] Script is executable (chmod +x)
-- [ ] Script syntax validated (py_compile)
-- [ ] Init.d service copied to /etc/init.d/mario
-- [ ] Service is executable (chmod +x)
-- [ ] Service registered with update-rc.d
-
-**Testing:**
-- [ ] Service starts without errors
-- [ ] Log file created at /var/log/motion.log
-- [ ] PIR sensor detects motion
-- [ ] Sound plays on motion detection
-- [ ] Cooldown period works correctly
-- [ ] Service stops cleanly
-
-**Final Steps:**
-- [ ] Service configured for automatic startup
-- [ ] System backup created
-- [ ] Documentation reviewed
-- [ ] Hardware connections verified
-
-## Quick Reference Commands
-
-### Service Management
-```bash
-sudo /etc/init.d/mario start          # Start service
-sudo /etc/init.d/mario stop           # Stop service
-sudo /etc/init.d/mario restart        # Restart service
-tail -f /var/log/motion.log           # View logs
-ps aux | grep luigi                   # Check if running
-```
-
-### System Commands
-```bash
-sudo apt update && sudo apt upgrade   # Update system
-sudo reboot                           # Reboot
-vcgencmd measure_temp                 # Check temperature
-free -h                               # Check memory
-df -h                                 # Check disk space
-```
-
-### Audio Commands
-```bash
-aplay -l                              # List audio devices
-speaker-test -t wav -c 2 -l 1        # Test audio
-alsamixer                             # Adjust volume
-amixer cset numid=3 1                 # Set 3.5mm output
-```
-
-### Troubleshooting Commands
-```bash
-python3 -m py_compile /usr/bin/luigi  # Validate Python syntax
-shellcheck /etc/init.d/mario          # Validate shell script
-python3 -c "import RPi.GPIO"          # Test GPIO library
-aplay /usr/share/sounds/mario/callingmario1.wav  # Test sound
-```
-
-## Additional Resources
-
-- **System Reference**: See `system-reference.md` in this directory for detailed system commands
-- **Hardware Setup**: See `.github/skills/raspi-zero-w/` for GPIO wiring and pinout
-- **Python Development**: See `.github/skills/python-development/` for code patterns
-- **Project Documentation**: See main `README.md` and `motion-detection/mario/README.md`
-
-## OS Installation (If Needed)
-
-If you need to install Raspberry Pi OS from scratch, use the **Raspberry Pi Imager**:
-
-### Download Imager
-
-**Windows:** https://www.raspberrypi.com/software/  
-**macOS:** `brew install --cask raspberry-pi-imager`  
-**Linux:** `sudo apt install rpi-imager`
-
-### Configure and Write
-
-1. **Choose Device**: Raspberry Pi Zero W
-2. **Choose OS**: Raspberry Pi OS (other) → Raspberry Pi OS Lite (32-bit)
-3. **Choose Storage**: Your microSD card
-4. **Configure** (click gear icon ⚙️):
-   - Enable SSH
-   - Set username: `pi`
-   - Set password
-   - Configure Wi-Fi (SSID, password, country)
-   - Set timezone and keyboard layout
-5. **Write**: Confirm and wait for completion
-6. **Eject**: Safely remove SD card
-
-### First Boot
-
-1. Insert SD card into Raspberry Pi Zero W
-2. Connect power (2A+ micro-USB to PWR IN port)
-3. Wait 60 seconds for first boot
-4. Find IP address (check router or use `nmap`)
-5. SSH connect: `ssh pi@raspberrypi.local`
-6. Update system: `sudo apt update && sudo apt full-upgrade -y`
-7. Reboot: `sudo reboot`
-
-**Then follow the deployment steps in this guide.**
 
 ## Summary
 
-This guide covers:
-- ✅ Installing project dependencies (GPIO, audio, git)
-- ✅ Cloning and deploying the Luigi repository
-- ✅ Installing sound files and Python scripts
-- ✅ Setting up the system service
-- ✅ Testing and verification
-- ✅ Configuration and customization
-- ✅ Troubleshooting common issues
-- ✅ Maintenance and updates
+When generating setup scripts for Luigi:
 
-For hardware wiring and GPIO details, see `.github/skills/raspi-zero-w/`.  
-For Python code development, see `.github/skills/python-development/`.
+1. **Use the deployment script template** as the primary installer
+2. **Generate utility scripts** for common tasks (update, audio, diagnostics)
+3. **Follow bash best practices** (error handling, idempotency, validation)
+4. **Provide clear feedback** with colors and progress indicators
+5. **Log operations** for troubleshooting
+6. **Test on actual hardware** when possible
+7. **Make scripts safe** to run multiple times
 
-**Your Luigi motion detection system is now deployed and ready to use!**
+These templates can be customized based on specific requirements while maintaining consistency and reliability.
+
+## Additional Resources in This Directory
+
+This skill directory contains several helper resources for system setup:
+
+### 1. host-initialization.sh
+
+**Complete host setup automation script.**
+
+This script automates the initial configuration of a fresh Raspberry Pi OS installation following best practices. It configures:
+- System updates
+- raspi-config settings (GPU memory, interfaces)
+- Network configuration
+- Security hardening (firewall, fail2ban, SSH)
+- Performance optimization
+- User environment (aliases, functions)
+- Maintenance scripts
+
+**Usage:**
+```bash
+chmod +x host-initialization.sh
+./host-initialization.sh
+```
+
+**When to use:** Run this BEFORE deploying Luigi project to prepare the host system.
+
+### 2. best-practices.md
+
+**Comprehensive guide to Raspberry Pi Zero W best practices.**
+
+Covers:
+- OS selection and configuration
+- Security hardening standards
+- Performance optimization techniques
+- Storage management
+- Network configuration
+- Monitoring and maintenance
+- Common pitfalls to avoid
+- Production deployment checklist
+
+**When to use:** Reference when making system configuration decisions or troubleshooting issues.
+
+### 3. deployment-checklist.md
+
+**Step-by-step deployment verification checklist.**
+
+Comprehensive checklist covering:
+- Pre-deployment (host preparation)
+- Dependency installation
+- Luigi project deployment
+- Service configuration
+- Hardware testing
+- Auto-start verification
+- Production readiness
+- Post-deployment monitoring
+
+**When to use:** Follow during deployment to ensure nothing is missed. Can be printed or used as a tracking document.
+
+### 4. system-reference.md
+
+**Quick reference for system administration commands.**
+
+Includes:
+- System information commands
+- Resource monitoring
+- Service management
+- Package management
+- Log management
+- Raspberry Pi specific commands (vcgencmd, raspi-config)
+- Troubleshooting procedures
+- Backup and recovery
+
+**When to use:** Quick lookup for common system administration tasks.
+
+## Recommended Script Generation Workflow
+
+### 1. Initial Host Setup
+
+Generate and run the host initialization script:
+
+```bash
+# Create host-initialization.sh (or use the one in this directory)
+chmod +x host-initialization.sh
+./host-initialization.sh
+sudo reboot
+```
+
+This prepares the system with security hardening, performance optimization, and essential tools.
+
+### 2. Deploy Luigi Project
+
+Generate and run the Luigi deployment script:
+
+```bash
+# Create deploy_luigi.sh (template in this SKILL.md)
+chmod +x deploy_luigi.sh
+./deploy_luigi.sh
+```
+
+This installs dependencies, clones the repository, and configures the service.
+
+### 3. Verify Deployment
+
+Use the deployment checklist to verify all components:
+
+```bash
+# Review deployment-checklist.md systematically
+# Test each component
+# Document any issues or customizations
+```
+
+### 4. Ongoing Maintenance
+
+Generate maintenance scripts for regular updates:
+
+```bash
+# Create update_luigi.sh
+# Create diagnose_luigi.sh  
+# Schedule regular maintenance
+```
+
+## Script Generation Tips
+
+### For Host Initialization Scripts:
+
+1. **Always check prerequisites** before making changes
+2. **Backup configuration files** before modifying
+3. **Provide rollback information** in comments
+4. **Test each section independently** when possible
+5. **Log all actions** for audit trail
+
+### For Deployment Scripts:
+
+1. **Verify dependencies** before deploying application
+2. **Use idempotent operations** (safe to re-run)
+3. **Validate syntax** before copying files
+4. **Test service** before enabling auto-start
+5. **Provide clear success/failure feedback**
+
+### For Maintenance Scripts:
+
+1. **Stop services** before updating
+2. **Backup before major changes**
+3. **Test in development** before production
+4. **Restart services** after updates
+5. **Verify functionality** after maintenance
+
+## Integration with Other Skills
+
+The system-setup skill works with other Luigi skills:
+
+**After system-setup (this skill):**
+- Use **raspi-zero-w skill** for hardware wiring guidance
+- Use **python-development skill** for code modifications
+
+**Workflow:**
+1. **system-setup**: Configure OS and deploy Luigi
+2. **raspi-zero-w**: Connect PIR sensor and verify GPIO
+3. **python-development**: Customize code if needed
+
+## Summary
+
+This skill provides templates and guidance for generating:
+
+✅ **Complete deployment automation** - One command deployment  
+✅ **Host initialization scripts** - System preparation  
+✅ **Maintenance scripts** - Updates and diagnostics  
+✅ **Service management** - Start, stop, restart wrappers  
+✅ **Troubleshooting tools** - Diagnostic scripts  
+✅ **Uninstall scripts** - Clean removal  
+
+**Best Practices:**
+- Generate scripts, don't execute commands directly
+- Make scripts idempotent (safe to re-run)
+- Include comprehensive error handling
+- Provide clear user feedback
+- Log all operations
+- Validate before and after operations
+
+**Key Files Generated:**
+- `deploy_luigi.sh` - Main deployment script
+- `host-initialization.sh` - System preparation
+- `update_luigi.sh` - Maintenance script
+- `setup_audio.sh` - Audio configuration
+- `diagnose_luigi.sh` - Troubleshooting
+- `uninstall_luigi.sh` - Cleanup script
+
+Use these templates as starting points and customize based on specific deployment requirements while maintaining security, reliability, and best practices.
