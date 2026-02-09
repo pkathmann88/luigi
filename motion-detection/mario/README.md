@@ -4,7 +4,7 @@ A fun motion detection system that plays random Mario-themed sound effects when 
 
 ## Contents
 
-- `mario` - Init.d service script for system service integration
+- `mario` - init.d service script for system service integration
 - `mario.py` - Python script implementing motion detection and sound playback
 - `mario-sounds.tar.gz` - Archive containing default Mario-themed sound files
 
