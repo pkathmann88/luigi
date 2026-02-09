@@ -17,6 +17,27 @@
 
 This repository includes **Agent Skills** that provide specialized guidance for common tasks. Copilot will automatically load these skills when relevant to your work.
 
+### System Setup Skill
+
+**Location:** `.github/skills/system-setup/`
+
+**Use when:**
+- Configuring a Raspberry Pi Zero W for Luigi project deployment
+- Installing project dependencies and system packages
+- Setting up services and modules from this repository
+- Deploying and configuring the motion detection system
+- Troubleshooting deployment and service issues
+- Performing system maintenance for the Luigi project
+
+**Provides:**
+- Luigi-specific system configuration guide
+- Project dependency installation commands
+- Service deployment and configuration
+- Module setup procedures
+- OS installation prerequisites (Raspberry Pi OS Lite 32-bit recommended)
+- System troubleshooting for this project
+- Quick deployment checklist
+
 ### Raspberry Pi Zero W Hardware Skill
 
 **Location:** `.github/skills/raspi-zero-w/`
@@ -57,7 +78,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Development workflow (local development → deployment)
 - Complete example application demonstrating best practices
 
-**Note:** These skills complement each other. The `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns.
+**Note:** These skills complement each other. The `system-setup` skill covers OS installation and configuration, the `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns.
 
 ## Repository Structure
 
@@ -70,10 +91,13 @@ luigi/
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── python-patterns.md   # Advanced patterns
 │       │   └── example_application.py  # Complete example
-│       └── raspi-zero-w/            # Raspberry Pi hardware guidance
+│       ├── raspi-zero-w/            # Raspberry Pi hardware guidance
+│       │   ├── SKILL.md             # Main skill file
+│       │   ├── gpio-pinout.md       # GPIO reference
+│       │   └── wiring-diagram.md    # Hardware wiring
+│       └── system-setup/            # System setup and configuration
 │           ├── SKILL.md             # Main skill file
-│           ├── gpio-pinout.md       # GPIO reference
-│           └── wiring-diagram.md    # Hardware wiring
+│           └── system-reference.md  # System commands reference
 ├── .gitignore                       # Python, IDE, and OS exclusions
 ├── README.md                        # Main project documentation
 └── motion-detection/                # Motion detection components
