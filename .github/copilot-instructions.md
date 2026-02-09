@@ -22,21 +22,21 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 **Location:** `.github/skills/system-setup/`
 
 **Use when:**
-- Configuring a Raspberry Pi Zero W for Luigi project deployment
-- Installing project dependencies and system packages
-- Setting up services and modules from this repository
-- Deploying and configuring the motion detection system
-- Troubleshooting deployment and service issues
-- Performing system maintenance for the Luigi project
+- Creating automation scripts to deploy the Luigi application
+- Generating deployment scripts for dependencies and services
+- Writing scripts to install and configure Luigi modules
+- Automating service setup and management
+- Creating update or maintenance scripts
+- Building troubleshooting or verification scripts
 
 **Provides:**
-- Luigi-specific system configuration guide
-- Project dependency installation commands
-- Service deployment and configuration
-- Module setup procedures
-- OS installation prerequisites (Raspberry Pi OS Lite 32-bit recommended)
-- System troubleshooting for this project
-- Quick deployment checklist
+- Deployment script templates and patterns
+- Service integration examples (init.d and systemd)
+- Dependency installation scripts
+- File deployment patterns
+- Script generation best practices
+- Multi-module deployment patterns
+- System command reference
 
 ### Raspberry Pi Zero W Hardware Skill
 
@@ -78,7 +78,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Development workflow (local development → deployment)
 - Complete example application demonstrating best practices
 
-**Note:** These skills complement each other. The `system-setup` skill covers OS installation and configuration, the `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns.
+**Note:** These skills complement each other. The `system-setup` skill helps create deployment automation scripts, the `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns.
 
 ## Repository Structure
 

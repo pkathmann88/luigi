@@ -1,526 +1,648 @@
-# Raspberry Pi System Reference
+# System Reference for Luigi Deployment
 
-Quick reference for Raspberry Pi Zero W system administration and troubleshooting.
+Quick reference for common system commands used in Luigi deployment scripts.
 
-## System Commands Quick Reference
+## Service Management
 
-### System Information
+### Init.d Commands
+
 ```bash
-# Show OS version
-cat /etc/os-release
-lsb_release -a
+# Start service
+sudo service mario start
 
-# Show kernel version
-uname -r
-uname -a
+# Stop service
+sudo service mario stop
 
-# Show Raspberry Pi model
-cat /proc/device-tree/model
+# Restart service
+sudo service mario restart
 
-# Show CPU information
-cat /proc/cpuinfo
+# Check status
+sudo service mario status
 
-# Show firmware version
-vcgencmd version
+# Enable at boot
+sudo update-rc.d mario defaults
+
+# Disable at boot
+sudo update-rc.d mario remove
 ```
 
-### Resource Monitoring
+### Systemd Commands (Alternative)
+
 ```bash
-# Memory usage
+# Start service
+sudo systemctl start mario.service
+
+# Stop service
+sudo systemctl stop mario.service
+
+# Restart service
+sudo systemctl restart mario.service
+
+# Check status
+sudo systemctl status mario.service
+
+# Enable at boot
+sudo systemctl enable mario.service
+
+# Disable at boot
+sudo systemctl disable mario.service
+
+# Reload configuration
+sudo systemctl daemon-reload
+
+# View logs
+sudo journalctl -u mario.service -f
+```
+
+## Package Management
+
+### APT Commands
+
+```bash
+# Update package list
+sudo apt-get update
+
+# Install package
+sudo apt-get install -y package-name
+
+# Install multiple packages
+sudo apt-get install -y python3-rpi.gpio alsa-utils git
+
+# Remove package
+sudo apt-get remove package-name
+
+# Remove package and config files
+sudo apt-get purge package-name
+
+# Clean up
+sudo apt-get autoremove
+sudo apt-get clean
+
+# Check if package is installed
+dpkg -l | grep package-name
+```
+
+### Python Package Management
+
+```bash
+# Install pip
+sudo apt-get install -y python3-pip
+
+# Install Python package
+sudo pip3 install package-name
+
+# List installed packages
+pip3 list
+
+# Show package details
+pip3 show package-name
+```
+
+## File Operations
+
+### Directory Management
+
+```bash
+# Create directory
+mkdir -p /path/to/directory
+
+# Remove directory
+rm -rf /path/to/directory
+
+# Copy directory
+cp -r /source /destination
+
+# Move/rename directory
+mv /source /destination
+
+# Check directory size
+du -sh /path/to/directory
+```
+
+### File Management
+
+```bash
+# Copy file
+cp source.txt destination.txt
+
+# Move/rename file
+mv old.txt new.txt
+
+# Remove file
+rm file.txt
+
+# Create empty file
+touch file.txt
+
+# Set permissions
+chmod 755 script.sh    # rwxr-xr-x
+chmod 644 file.txt     # rw-r--r--
+
+# Set ownership
+chown user:group file.txt
+chown -R user:group /directory
+
+# Check file permissions
+ls -l file.txt
+```
+
+### Archive Operations
+
+```bash
+# Extract tar.gz
+tar -xzf archive.tar.gz
+
+# Extract to specific directory
+tar -xzf archive.tar.gz -C /destination
+
+# Create tar.gz
+tar -czf archive.tar.gz /source
+
+# List archive contents
+tar -tzf archive.tar.gz
+
+# Extract specific file
+tar -xzf archive.tar.gz path/to/file
+```
+
+## Log Management
+
+### Viewing Logs
+
+```bash
+# View last 20 lines
+tail -20 /var/log/motion.log
+
+# Follow log in real-time
+tail -f /var/log/motion.log
+
+# View first 20 lines
+head -20 /var/log/motion.log
+
+# Search log
+grep "error" /var/log/motion.log
+
+# View entire log with pagination
+less /var/log/motion.log
+```
+
+### Log Rotation
+
+```bash
+# Create logrotate config
+sudo nano /etc/logrotate.d/luigi
+
+# Example config:
+# /var/log/motion.log {
+#     daily
+#     rotate 7
+#     compress
+#     missingok
+#     notifempty
+#     create 644 root root
+# }
+
+# Test logrotate
+sudo logrotate -d /etc/logrotate.d/luigi
+
+# Force rotation
+sudo logrotate -f /etc/logrotate.d/luigi
+```
+
+## Process Management
+
+### Process Commands
+
+```bash
+# List all processes
+ps aux
+
+# Find process by name
+ps aux | grep mario
+
+# Kill process by PID
+kill PID
+
+# Force kill
+kill -9 PID
+
+# Kill by name
+pkill mario.py
+
+# Show process tree
+pstree
+
+# Monitor processes
+top
+htop  # if installed
+```
+
+### Background Processes
+
+```bash
+# Run in background
+./script.sh &
+
+# List background jobs
+jobs
+
+# Bring to foreground
+fg %1
+
+# Send to background
+bg %1
+```
+
+## System Information
+
+### Hardware Info
+
+```bash
+# CPU info
+cat /proc/cpuinfo
+
+# Memory info
 free -h
-cat /proc/meminfo
 
 # Disk usage
 df -h
-du -sh /home/pi/*
 
-# CPU temperature
-vcgencmd measure_temp
-
-# CPU frequency
-vcgencmd measure_clock arm
-
-# Voltage
-vcgencmd measure_volts
-
-# System load
+# System uptime
 uptime
-w
 
-# Process monitoring
-top
-htop
+# Kernel version
+uname -a
+
+# Raspberry Pi specific
+vcgencmd measure_temp     # Temperature
+vcgencmd get_mem arm      # ARM memory
+vcgencmd get_mem gpu      # GPU memory
 ```
 
-### Service Management
+### Network Info
+
 ```bash
-# List all services
-systemctl list-units --type=service
+# Network interfaces
+ip addr
+ifconfig  # deprecated but still works
 
-# Check service status
-sudo systemctl status [service]
+# Network connections
+netstat -tuln
+ss -tuln
 
-# Start/stop/restart service
-sudo systemctl start [service]
-sudo systemctl stop [service]
-sudo systemctl restart [service]
+# Test connectivity
+ping -c 4 8.8.8.8
 
-# Enable/disable service at boot
-sudo systemctl enable [service]
-sudo systemctl disable [service]
-
-# View service logs
-sudo journalctl -u [service]
-sudo journalctl -u [service] -f  # Follow logs
+# DNS lookup
+nslookup example.com
 ```
 
-### Package Management
+## Audio Commands
+
+### ALSA Commands
+
 ```bash
-# Update package list
-sudo apt update
+# Play audio file
+aplay /path/to/file.wav
 
-# Upgrade packages
-sudo apt upgrade          # Standard upgrade
-sudo apt full-upgrade     # Full upgrade (handles dependencies)
-sudo apt dist-upgrade     # Distribution upgrade
+# List audio devices
+aplay -l
 
-# Install package
-sudo apt install [package]
+# Adjust volume
+alsamixer
 
-# Remove package
-sudo apt remove [package]
-sudo apt purge [package]  # Remove with config files
+# Set volume (0-100%)
+amixer set Master 75%
 
-# Search for package
-apt search [keyword]
-apt-cache search [keyword]
+# Mute/unmute
+amixer set Master mute
+amixer set Master unmute
 
-# Show package information
-apt show [package]
-
-# List installed packages
-dpkg -l
-apt list --installed
-
-# Clean up
-sudo apt autoremove
-sudo apt autoclean
-sudo apt clean
+# Test audio
+speaker-test -t sine -f 1000 -l 1
 ```
 
-### File System Management
+### Audio Configuration
+
 ```bash
-# Check filesystem
-sudo fsck -f /dev/mmcblk0p2
-
-# Mount/unmount
-sudo mount /dev/mmcblk0p1 /mnt/boot
-sudo umount /mnt/boot
-
-# Show mount points
-mount
-df -h
-
-# Check inode usage
-df -i
-
-# Find large files
-du -ah / | sort -rh | head -20
-
-# Find files by size
-find / -type f -size +100M
-```
-
-### Log Files
-```bash
-# System logs
-sudo journalctl -xe
-sudo journalctl --since today
-sudo journalctl --since "2 hours ago"
-
-# Boot messages
-dmesg
-dmesg | tail -50
-
-# Specific log files
-/var/log/messages
-/var/log/syslog
-/var/log/auth.log
-/var/log/daemon.log
-
-# View logs
-sudo tail -f /var/log/syslog
-sudo less /var/log/messages
-
-# Clear journal logs
-sudo journalctl --vacuum-time=7d
-sudo journalctl --vacuum-size=100M
-```
-
-## Configuration Files
-
-### Important System Files
-```
-/boot/config.txt           # Boot configuration
-/boot/cmdline.txt          # Kernel command line
-/etc/rc.local              # Startup script
-/etc/fstab                 # Filesystem mounts
-/etc/hosts                 # Host name resolution
-/etc/hostname              # System hostname
-/etc/resolv.conf           # DNS configuration
-```
-
-### Network Configuration
-```
-/etc/dhcpcd.conf           # DHCP client configuration
-/etc/network/interfaces    # Network interfaces
-/etc/wpa_supplicant/wpa_supplicant.conf  # Wi-Fi configuration
-```
-
-### SSH Configuration
-```
-/etc/ssh/sshd_config       # SSH server configuration
-~/.ssh/authorized_keys     # SSH public keys
-~/.ssh/config              # SSH client configuration
-```
-
-## Raspberry Pi Specific Commands
-
-### vcgencmd Commands
-```bash
-# Temperature
-vcgencmd measure_temp
-
-# CPU frequency
-vcgencmd measure_clock arm
-vcgencmd measure_clock core
-
-# Voltage
-vcgencmd measure_volts core
-vcgencmd measure_volts sdram_c
-
-# Memory split
-vcgencmd get_mem arm
-vcgencmd get_mem gpu
-
-# Throttling status
-vcgencmd get_throttled
-# 0x0 = OK
-# 0x50000 = Throttled
-# 0x50005 = Throttled + Under-voltage
-
-# Display information
-vcgencmd get_lcd_info
-vcgencmd get_config int
-
-# Codec information
-vcgencmd codec_enabled H264
-```
-
-### raspi-config Options
-```bash
-# Launch configuration tool
+# Configure audio output
 sudo raspi-config
+# Navigate to: System Options > Audio > Choose output
 
-# Non-interactive mode
-sudo raspi-config nonint do_ssh 0          # Enable SSH
-sudo raspi-config nonint do_i2c 0          # Enable I2C
-sudo raspi-config nonint do_spi 0          # Enable SPI
-sudo raspi-config nonint do_serial 0       # Enable serial
-sudo raspi-config nonint do_expand_rootfs  # Expand filesystem
+# Test audio device
+aplay -D plughw:0,0 test.wav
+
+# Check audio device status
+cat /proc/asound/cards
 ```
 
-## Troubleshooting Common Issues
+## GPIO Commands
 
-### Boot Issues
+### GPIO Testing
 
-**Won't boot (no LED activity)**
-- Check power supply (must be 5V, 2A+)
-- Try different SD card
-- Check SD card is properly inserted
-
-**Green LED blinks (boot failure)**
-- SD card corrupted or not properly written
-- Incompatible SD card
-- Try reimaging SD card
-
-**Red LED only (no boot)**
-- No valid OS image on SD card
-- SD card not properly formatted
-- Power supply insufficient
-
-### Network Issues
-
-**Can't connect to Wi-Fi**
 ```bash
-# Check Wi-Fi interface
-iwconfig
+# Test GPIO library
+python3 -c "import RPi.GPIO; print('GPIO OK')"
 
-# Restart networking
-sudo systemctl restart dhcpcd
-
-# Check wpa_supplicant
-sudo wpa_cli -i wlan0 reconfigure
-sudo systemctl restart wpa_supplicant
-
-# View Wi-Fi logs
-sudo journalctl -u wpa_supplicant
-dmesg | grep brcm
+# Interactive GPIO test
+python3 << 'EOF'
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(23, GPIO.IN)
+print(f"GPIO 23: {GPIO.input(23)}")
+GPIO.cleanup()
+EOF
 ```
 
-**SSH not working**
+### GPIO Utilities
+
 ```bash
-# Check SSH service
-sudo systemctl status ssh
+# Install GPIO utilities
+sudo apt-get install -y wiringpi
 
-# Restart SSH
-sudo systemctl restart ssh
+# Read GPIO pin
+gpio -g read 23
 
-# Check if ssh file exists on boot partition
-ls /boot/ssh
+# Set GPIO mode
+gpio -g mode 23 in
 
-# Recreate ssh file
-sudo touch /boot/ssh
-sudo reboot
+# Monitor GPIO
+gpio -g wfi 23 rising  # Wait for interrupt
 ```
 
-### Performance Issues
+## Git Commands
 
-**System slow or unresponsive**
+### Repository Operations
+
 ```bash
-# Check memory
-free -h
+# Clone repository
+git clone https://github.com/pkathmann88/luigi.git
 
-# Check CPU load
-uptime
-top
+# Pull latest changes
+cd /opt/luigi
+git pull
 
-# Check temperature
-vcgencmd measure_temp
+# Check status
+git status
 
-# Check for throttling
-vcgencmd get_throttled
+# View commit history
+git log --oneline -10
 
-# Check swap usage
-swapon --show
+# Switch branch
+git checkout branch-name
+
+# Show remote URL
+git remote -v
+```
+
+## Text Editing
+
+### Nano
+
+```bash
+# Edit file
+nano file.txt
+
+# Common shortcuts:
+# Ctrl+O: Save
+# Ctrl+X: Exit
+# Ctrl+K: Cut line
+# Ctrl+U: Paste
+# Ctrl+W: Search
+```
+
+### Vim
+
+```bash
+# Edit file
+vim file.txt
+
+# Common commands:
+# i: Insert mode
+# Esc: Command mode
+# :w: Save
+# :q: Quit
+# :wq: Save and quit
+# :q!: Quit without saving
+```
+
+## Script Testing
+
+### Validation Commands
+
+```bash
+# Check Python syntax
+python3 -m py_compile script.py
+
+# Check shell script syntax
+bash -n script.sh
+
+# Check with shellcheck
+shellcheck script.sh
+
+# Make script executable
+chmod +x script.sh
+
+# Test script without execution
+bash -x script.sh  # Debug mode
+```
+
+### Script Debugging
+
+```bash
+# Enable debug mode in script
+set -x  # Print commands
+set -e  # Exit on error
+set -u  # Exit on undefined variable
+
+# Disable debug mode
+set +x
+```
+
+## User Management
+
+### User Commands
+
+```bash
+# Add user
+sudo adduser username
+
+# Delete user
+sudo deluser username
+
+# Add to group
+sudo usermod -aG groupname username
+
+# Switch user
+su - username
+
+# Run as different user
+sudo -u username command
+```
+
+## Cron Jobs
+
+### Crontab Management
+
+```bash
+# Edit crontab
+crontab -e
+
+# List crontab
+crontab -l
+
+# Remove crontab
+crontab -r
+
+# Example entries:
+# Run every reboot
+@reboot /path/to/script.sh
+
+# Run daily at 2am
+0 2 * * * /path/to/script.sh
+
+# Run every hour
+0 * * * * /path/to/script.sh
+```
+
+## Troubleshooting
+
+### Common Checks
+
+```bash
+# Check if port is listening
+sudo netstat -tulpn | grep :PORT
+
+# Check file dependencies
+ldd /path/to/binary
+
+# Check which process using file
+lsof /path/to/file
 
 # Check disk I/O
-sudo iotop
+iostat
+
+# Check system messages
+dmesg | tail
+
+# Check system errors
+journalctl -p err -b
 ```
 
-**High temperature**
+### Raspberry Pi Specific
+
 ```bash
-# Check current temp
-vcgencmd measure_temp
-
-# Monitor continuously
-watch -n 1 vcgencmd measure_temp
-
-# Solutions:
-# - Add heatsink
-# - Improve ventilation
-# - Reduce GPU memory (if not using display)
+# Open configuration tool
 sudo raspi-config
-# Advanced → Memory Split → 16
+
+# Check throttling
+vcgencmd get_throttled
+
+# Reboot
+sudo reboot
+
+# Shutdown
+sudo shutdown -h now
 ```
 
-### Storage Issues
+## Backup and Restore
 
-**SD card full**
+### Backup Commands
+
 ```bash
-# Check disk usage
-df -h
+# Backup directory
+tar -czf backup.tar.gz /opt/luigi
 
-# Find large files
-du -sh /* | sort -h
-find / -type f -size +50M
+# Backup with date
+tar -czf "backup-$(date +%Y%m%d).tar.gz" /opt/luigi
 
-# Clean package cache
-sudo apt clean
-sudo apt autoremove
+# Restore from backup
+tar -xzf backup.tar.gz -C /
 
-# Clean logs
-sudo journalctl --vacuum-size=50M
+# Copy with rsync
+rsync -av /source/ /destination/
 ```
 
-**SD card corruption**
-```bash
-# Check filesystem (from another system)
-sudo fsck -f /dev/sdX2
-
-# Or from Pi (boot to single user mode)
-sudo fsck -f /dev/mmcblk0p2
-
-# Prevent future corruption:
-# - Use quality SD card
-# - Proper shutdown (don't pull power)
-# - Use UPS or backup power
-# - Regular backups
-```
-
-## Security Hardening
-
-### Basic Security
-```bash
-# Change default password
-passwd
-
-# Update system
-sudo apt update && sudo apt full-upgrade -y
-
-# Install firewall
-sudo apt install ufw
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow ssh
-sudo ufw enable
-
-# Install fail2ban
-sudo apt install fail2ban
-sudo systemctl enable fail2ban
-```
-
-### SSH Hardening
-```bash
-# Edit SSH config
-sudo nano /etc/ssh/sshd_config
-
-# Recommended changes:
-Port 2222                    # Change default port
-PermitRootLogin no           # Disable root login
-PasswordAuthentication no    # Use keys only
-PubkeyAuthentication yes     # Enable key authentication
-MaxAuthTries 3               # Limit auth attempts
-ClientAliveInterval 300      # Timeout idle sessions
-ClientAliveCountMax 2
-
-# Restart SSH
-sudo systemctl restart sshd
-```
+## Performance Monitoring
 
 ### System Monitoring
+
 ```bash
-# Check authentication logs
-sudo tail -f /var/log/auth.log
+# CPU and memory usage
+top
 
-# Check failed login attempts
-sudo lastb
+# Disk I/O
+iotop
 
-# Check successful logins
-last
+# Network usage
+iftop
 
-# Check currently logged in users
-w
-who
+# Process monitoring
+watch -n 1 'ps aux | grep mario'
 ```
 
-## Backup and Recovery
+## File Search
 
-### System Backup
+### Find Commands
+
 ```bash
-# Backup SD card (from another system)
-sudo dd if=/dev/sdX of=backup.img bs=4M status=progress
-gzip backup.img
+# Find file by name
+find /path -name "filename"
 
-# Backup important directories
-tar -czf home_backup.tar.gz /home/pi
-tar -czf etc_backup.tar.gz /etc
+# Find by type
+find /path -type f  # Files
+find /path -type d  # Directories
 
-# Rsync backup
-rsync -avz /home/pi/ backup/home/
-rsync -avz --exclude=/proc --exclude=/sys --exclude=/dev / backup/system/
+# Find by size
+find /path -size +10M  # Larger than 10MB
+
+# Find and execute
+find /path -name "*.log" -exec rm {} \;
 ```
 
-### System Restore
+### Grep Commands
+
 ```bash
-# Restore SD card image
-gunzip backup.img.gz
-sudo dd if=backup.img of=/dev/sdX bs=4M status=progress
-sync
+# Search in file
+grep "pattern" file.txt
+
+# Search recursively
+grep -r "pattern" /path
+
+# Case insensitive
+grep -i "pattern" file.txt
+
+# Show line numbers
+grep -n "pattern" file.txt
+
+# Invert match
+grep -v "pattern" file.txt
 ```
 
-## Performance Tuning
+## Quick Shortcuts
 
-### Optimize for Headless Operation
 ```bash
-# Reduce GPU memory
-sudo raspi-config
-# Advanced → Memory Split → 16
+# Previous command
+!!
 
-# Disable unnecessary services
-sudo systemctl disable bluetooth
-sudo systemctl disable avahi-daemon
-sudo systemctl disable triggerhappy
+# Previous command's argument
+!$
 
-# Disable HDMI
-sudo /opt/vc/bin/tvservice -o
+# Clear screen
+clear
+# or Ctrl+L
 
-# Add to /etc/rc.local
-/usr/bin/tvservice -o
+# Exit terminal
+exit
+# or Ctrl+D
+
+# Stop current command
+# Ctrl+C
+
+# Background current command
+# Ctrl+Z
 ```
 
-### Reduce Swap
-```bash
-# Check swap
-swapon --show
+---
 
-# Disable swap
-sudo dphys-swapfile swapoff
-sudo systemctl disable dphys-swapfile
-
-# Or reduce swap size
-sudo nano /etc/dphys-swapfile
-# CONF_SWAPSIZE=100
-
-sudo dphys-swapfile setup
-sudo dphys-swapfile swapon
-```
-
-## Useful Scripts
-
-### System Status Script
-```bash
-#!/bin/bash
-echo "=== System Status ==="
-echo "Temperature: $(vcgencmd measure_temp)"
-echo "CPU Frequency: $(vcgencmd measure_clock arm)"
-echo "Memory:"
-free -h
-echo ""
-echo "Disk Usage:"
-df -h /
-echo ""
-echo "Uptime:"
-uptime
-echo ""
-echo "Network:"
-hostname -I
-```
-
-### Update Script
-```bash
-#!/bin/bash
-echo "Updating system..."
-sudo apt update
-sudo apt full-upgrade -y
-sudo apt autoremove -y
-sudo apt clean
-echo "System updated!"
-```
-
-### Backup Script
-```bash
-#!/bin/bash
-BACKUP_DIR=~/backups/$(date +%Y%m%d)
-mkdir -p $BACKUP_DIR
-tar -czf $BACKUP_DIR/home.tar.gz /home/pi
-tar -czf $BACKUP_DIR/etc.tar.gz /etc
-echo "Backup completed: $BACKUP_DIR"
-```
-
-## Additional Resources
-
-- Official Documentation: https://www.raspberrypi.com/documentation/
-- Forums: https://forums.raspberrypi.com/
-- Raspberry Pi StackExchange: https://raspberrypi.stackexchange.com/
-- GPIO Pinout: https://pinout.xyz/
+**Note**: Always use `sudo` for commands that require root privileges (service management, package installation, system configuration).
