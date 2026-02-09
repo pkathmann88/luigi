@@ -6,14 +6,14 @@ A Python project designed to run on Raspberry Pi Zero W.
 
 This project is designed to run on:
 - **Hardware:** Raspberry Pi Zero W
-- **Operating System:** Raspbian
+- **Operating System:** Raspberry Pi OS
 - **Programming Language:** Python
 
 ## Prerequisites
 
 - Raspberry Pi Zero W
-- Raspbian OS installed
-- Python installed (typically pre-installed on Raspbian)
+- Raspberry Pi OS installed
+- Python installed (typically pre-installed on Raspberry Pi OS)
 
 ## Installation
 
@@ -48,4 +48,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Notes
 
-This project is specifically optimized for Raspberry Pi Zero W hardware and Raspbian OS.
+This project is specifically optimized for Raspberry Pi Zero W hardware and Raspberry Pi OS.
