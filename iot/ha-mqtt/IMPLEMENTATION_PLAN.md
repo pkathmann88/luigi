@@ -63,258 +63,7 @@ Provide a fully generic, decoupled MQTT bridge between Luigi sensor modules and 
 
 ---
 
-## Phase 1: Setup & Deployment Implementation
-
-**Goal:** Create installation automation and deployment scripts.
-
-**Skills Used:** `system-setup`
-
-**Based on:** DESIGN_ANALYSIS.md Phase 3
-
-### 1.1 Create setup.sh Script
-
-- [ ] Implement install() function:
-  - [ ] Check prerequisites (bash, systemd, network)
-  - [ ] Install mosquitto-clients with apt-get
-  - [ ] Create directory structure (/etc/luigi/iot/ha-mqtt/, sensors.d/, /usr/local/bin/, /usr/local/lib/luigi/)
-  - [ ] Deploy configuration file with 600 permissions
-  - [ ] Deploy bin/ scripts (luigi-publish, luigi-discover, luigi-mqtt-status) to /usr/local/bin/ with 755
-  - [ ] Deploy lib/ scripts (mqtt_helpers.sh, ha_discovery_generator.sh) to /usr/local/lib/luigi/ with 644
-  - [ ] Deploy example descriptors to /usr/share/luigi/ha-mqtt/examples/sensors.d/
-  - [ ] Optional: Deploy Python service and systemd unit if user wants persistent connection
-  - [ ] Prompt user to configure broker settings
-  - [ ] Test MQTT connection with luigi-mqtt-status
-  - [ ] Verify installation with status checks
-
-- [ ] Implement uninstall() function:
-  - [ ] Stop and disable service (if installed)
-  - [ ] Remove service file from /etc/systemd/system/
-  - [ ] Remove scripts from /usr/local/bin/
-  - [ ] Remove libraries from /usr/local/lib/luigi/
-  - [ ] Remove examples from /usr/share/luigi/ha-mqtt/
-  - [ ] Interactive: Ask about removing config and sensor descriptors
-  - [ ] Optional: Ask about removing mosquitto-clients package
-  - [ ] Verify removal
-
-- [ ] Implement status() function:
-  - [ ] Check if scripts are installed
-  - [ ] Check if config file exists
-  - [ ] Check MQTT connectivity with luigi-mqtt-status
-  - [ ] Show service status (if installed)
-  - [ ] Display sensor descriptor count
-  - [ ] Show configuration summary (broker host, connection status)
-
-- [ ] Add error handling and root privilege checking
-- [ ] Add colored output (GREEN/YELLOW/RED/BLUE)
-- [ ] Validate with: `shellcheck setup.sh`
-
-### 1.2 Create Configuration Example
-
-- [ ] Create ha-mqtt.conf.example with all sections:
-  - [ ] [Broker] - HOST, PORT, TLS, CA_CERT
-  - [ ] [Authentication] - USERNAME, PASSWORD (with security note)
-  - [ ] [Client] - CLIENT_ID, KEEPALIVE, QOS, CLEAN_SESSION
-  - [ ] [Topics] - BASE_TOPIC, DISCOVERY_PREFIX, DEVICE_PREFIX
-  - [ ] [Device] - DEVICE_NAME, DEVICE_MODEL, MANUFACTURER, SW_VERSION
-  - [ ] [Discovery] - SENSORS_DIR, SCAN_INTERVAL
-  - [ ] [Connection] - RECONNECT_DELAY_MIN, RECONNECT_DELAY_MAX, CONNECTION_TIMEOUT
-  - [ ] [Logging] - LOG_FILE, LOG_LEVEL, LOG_MAX_BYTES, LOG_BACKUP_COUNT
-- [ ] Document each parameter with clear comments
-- [ ] Include examples and security warnings
-
-### 1.3 File Deployment Checklist
-
-- [ ] luigi-publish → /usr/local/bin/ (755)
-- [ ] luigi-discover → /usr/local/bin/ (755)
-- [ ] luigi-mqtt-status → /usr/local/bin/ (755)
-- [ ] mqtt_helpers.sh → /usr/local/lib/luigi/ (644)
-- [ ] ha_discovery_generator.sh → /usr/local/lib/luigi/ (644)
-- [ ] ha-mqtt.conf.example → /etc/luigi/iot/ha-mqtt/ha-mqtt.conf (600)
-- [ ] ha-mqtt-bridge.py → /usr/local/bin/ (755, optional)
-- [ ] ha-mqtt-bridge.service → /etc/systemd/system/ (644, optional)
-- [ ] Example descriptors → /usr/share/luigi/ha-mqtt/examples/sensors.d/ (644)
-
-**Phase 1 Complete:** ____________ Date: __________
-
----
-
-## Phase 2: Testing Strategy Implementation
-
-**Goal:** Implement testing approach for the module.
-
-**Skills Used:** `python-development`, `system-setup`
-
-**Based on:** DESIGN_ANALYSIS.md Phases 2 & 3
-
-### 2.1 Syntax Validation
-
-- [ ] Document shell script validation: `shellcheck setup.sh`
-- [ ] Document shell script validation: `shellcheck bin/luigi-publish`
-- [ ] Document shell script validation: `shellcheck bin/luigi-discover`
-- [ ] Document shell script validation: `shellcheck bin/luigi-mqtt-status`
-- [ ] Document shell script validation: `shellcheck lib/mqtt_helpers.sh`
-- [ ] Document shell script validation: `shellcheck lib/ha_discovery_generator.sh`
-- [ ] Document Python validation (if using service): `python3 -m py_compile ha-mqtt-bridge.py`
-
-### 2.2 Functional Testing (No Hardware Required)
-
-Since this is a network-only module, testing focuses on:
-
-- [ ] **Configuration Loading Test:**
-  - [ ] Test config file parsing
-  - [ ] Test defaults when config missing
-  - [ ] Test validation of required parameters
-  - [ ] Test 600 permissions enforcement
-
-- [ ] **luigi-publish Script Test:**
-  - [ ] Test parameter validation (--sensor, --value required)
-  - [ ] Test optional parameters (--unit, --device-class)
-  - [ ] Test error handling for missing config
-  - [ ] Test topic construction from sensor ID
-  - [ ] Test return codes (0 for success, non-zero for errors)
-
-- [ ] **luigi-discover Script Test:**
-  - [ ] Test descriptor scanning from sensors.d/
-  - [ ] Test JSON parsing and validation
-  - [ ] Test discovery payload generation
-  - [ ] Test handling of malformed descriptors
-
-- [ ] **luigi-mqtt-status Script Test:**
-  - [ ] Test connection check logic
-  - [ ] Test error message generation
-  - [ ] Test return codes for different failure modes
-
-### 2.3 Integration Tests (Requires MQTT Broker)
-
-- [ ] **MQTT Connection Test:**
-  - [ ] Test successful connection to broker
-  - [ ] Test authentication with credentials
-  - [ ] Test connection failure handling
-  - [ ] Test TLS encryption (if configured)
-
-- [ ] **Publish Test:**
-  - [ ] Publish test message with luigi-publish
-  - [ ] Verify message received by broker
-  - [ ] Test QoS 0, 1, 2 settings
-  - [ ] Test retained message flag
-
-- [ ] **Discovery Test:**
-  - [ ] Register test sensor with luigi-discover
-  - [ ] Verify discovery message format
-  - [ ] Verify sensor appears in Home Assistant
-  - [ ] Test re-registration after descriptor change
-
-- [ ] **Service Test (if using Python service):**
-  - [ ] Test service start/stop
-  - [ ] Test automatic reconnection on network loss
-  - [ ] Test periodic descriptor scanning
-  - [ ] Test log rotation
-
-### 2.4 End-to-End Scenario Tests
-
-- [ ] **Scenario 1: New Module Integration**
-  - [ ] Create test sensor descriptor
-  - [ ] Install descriptor to sensors.d/
-  - [ ] Run luigi-discover
-  - [ ] Publish test value with luigi-publish
-  - [ ] Verify in Home Assistant
-
-- [ ] **Scenario 2: Module Update**
-  - [ ] Modify existing descriptor
-  - [ ] Re-run discovery
-  - [ ] Verify changes reflected in HA
-
-- [ ] **Scenario 3: Module Removal**
-  - [ ] Remove descriptor from sensors.d/
-  - [ ] Verify sensor still in HA (manual cleanup required)
-  - [ ] Document removal process in README
-
-**Phase 2 Complete:** ____________ Date: __________
-
----
-
-## Phase 3: Documentation Implementation
-
-**Goal:** Create comprehensive documentation for the module.
-
-**Skills Used:** `module-design`
-
-**Based on:** DESIGN_ANALYSIS.md (all phases)
-
-### 3.1 README.md Creation
-
-Create complete module README with all required sections:
-
-- [ ] **Overview** - What ha-mqtt does, why it exists
-- [ ] **Contents** - List of files in directory
-- [ ] **Key Features** - Generic interface, zero-coupling, convention-based discovery
-- [ ] **Use Cases** - Motion detection, temperature monitoring, system monitoring examples
-- [ ] **Architecture** - Diagram showing Luigi modules → ha-mqtt → Home Assistant flow
-- [ ] **Hardware Requirements** - Network connectivity only (no GPIO)
-- [ ] **Dependencies** - mosquitto-clients (required), python3-paho-mqtt (optional)
-- [ ] **Installation** - Automated and manual installation steps
-- [ ] **Configuration** - Complete parameter documentation with examples
-- [ ] **Usage** - How to integrate any Luigi module:
-  - [ ] Document 4-step integration pattern
-  - [ ] Document luigi-publish usage with examples
-  - [ ] Document descriptor format with all fields
-  - [ ] Document luigi-discover for troubleshooting
-- [ ] **How It Works** - Explain generic interface, descriptor discovery, MQTT topics
-- [ ] **Troubleshooting** - Common issues and solutions:
-  - [ ] Connection failures
-  - [ ] Authentication errors
-  - [ ] Sensor not appearing in HA
-  - [ ] Permission issues
-- [ ] **Home Assistant Setup** - Guide for configuring HA side:
-  - [ ] MQTT broker setup
-  - [ ] User/password creation
-  - [ ] ACL configuration recommendations
-- [ ] **Security** - Credential protection, TLS setup, network isolation
-- [ ] **Integration Examples** - Complete examples for different sensor types
-- [ ] **Notes** - Important operational notes
-- [ ] **Future Enhancements** - Potential improvements
-
-### 3.2 Integration Guide
-
-Create examples/integration-guide.md:
-
-- [ ] Document generic interface pattern
-- [ ] Show complete integration example (temperature sensor)
-- [ ] Document descriptor format specification
-- [ ] Include descriptor field reference table
-- [ ] Show multiple sensor type examples (binary_sensor, sensor, etc.)
-
-### 3.3 Descriptor Format Documentation
-
-Create examples/sensors.d/README.md:
-
-- [ ] Document JSON schema for descriptors
-- [ ] Document required vs optional fields
-- [ ] Document supported sensor types (sensor, binary_sensor, etc.)
-- [ ] Document device_class values for each type
-- [ ] Include validation rules
-- [ ] Show complete examples for common sensor types
-
-### 3.4 Code Documentation
-
-- [ ] Add comprehensive comments to all shell scripts
-- [ ] Document function purposes, parameters, return values
-- [ ] Add usage examples in script headers
-- [ ] Document library function signatures
-- [ ] Add Python docstrings (if implementing service)
-
-### 3.5 Configuration Documentation
-
-- [ ] Ensure ha-mqtt.conf.example has detailed comments
-- [ ] Document default values and valid ranges
-- [ ] Include security notes for sensitive parameters
-- [ ] Document ${HOSTNAME} variable expansion
-
-**Phase 3 Complete:** ____________ Date: __________
-
----
-
-## Phase 4: Core Implementation
+## Phase 1: Core Implementation
 
 **Goal:** Implement the module following the design.
 
@@ -512,6 +261,257 @@ Create examples/sensors.d/README.md:
   - [ ] Verify config preserved (if user chose)
   - [ ] Verify clean removal
 
+**Phase 1 Complete:** ____________ Date: __________
+
+---
+
+## Phase 2: Testing Strategy Implementation
+
+**Goal:** Implement testing approach for the module.
+
+**Skills Used:** `python-development`, `system-setup`
+
+**Based on:** DESIGN_ANALYSIS.md Phases 2 & 3
+
+### 2.1 Syntax Validation
+
+- [ ] Document shell script validation: `shellcheck setup.sh`
+- [ ] Document shell script validation: `shellcheck bin/luigi-publish`
+- [ ] Document shell script validation: `shellcheck bin/luigi-discover`
+- [ ] Document shell script validation: `shellcheck bin/luigi-mqtt-status`
+- [ ] Document shell script validation: `shellcheck lib/mqtt_helpers.sh`
+- [ ] Document shell script validation: `shellcheck lib/ha_discovery_generator.sh`
+- [ ] Document Python validation (if using service): `python3 -m py_compile ha-mqtt-bridge.py`
+
+### 2.2 Functional Testing (No Hardware Required)
+
+Since this is a network-only module, testing focuses on:
+
+- [ ] **Configuration Loading Test:**
+  - [ ] Test config file parsing
+  - [ ] Test defaults when config missing
+  - [ ] Test validation of required parameters
+  - [ ] Test 600 permissions enforcement
+
+- [ ] **luigi-publish Script Test:**
+  - [ ] Test parameter validation (--sensor, --value required)
+  - [ ] Test optional parameters (--unit, --device-class)
+  - [ ] Test error handling for missing config
+  - [ ] Test topic construction from sensor ID
+  - [ ] Test return codes (0 for success, non-zero for errors)
+
+- [ ] **luigi-discover Script Test:**
+  - [ ] Test descriptor scanning from sensors.d/
+  - [ ] Test JSON parsing and validation
+  - [ ] Test discovery payload generation
+  - [ ] Test handling of malformed descriptors
+
+- [ ] **luigi-mqtt-status Script Test:**
+  - [ ] Test connection check logic
+  - [ ] Test error message generation
+  - [ ] Test return codes for different failure modes
+
+### 2.3 Integration Tests (Requires MQTT Broker)
+
+- [ ] **MQTT Connection Test:**
+  - [ ] Test successful connection to broker
+  - [ ] Test authentication with credentials
+  - [ ] Test connection failure handling
+  - [ ] Test TLS encryption (if configured)
+
+- [ ] **Publish Test:**
+  - [ ] Publish test message with luigi-publish
+  - [ ] Verify message received by broker
+  - [ ] Test QoS 0, 1, 2 settings
+  - [ ] Test retained message flag
+
+- [ ] **Discovery Test:**
+  - [ ] Register test sensor with luigi-discover
+  - [ ] Verify discovery message format
+  - [ ] Verify sensor appears in Home Assistant
+  - [ ] Test re-registration after descriptor change
+
+- [ ] **Service Test (if using Python service):**
+  - [ ] Test service start/stop
+  - [ ] Test automatic reconnection on network loss
+  - [ ] Test periodic descriptor scanning
+  - [ ] Test log rotation
+
+### 2.4 End-to-End Scenario Tests
+
+- [ ] **Scenario 1: New Module Integration**
+  - [ ] Create test sensor descriptor
+  - [ ] Install descriptor to sensors.d/
+  - [ ] Run luigi-discover
+  - [ ] Publish test value with luigi-publish
+  - [ ] Verify in Home Assistant
+
+- [ ] **Scenario 2: Module Update**
+  - [ ] Modify existing descriptor
+  - [ ] Re-run discovery
+  - [ ] Verify changes reflected in HA
+
+- [ ] **Scenario 3: Module Removal**
+  - [ ] Remove descriptor from sensors.d/
+  - [ ] Verify sensor still in HA (manual cleanup required)
+  - [ ] Document removal process in README
+
+**Phase 2 Complete:** ____________ Date: __________
+
+---
+
+## Phase 3: Documentation Implementation
+
+**Goal:** Create comprehensive documentation for the module.
+
+**Skills Used:** `module-design`
+
+**Based on:** DESIGN_ANALYSIS.md (all phases)
+
+### 3.1 README.md Creation
+
+Create complete module README with all required sections:
+
+- [ ] **Overview** - What ha-mqtt does, why it exists
+- [ ] **Contents** - List of files in directory
+- [ ] **Key Features** - Generic interface, zero-coupling, convention-based discovery
+- [ ] **Use Cases** - Motion detection, temperature monitoring, system monitoring examples
+- [ ] **Architecture** - Diagram showing Luigi modules → ha-mqtt → Home Assistant flow
+- [ ] **Hardware Requirements** - Network connectivity only (no GPIO)
+- [ ] **Dependencies** - mosquitto-clients (required), python3-paho-mqtt (optional)
+- [ ] **Installation** - Automated and manual installation steps
+- [ ] **Configuration** - Complete parameter documentation with examples
+- [ ] **Usage** - How to integrate any Luigi module:
+  - [ ] Document 4-step integration pattern
+  - [ ] Document luigi-publish usage with examples
+  - [ ] Document descriptor format with all fields
+  - [ ] Document luigi-discover for troubleshooting
+- [ ] **How It Works** - Explain generic interface, descriptor discovery, MQTT topics
+- [ ] **Troubleshooting** - Common issues and solutions:
+  - [ ] Connection failures
+  - [ ] Authentication errors
+  - [ ] Sensor not appearing in HA
+  - [ ] Permission issues
+- [ ] **Home Assistant Setup** - Guide for configuring HA side:
+  - [ ] MQTT broker setup
+  - [ ] User/password creation
+  - [ ] ACL configuration recommendations
+- [ ] **Security** - Credential protection, TLS setup, network isolation
+- [ ] **Integration Examples** - Complete examples for different sensor types
+- [ ] **Notes** - Important operational notes
+- [ ] **Future Enhancements** - Potential improvements
+
+### 3.2 Integration Guide
+
+Create examples/integration-guide.md:
+
+- [ ] Document generic interface pattern
+- [ ] Show complete integration example (temperature sensor)
+- [ ] Document descriptor format specification
+- [ ] Include descriptor field reference table
+- [ ] Show multiple sensor type examples (binary_sensor, sensor, etc.)
+
+### 3.3 Descriptor Format Documentation
+
+Create examples/sensors.d/README.md:
+
+- [ ] Document JSON schema for descriptors
+- [ ] Document required vs optional fields
+- [ ] Document supported sensor types (sensor, binary_sensor, etc.)
+- [ ] Document device_class values for each type
+- [ ] Include validation rules
+- [ ] Show complete examples for common sensor types
+
+### 3.4 Code Documentation
+
+- [ ] Add comprehensive comments to all shell scripts
+- [ ] Document function purposes, parameters, return values
+- [ ] Add usage examples in script headers
+- [ ] Document library function signatures
+- [ ] Add Python docstrings (if implementing service)
+
+### 3.5 Configuration Documentation
+
+- [ ] Ensure ha-mqtt.conf.example has detailed comments
+- [ ] Document default values and valid ranges
+- [ ] Include security notes for sensitive parameters
+- [ ] Document ${HOSTNAME} variable expansion
+
+**Phase 3 Complete:** ____________ Date: __________
+
+---
+
+## Phase 4: Setup & Deployment Implementation
+
+**Goal:** Create installation automation and deployment scripts.
+
+**Skills Used:** `system-setup`
+
+**Based on:** DESIGN_ANALYSIS.md Phase 3
+
+### 1.1 Create setup.sh Script
+
+- [ ] Implement install() function:
+  - [ ] Check prerequisites (bash, systemd, network)
+  - [ ] Install mosquitto-clients with apt-get
+  - [ ] Create directory structure (/etc/luigi/iot/ha-mqtt/, sensors.d/, /usr/local/bin/, /usr/local/lib/luigi/)
+  - [ ] Deploy configuration file with 600 permissions
+  - [ ] Deploy bin/ scripts (luigi-publish, luigi-discover, luigi-mqtt-status) to /usr/local/bin/ with 755
+  - [ ] Deploy lib/ scripts (mqtt_helpers.sh, ha_discovery_generator.sh) to /usr/local/lib/luigi/ with 644
+  - [ ] Deploy example descriptors to /usr/share/luigi/ha-mqtt/examples/sensors.d/
+  - [ ] Optional: Deploy Python service and systemd unit if user wants persistent connection
+  - [ ] Prompt user to configure broker settings
+  - [ ] Test MQTT connection with luigi-mqtt-status
+  - [ ] Verify installation with status checks
+
+- [ ] Implement uninstall() function:
+  - [ ] Stop and disable service (if installed)
+  - [ ] Remove service file from /etc/systemd/system/
+  - [ ] Remove scripts from /usr/local/bin/
+  - [ ] Remove libraries from /usr/local/lib/luigi/
+  - [ ] Remove examples from /usr/share/luigi/ha-mqtt/
+  - [ ] Interactive: Ask about removing config and sensor descriptors
+  - [ ] Optional: Ask about removing mosquitto-clients package
+  - [ ] Verify removal
+
+- [ ] Implement status() function:
+  - [ ] Check if scripts are installed
+  - [ ] Check if config file exists
+  - [ ] Check MQTT connectivity with luigi-mqtt-status
+  - [ ] Show service status (if installed)
+  - [ ] Display sensor descriptor count
+  - [ ] Show configuration summary (broker host, connection status)
+
+- [ ] Add error handling and root privilege checking
+- [ ] Add colored output (GREEN/YELLOW/RED/BLUE)
+- [ ] Validate with: `shellcheck setup.sh`
+
+### 1.2 Create Configuration Example
+
+- [ ] Create ha-mqtt.conf.example with all sections:
+  - [ ] [Broker] - HOST, PORT, TLS, CA_CERT
+  - [ ] [Authentication] - USERNAME, PASSWORD (with security note)
+  - [ ] [Client] - CLIENT_ID, KEEPALIVE, QOS, CLEAN_SESSION
+  - [ ] [Topics] - BASE_TOPIC, DISCOVERY_PREFIX, DEVICE_PREFIX
+  - [ ] [Device] - DEVICE_NAME, DEVICE_MODEL, MANUFACTURER, SW_VERSION
+  - [ ] [Discovery] - SENSORS_DIR, SCAN_INTERVAL
+  - [ ] [Connection] - RECONNECT_DELAY_MIN, RECONNECT_DELAY_MAX, CONNECTION_TIMEOUT
+  - [ ] [Logging] - LOG_FILE, LOG_LEVEL, LOG_MAX_BYTES, LOG_BACKUP_COUNT
+- [ ] Document each parameter with clear comments
+- [ ] Include examples and security warnings
+
+### 1.3 File Deployment Checklist
+
+- [ ] luigi-publish → /usr/local/bin/ (755)
+- [ ] luigi-discover → /usr/local/bin/ (755)
+- [ ] luigi-mqtt-status → /usr/local/bin/ (755)
+- [ ] mqtt_helpers.sh → /usr/local/lib/luigi/ (644)
+- [ ] ha_discovery_generator.sh → /usr/local/lib/luigi/ (644)
+- [ ] ha-mqtt.conf.example → /etc/luigi/iot/ha-mqtt/ha-mqtt.conf (600)
+- [ ] ha-mqtt-bridge.py → /usr/local/bin/ (755, optional)
+- [ ] ha-mqtt-bridge.service → /etc/systemd/system/ (644, optional)
+- [ ] Example descriptors → /usr/share/luigi/ha-mqtt/examples/sensors.d/ (644)
+
 **Phase 4 Complete:** ____________ Date: __________
 
 ---
@@ -645,10 +645,10 @@ Complete `.github/skills/module-design/design-review-checklist.md`:
 
 | Phase | Description | Estimated | Actual | Status |
 |-------|-------------|-----------|--------|--------|
-| 1 | Setup & Deployment | 8 hours |  | ⬜ Not Started |
+| 1 | Core Implementation | 16 hours |  | ⬜ Not Started |
 | 2 | Testing Strategy | 6 hours |  | ⬜ Not Started |
 | 3 | Documentation | 10 hours |  | ⬜ Not Started |
-| 4 | Core Implementation | 16 hours |  | ⬜ Not Started |
+| 4 | Setup & Deployment | 8 hours |  | ⬜ Not Started |
 | 5 | Final Verification | 6 hours |  | ⬜ Not Started |
 | **Total** | | **46 hours** | | |
 

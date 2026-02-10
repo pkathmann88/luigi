@@ -74,10 +74,10 @@ The module-design skill includes six files:
 **Use for:** Executing implementation after analysis is approved
 
 **5 Implementation Phases:**
-1. Setup & Deployment Implementation
+1. Core Implementation
 2. Testing Strategy Implementation
 3. Documentation Implementation
-4. Core Implementation
+4. Setup & Deployment Implementation
 5. Final Verification & Integration
 
 **Each phase includes:**
@@ -154,10 +154,10 @@ Step 6: Create IMPLEMENTATION_PLAN.md in same module directory
     ↓
 Step 7: Execute Implementation Phases 1-5
     ↓
-    Phase 1: Setup & Deployment (use system-setup)
+    Phase 1: Core Implementation (use all skills)
     Phase 2: Testing Strategy (use python-development + raspi-zero-w)
     Phase 3: Documentation (use module-design)
-    Phase 4: Core Implementation (use all skills)
+    Phase 4: Setup & Deployment (use system-setup)
     Phase 5: Final Verification (use module-design)
     ↓
 Step 8: Final approval and production deployment
@@ -181,10 +181,10 @@ Step 8: Final approval and production deployment
 - **Purpose:** Execute the implementation
 - **Input:** Results from DESIGN_ANALYSIS.md
 - **Phases:** 5 implementation phases
-  1. Setup & Deployment Implementation
+  1. Core Implementation
   2. Testing Strategy Implementation
   3. Documentation Implementation
-  4. Core Implementation
+  4. Setup & Deployment Implementation
   5. Final Verification & Integration
 
 ### Why Two Stages?

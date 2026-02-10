@@ -141,12 +141,13 @@ When a feature request is received, **first** complete a design analysis documen
 
 After DESIGN_ANALYSIS.md is approved, **create** an implementation plan with **5 phases**:
 
-**Phase 1: Setup & Deployment Implementation**
-- Create setup.sh (install/uninstall/status)
-- Create configuration example file
-- Implement file deployment
-- **Skills:** `system-setup`
-- **Based on:** DESIGN_ANALYSIS Phase 3
+**Phase 1: Core Implementation**
+- Assemble hardware per design (if applicable)
+- Implement Python code (Config, GPIOManager, Device, App classes)
+- Create service file
+- Integration testing
+- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
+- **Based on:** DESIGN_ANALYSIS all phases
 
 **Phase 2: Testing Strategy Implementation**
 - Set up syntax validation
@@ -162,13 +163,12 @@ After DESIGN_ANALYSIS.md is approved, **create** an implementation plan with **5
 - **Skills:** `module-design`
 - **Based on:** DESIGN_ANALYSIS all phases
 
-**Phase 4: Core Implementation**
-- Assemble hardware per design
-- Implement Python code (Config, GPIOManager, Device, App classes)
-- Create service file
-- Integration testing
-- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
-- **Based on:** DESIGN_ANALYSIS all phases
+**Phase 4: Setup & Deployment Implementation**
+- Create setup.sh (install/uninstall/status)
+- Create configuration example file
+- Implement file deployment
+- **Skills:** `system-setup`
+- **Based on:** DESIGN_ANALYSIS Phase 3
 
 **Phase 5: Final Verification & Integration**
 - Complete design review checklist
@@ -196,14 +196,14 @@ Design Review & Approval
     ↓
 IMPLEMENTATION_PLAN.md (Stage 2)
     ↓
-    Phase 1: Setup & Deployment
-        ↓ (use system-setup)
+    Phase 1: Core Implementation
+        ↓ (use all skills)
     Phase 2: Testing Strategy
         ↓ (use python-development + raspi-zero-w)
     Phase 3: Documentation
         ↓ (use module-design)
-    Phase 4: Core Implementation
-        ↓ (use all skills)
+    Phase 4: Setup & Deployment
+        ↓ (use system-setup)
     Phase 5: Final Verification
         ↓ (use module-design)
     ↓
@@ -1187,10 +1187,10 @@ This template captures:
 **Location:** `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
 
 This template contains:
-- **Phase 1:** Setup & Deployment Implementation
+- **Phase 1:** Core Implementation
 - **Phase 2:** Testing Strategy Implementation
 - **Phase 3:** Documentation Implementation
-- **Phase 4:** Core Implementation
+- **Phase 4:** Setup & Deployment Implementation
 - **Phase 5:** Final Verification & Integration
 
 **When to Use:**
