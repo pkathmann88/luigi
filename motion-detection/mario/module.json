@@ -1,0 +1,14 @@
+{
+  "name": "mario",
+  "version": "1.0.0",
+  "description": "Mario-themed motion detection module using PIR sensors",
+  "category": "motion-detection",
+  "dependencies": [
+    "iot/ha-mqtt"
+  ],
+  "author": "Luigi Project",
+  "hardware": {
+    "gpio_pins": [23],
+    "sensors": ["PIR motion sensor"]
+  }
+}
