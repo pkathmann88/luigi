@@ -1,0 +1,8 @@
+{
+  "sensor_id": "system_uptime",
+  "name": "System Uptime",
+  "unit_of_measurement": "h",
+  "icon": "mdi:clock-outline",
+  "state_class": "total_increasing",
+  "module": "system/system-info"
+}

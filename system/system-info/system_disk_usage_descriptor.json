@@ -1,0 +1,8 @@
+{
+  "sensor_id": "system_disk_usage",
+  "name": "Disk Usage",
+  "unit_of_measurement": "%",
+  "icon": "mdi:harddisk",
+  "state_class": "measurement",
+  "module": "system/system-info"
+}

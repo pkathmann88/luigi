@@ -38,6 +38,7 @@ Luigi currently includes the following modules. See each module's README for det
 |--------|----------|-------------|
 | [Mario Motion Detection](motion-detection/mario/) | motion-detection | Plays random Mario-themed sounds when motion is detected via PIR sensor |
 | [Home Assistant MQTT](iot/ha-mqtt/) | iot | Zero-touch MQTT bridge connecting Luigi sensors to Home Assistant for centralized monitoring and automation |
+| [System Info](system/system-info/) | system | Monitors and publishes system metrics (uptime, CPU temp, memory, disk) to Home Assistant every 5 minutes |
 | [System Optimization](system/optimization/) | system | Optimizes Raspberry Pi performance by disabling services and tuning boot config |
 
 For detailed information about each module (features, installation, configuration, troubleshooting), please refer to the module-specific README files.

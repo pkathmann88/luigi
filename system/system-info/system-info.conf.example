@@ -1,0 +1,28 @@
+# System Info Module Configuration
+#
+# This configuration file controls the behavior of the system-info module.
+# After modifying this file, restart the service:
+#   sudo systemctl restart system-info
+
+[Logging]
+# Log file location
+log_file = /var/log/system-info.log
+
+# Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+log_level = INFO
+
+# Maximum log file size before rotation (bytes)
+log_max_bytes = 10485760
+
+# Number of rotated log files to keep
+log_backup_count = 5
+
+[Timing]
+# Interval between metric collection and publishing (seconds)
+# Default: 300 (5 minutes)
+publish_interval_seconds = 300
+
+# Sleep interval for main loop check (seconds)
+# Default: 60 (1 minute)
+# Note: Should be <= publish_interval_seconds
+main_loop_sleep_seconds = 60
