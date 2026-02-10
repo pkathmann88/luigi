@@ -310,7 +310,9 @@ class MotionDetectionApp:
             logging.info(f"Last trigger: {self.last_trigger_time}")
         except ValueError:
             self.last_trigger_time = 0
-            logging.warning(f"Invalid timer file content: {last_time_str!r}, reset to 0")
+            # Sanitize timer file content before logging (limit to 50 chars)
+            sanitized_content = last_time_str[:50] if last_time_str else ""
+            logging.warning(f"Invalid timer file content (first 50 chars): {sanitized_content!r}, reset to 0")
     
     def _validate_sound_directory(self):
         """Validate sound directory exists and contains sound files."""
