@@ -11,7 +11,7 @@ This project is designed to run on:
 
 ## Overview
 
-Luigi is an extensible platform for Raspberry Pi hardware projects, designed to make it easy to deploy and manage multiple modules for different purposes. Currently includes motion detection with sound playback, but designed to support sensors, automation, security, and IoT modules.
+Luigi is an extensible platform for Raspberry Pi hardware projects, designed to make it easy to deploy and manage multiple modules for different purposes. The platform currently includes motion detection with sound playback and is designed to support sensors, automation, security, and IoT modules.
 
 ### Current Modules
 
