@@ -256,7 +256,8 @@ deploy_ha_mqtt_descriptor() {
         log_info "Sensor registered successfully"
         log_info "Motion events will be published to Home Assistant via MQTT"
     else
-        log_warn "Failed to register sensor (MQTT broker may not be configured)"
+        log_warn "Failed to register sensor with Home Assistant"
+        log_info "This may be due to MQTT broker connectivity, permissions, or configuration"
         log_info "You can manually run: sudo /usr/local/bin/luigi-discover"
     fi
 }

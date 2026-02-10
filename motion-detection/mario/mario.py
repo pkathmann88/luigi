@@ -319,7 +319,8 @@ def publish_sensor_value(sensor_id, value, is_binary=False, unit=None):
         return False
         
     except subprocess.CalledProcessError as e:
-        logging.warning(f"MQTT publish failed for {sensor_id}: {e.stderr}")
+        stderr_msg = e.stderr.decode('utf-8', errors='replace') if e.stderr else 'no output'
+        logging.warning(f"MQTT publish failed for {sensor_id}: {stderr_msg}")
         return False
         
     except FileNotFoundError:
