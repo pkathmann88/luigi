@@ -11,7 +11,11 @@ This project is designed to run on:
 
 ## Overview
 
-Luigi is a motion detection system that plays random sound effects when motion is detected via a PIR (Passive Infrared) sensor. The system includes a cooldown period to prevent continuous triggering and can be controlled via a system service.
+Luigi is an extensible platform for Raspberry Pi hardware projects, designed to make it easy to deploy and manage multiple modules for different purposes. Currently includes motion detection with sound playback, but designed to support sensors, automation, security, and IoT modules.
+
+### Current Modules
+
+- **Mario Motion Detection** (`motion-detection/mario/`) - Plays random Mario sound effects when motion is detected via PIR sensor
 
 ## Prerequisites
 
@@ -31,77 +35,119 @@ Connect a PIR motion sensor to your Raspberry Pi:
 
 ## Installation
 
+### Quick Start - Install All Modules
+
+The easiest way to install Luigi is using the centralized setup script:
+
 ```bash
 # Clone the repository
 git clone https://github.com/pkathmann88/luigi.git
 cd luigi
 
-# Install required Python packages
-sudo apt-get update
-sudo apt-get install python-rpi.gpio alsa-utils
+# Install all modules
+sudo ./setup.sh install
+```
 
-# Install sound files (extract mario-sounds.tar.gz)
-sudo mkdir -p /usr/share/sounds/mario
-sudo tar -xzf motion-detection/mario/mario-sounds.tar.gz -C /usr/share/sounds/mario/
+This will automatically discover and install all available Luigi modules.
 
-# Copy the Python script to /usr/bin
-sudo cp motion-detection/mario/mario.py /usr/bin/luigi
-sudo chmod +x /usr/bin/luigi
+### Install Specific Module
 
-# Install the init.d service script
-sudo cp motion-detection/mario/mario /etc/init.d/mario
-sudo chmod +x /etc/init.d/mario
-sudo update-rc.d mario defaults
+To install only a specific module:
+
+```bash
+# Install only the mario motion detection module
+sudo ./setup.sh install motion-detection/mario
+```
+
+### Manual Installation
+
+For manual installation of individual modules, see the README.md file in each module directory (e.g., `motion-detection/mario/README.md`).
+
+### Check Installation Status
+
+```bash
+# Check status of all modules
+./setup.sh status
+
+# Check status of specific module
+./setup.sh status motion-detection/mario
 ```
 
 ## Usage
 
-Start the motion detection service:
+### Managing Modules
+
+Each module can be managed using its own setup script or the centralized setup script.
+
+**Using centralized setup:**
 ```bash
-sudo /etc/init.d/mario start
+# Install all modules
+sudo ./setup.sh install
+
+# Install specific module
+sudo ./setup.sh install motion-detection/mario
+
+# Uninstall all modules
+sudo ./setup.sh uninstall
+
+# Uninstall specific module
+sudo ./setup.sh uninstall motion-detection/mario
+
+# Check status of all modules
+./setup.sh status
 ```
 
-Stop the motion detection service:
+**Managing services (after installation):**
 ```bash
-sudo /etc/init.d/mario stop
+# Example: Managing mario motion detection service
+sudo systemctl start mario.service
+sudo systemctl stop mario.service
+sudo systemctl restart mario.service
+sudo systemctl status mario.service
+
+# View logs
+sudo journalctl -u mario.service -f
 ```
 
-Check the logs:
-```bash
-tail -f /var/log/motion.log
-```
+For detailed usage instructions for each module, see the README.md file in the module directory.
 
 ## Features
 
-- **Motion Detection**: Uses PIR sensor on GPIO 23 to detect motion
-- **Random Sound Playback**: Plays a random sound file from the configured directory
-- **Cooldown Period**: 30-minute cooldown between sound playback events to prevent spam
-- **Service Control**: Can be started/stopped via init.d service
-- **Graceful Shutdown**: Service can be cleanly stopped using the stop command
+- **Centralized Setup** - Install/uninstall all modules with a single command
+- **Modular Architecture** - Each module is independent with its own setup script
+- **Extensible Design** - Easy to add new modules in various categories (motion detection, sensors, automation, security, IoT)
+- **Modern Service Management** - systemd integration for reliable service control
+- **Hardware Abstraction** - Clean separation between hardware and application logic
+- **Discovery System** - Automatically discovers and manages all installed modules
 
 ## Project Structure
 
 ```
 luigi/
 ├── README.md                          # This file
+├── setup.sh                           # Centralized setup script (install/uninstall all modules)
 └── motion-detection/                  # Motion detection components
     ├── README.md                      # Motion detection documentation
     └── mario/                         # Mario-themed motion detector
         ├── README.md                  # Mario component documentation
-        ├── mario                      # init.d service script
+        ├── setup.sh                   # Mario module setup script
         ├── mario.py                   # Python motion detection script
+        ├── mario.service              # systemd service unit
         └── mario-sounds.tar.gz        # Sound files archive
 ```
 
+Luigi is designed as an extensible platform. Additional modules can be added in the following categories:
+- `motion-detection/` - Motion detection modules
+- `sensors/` - Environmental sensors (temperature, humidity, etc.)
+- `automation/` - Automation and control modules
+- `security/` - Security monitoring modules
+- `iot/` - IoT integration modules
+
+Each module should contain its own `setup.sh` script for installation and management. The centralized `setup.sh` in the project root will automatically discover and manage all modules.
+
 ## Configuration
 
-Key configuration variables in `mario.py`:
-- `SENSOR_PIN = 23` - GPIO pin for PIR sensor
-- `SOUND_DIR = "/usr/share/sounds/mario/"` - Directory containing sound files
-- `STOP_FILE = "/tmp/stop_mario"` - File used to signal service stop
-- `TIMER_FILE = "/tmp/mario_timer"` - File used to track cooldown period
-
-Cooldown period: 1800 seconds (30 minutes) between sound playback events
+Configuration for each module is documented in the module's README.md file. For example, see `motion-detection/mario/README.md` for mario module configuration options.
 
 ## Contributing
 
