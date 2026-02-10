@@ -1,116 +1,253 @@
-# luigi
+# Luigi
 
-A Python project designed to run on Raspberry Pi Zero W for motion detection with sound playback.
+**A modular platform for Raspberry Pi hardware projects with automated deployment and service management.**
 
-## Platform
+Luigi makes it easy to build, deploy, and manage hardware-integrated applications on Raspberry Pi. The platform provides a centralized setup system, modern Python architecture patterns, and comprehensive tooling for rapid development of GPIO-based projects.
 
-This project is designed to run on:
-- **Hardware:** Raspberry Pi Zero W
-- **Operating System:** Raspberry Pi OS
-- **Programming Language:** Python
+## Key Features
 
-## Overview
+- **One-Command Deployment** - Centralized setup script installs/uninstalls all modules automatically
+- **Modular Architecture** - Each module is self-contained with its own setup script and dependencies
+- **systemd Integration** - Reliable service management with automatic restart and logging
+- **Hardware Abstraction** - Clean separation between hardware control and application logic
+- **Security Hardened** - Command injection prevention, path validation, and log sanitization
+- **Mock GPIO Support** - Develop and test without physical hardware
+- **Agent Skills** - Built-in Copilot guidance for hardware, Python development, and deployment
 
-Luigi is a motion detection system that plays random sound effects when motion is detected via a PIR (Passive Infrared) sensor. The system includes a cooldown period to prevent continuous triggering and can be controlled via a system service.
-
-## Prerequisites
-
-- Raspberry Pi Zero W
-- Raspberry Pi OS installed
-- Python installed (typically pre-installed on Raspberry Pi OS)
-- PIR motion sensor connected to GPIO pin 23
-- Audio output device (speakers or headphone jack)
-- Python RPi.GPIO library
-
-## Hardware Setup
-
-Connect a PIR motion sensor to your Raspberry Pi:
-- **VCC** → 5V (Pin 2 or 4)
-- **GND** → Ground (Pin 6, 9, 14, 20, 25, 30, 34, or 39)
-- **OUT** → GPIO 23 (Pin 16)
-
-## Installation
+## Quick Start
 
 ```bash
 # Clone the repository
 git clone https://github.com/pkathmann88/luigi.git
 cd luigi
 
-# Install required Python packages
-sudo apt-get update
-sudo apt-get install python-rpi.gpio alsa-utils
+# Install all modules (requires root for system integration)
+sudo ./setup.sh install
 
-# Install sound files (extract mario-sounds.tar.gz)
-sudo mkdir -p /usr/share/sounds/mario
-sudo tar -xzf motion-detection/mario/mario-sounds.tar.gz -C /usr/share/sounds/mario/
+# Check installation status
+./setup.sh status
+```
 
-# Copy the Python script to /usr/bin
-sudo cp motion-detection/mario/mario.py /usr/bin/luigi
-sudo chmod +x /usr/bin/luigi
+That's it! Services are now running and will start automatically on boot.
 
-# Install the init.d service script
-sudo cp motion-detection/mario/mario /etc/init.d/mario
-sudo chmod +x /etc/init.d/mario
-sudo update-rc.d mario defaults
+## Current Modules
+
+### Mario Motion Detection
+**Location:** `motion-detection/mario/`  
+**Description:** Plays random Mario-themed sound effects when motion is detected via PIR sensor
+
+**Features:**
+- PIR sensor integration (default GPIO 23)
+- Random audio playback with configurable cooldown (default 30 min)
+- Modern OOP architecture (Config, GPIOManager, PIRSensor, MotionDetectionApp classes)
+- Rotating logs with structured logging
+- Graceful shutdown via signal handlers
+- Comprehensive automated setup script
+
+**Hardware:** PIR motion sensor, audio output device  
+**Service:** `mario.service` (systemd)
+
+## Platform
+
+**Target Hardware:** Raspberry Pi Zero W (compatible with other Raspberry Pi models)  
+**Operating System:** Raspberry Pi OS (Debian-based)  
+**Language:** Python 3  
+**Dependencies:** RPi.GPIO, ALSA utils
+
+## Architecture
+
+### Module Categories
+
+Luigi supports five module categories for different use cases:
+
+```
+luigi/
+├── motion-detection/    # Motion sensors and detection
+├── sensors/            # Environmental sensors (temp, humidity, light)
+├── automation/         # Control and automation (relays, motors)
+├── security/           # Security monitoring and alerts
+└── iot/               # IoT integration and networking
+```
+
+### Module Structure
+
+Each module follows a standardized structure:
+
+```
+category/module-name/
+├── README.md          # Module documentation
+├── setup.sh           # Installation script (install/uninstall/status)
+├── module.py          # Python application
+├── module.service     # systemd service unit
+└── resources/         # Additional files (sounds, configs, etc.)
+```
+
+### Centralized Management
+
+The root `setup.sh` automatically discovers modules in all categories:
+
+```bash
+# Install all modules
+sudo ./setup.sh install
+
+# Install specific module
+sudo ./setup.sh install motion-detection/mario
+
+# Uninstall all modules
+sudo ./setup.sh uninstall
+
+# Check status
+./setup.sh status
 ```
 
 ## Usage
 
-Start the motion detection service:
+### Managing Services
+
+After installation, manage services using systemctl:
+
 ```bash
-sudo /etc/init.d/mario start
+# Start/stop/restart a service
+sudo systemctl start mario.service
+sudo systemctl stop mario.service
+sudo systemctl restart mario.service
+
+# Check service status
+sudo systemctl status mario.service
+
+# Enable/disable autostart on boot
+sudo systemctl enable mario.service
+sudo systemctl disable mario.service
+
+# View real-time logs
+sudo journalctl -u mario.service -f
 ```
 
-Stop the motion detection service:
+### Module-Specific Usage
+
+Each module has its own README with detailed usage instructions:
+- **Mario Motion Detection:** See `motion-detection/mario/README.md`
+
+## Development
+
+### Creating a New Module
+
+1. **Choose a category** (motion-detection, sensors, automation, security, iot)
+2. **Create module directory:** `category/your-module/`
+3. **Implement required files:**
+   - `README.md` - Documentation
+   - `setup.sh` - Installation script supporting: `install`, `uninstall`, `status`
+   - `your-module.py` - Python application
+   - `your-module.service` - systemd service unit
+
+4. **Follow established patterns:**
+   - Use Config class for constants
+   - Implement GPIOManager for hardware abstraction
+   - Use signal handlers (SIGTERM/SIGINT) for shutdown
+   - Add structured logging with rotation
+   - Implement security hardening (see mario module)
+
+5. **Test installation:**
 ```bash
-sudo /etc/init.d/mario stop
+sudo ./setup.sh install category/your-module
+./setup.sh status category/your-module
 ```
 
-Check the logs:
-```bash
-tail -f /var/log/motion.log
+### Agent Skills
+
+Luigi includes Copilot Agent Skills for development assistance:
+
+- **`.github/skills/python-development/`** - Python patterns, testing, hardware abstraction
+- **`.github/skills/raspi-zero-w/`** - GPIO pinout, wiring diagrams, hardware setup
+- **`.github/skills/system-setup/`** - Deployment scripts, service configuration
+
+These skills provide context-aware guidance when working with Copilot.
+
+### Code Quality Standards
+
+- **Python:** Modern OOP design, type hints, comprehensive error handling
+- **Shell Scripts:** POSIX-compliant, validated with shellcheck
+- **Security:** No shell=True, path validation, input sanitization
+- **Services:** systemd best practices, security sandboxing, graceful shutdown
+- **Documentation:** Clear README for each module with examples
+
+## Technical Details
+
+### Installation Locations
+
+- **Python Scripts:** `/usr/local/bin/`
+- **systemd Services:** `/etc/systemd/system/`
+- **Resources:** `/usr/share/` (module-specific subdirectories)
+- **Logs:** `/var/log/` and systemd journal
+
+### Python Architecture
+
+Modern modules use the following pattern:
+
+```python
+class Config:
+    """Configuration constants"""
+    
+class GPIOManager:
+    """Hardware abstraction layer"""
+    
+class SensorClass:
+    """Sensor-specific logic"""
+    
+class ApplicationClass:
+    """Main application orchestration"""
 ```
 
-## Features
+### Security Features
 
-- **Motion Detection**: Uses PIR sensor on GPIO 23 to detect motion
-- **Random Sound Playback**: Plays a random sound file from the configured directory
-- **Cooldown Period**: 30-minute cooldown between sound playback events to prevent spam
-- **Service Control**: Can be started/stopped via init.d service
-- **Graceful Shutdown**: Service can be cleanly stopped using the stop command
+- Command injection prevention (subprocess.run with list args)
+- Path traversal prevention (os.path.commonpath validation)
+- Log sanitization (length limits, newline removal)
+- Timeout protection on subprocess calls
+- systemd security sandboxing (PrivateTmp, NoNewPrivileges)
 
-## Project Structure
+## Repository Structure
 
 ```
 luigi/
-├── README.md                          # This file
-└── motion-detection/                  # Motion detection components
-    ├── README.md                      # Motion detection documentation
-    └── mario/                         # Mario-themed motion detector
-        ├── README.md                  # Mario component documentation
-        ├── mario                      # init.d service script
-        ├── mario.py                   # Python motion detection script
-        └── mario-sounds.tar.gz        # Sound files archive
+├── .github/
+│   ├── copilot-instructions.md    # Agent instructions
+│   └── skills/                    # Copilot Agent Skills
+│       ├── python-development/    # Python patterns and testing
+│       ├── raspi-zero-w/         # Hardware and GPIO reference
+│       └── system-setup/         # Deployment automation
+├── motion-detection/
+│   └── mario/                    # Mario motion detection module
+│       ├── README.md
+│       ├── setup.sh
+│       ├── mario.py
+│       ├── mario.service
+│       └── mario-sounds.tar.gz
+├── README.md                     # This file
+├── setup.sh                      # Centralized module management
+└── .gitignore
 ```
-
-## Configuration
-
-Key configuration variables in `mario.py`:
-- `SENSOR_PIN = 23` - GPIO pin for PIR sensor
-- `SOUND_DIR = "/usr/share/sounds/mario/"` - Directory containing sound files
-- `STOP_FILE = "/tmp/stop_mario"` - File used to signal service stop
-- `TIMER_FILE = "/tmp/mario_timer"` - File used to track cooldown period
-
-Cooldown period: 1800 seconds (30 minutes) between sound playback events
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! When contributing:
+
+1. **Follow existing patterns** - Review the mario module as reference
+2. **Test thoroughly** - Validate on actual Raspberry Pi hardware
+3. **Document well** - Include detailed README with module
+4. **Security first** - Follow security hardening practices
+5. **Submit PR** - Include description of module purpose and testing performed
 
 ## License
 
 [License information to be added]
 
-## Notes
+## Resources
 
-This project is specifically optimized for Raspberry Pi Zero W hardware and Raspberry Pi OS.
+- **Mario Module:** Full-featured reference implementation with modern architecture
+- **Agent Skills:** Context-aware development guidance in `.github/skills/`
+- **Raspberry Pi GPIO:** See `.github/skills/raspi-zero-w/gpio-pinout.md`
+
+---
+
+**Optimized for Raspberry Pi Zero W** - Compatible with other Raspberry Pi models
