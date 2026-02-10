@@ -7,6 +7,7 @@ A modern motion detection system that plays random Mario-themed sound effects wh
 - `setup.sh` - Automated installation script for easy deployment
 - `mario.py` - Refactored Python application with modern architecture
 - `mario.service` - systemd service unit for system integration
+- `mario.conf.example` - Sample configuration file with default settings
 - `mario-sounds.tar.gz` - Archive containing Mario-themed sound files (10 WAV files)
 
 ## Overview
@@ -14,6 +15,7 @@ A modern motion detection system that plays random Mario-themed sound effects wh
 This component uses a PIR (Passive Infrared) motion sensor to detect movement and responds by playing a random sound effect from a collection of audio files. The system features:
 
 - **Modern Python Architecture**: Object-oriented design with hardware abstraction
+- **Configuration File Support**: INI-style config file at `/etc/luigi/motion-detection/mario/mario.conf`
 - **Intelligent Cooldown**: 30-minute cooldown to prevent excessive triggering
 - **Security Hardened**: Command injection prevention, path validation, log sanitization
 - **Structured Logging**: Rotating logs with proper error handling
@@ -202,44 +204,74 @@ All shutdown methods trigger a graceful shutdown that:
 
 ## Configuration
 
-Key parameters in `mario.py` (defined in Config class):
+The mario module uses an INI-style configuration file located at `/etc/luigi/motion-detection/mario/mario.conf`.
 
-```python
-class Config:
-    """Application configuration constants."""
-    
-    # GPIO Settings (BCM numbering)
-    GPIO_MODE = GPIO.BCM
-    SENSOR_PIN = 23
-    
-    # File Paths
-    SOUND_DIR = "/usr/share/sounds/mario/"
-    TIMER_FILE = "/tmp/mario_timer"
-    LOG_FILE = "/var/log/motion.log"
-    
-    # Timing Settings
-    COOLDOWN_SECONDS = 1800  # 30 minutes
-    MAIN_LOOP_SLEEP = 100    # seconds
-    
-    # Logging
-    LOG_LEVEL = logging.INFO
-    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT = 5
+### Configuration File
+
+Create or edit `/etc/luigi/motion-detection/mario/mario.conf`:
+
+```ini
+[GPIO]
+# GPIO pin for PIR sensor (BCM numbering)
+SENSOR_PIN=23
+
+[Timing]
+# Cooldown period in seconds (30 minutes = 1800)
+COOLDOWN_SECONDS=1800
+# Main loop sleep interval in seconds
+MAIN_LOOP_SLEEP=100
+
+[Files]
+# Sound directory containing WAV/MP3 files
+SOUND_DIR=/usr/share/sounds/mario/
+# Timer file location for tracking last trigger time
+TIMER_FILE=/tmp/mario_timer
+# Log file location
+LOG_FILE=/var/log/motion.log
+
+[Logging]
+# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL=INFO
+# Maximum log file size in bytes (10MB default)
+LOG_MAX_BYTES=10485760
+# Number of backup log files to keep
+LOG_BACKUP_COUNT=5
 ```
 
-Cooldown duration: **1800 seconds (30 minutes)**
+A sample configuration file (`mario.conf.example`) is included in this directory.
 
-To modify the cooldown period, edit the Config class in `mario.py`:
-```python
-class Config:
-    # Timing Settings
-    COOLDOWN_SECONDS = 1800  # Change to desired seconds (e.g., 900 = 15 minutes)
-```
+### Default Configuration
 
-After changing configuration, restart the service:
-```bash
-sudo systemctl restart mario.service
-```
+If the configuration file does not exist, the application will use default values:
+- **GPIO Pin**: 23 (BCM)
+- **Cooldown**: 1800 seconds (30 minutes)
+- **Sound Directory**: `/usr/share/sounds/mario/`
+- **Log File**: `/var/log/motion.log`
+- **Log Level**: INFO
+
+### Modifying Configuration
+
+To change settings:
+
+1. Create the configuration directory if it doesn't exist:
+   ```bash
+   sudo mkdir -p /etc/luigi/motion-detection/mario
+   ```
+
+2. Copy the example configuration:
+   ```bash
+   sudo cp mario.conf.example /etc/luigi/motion-detection/mario/mario.conf
+   ```
+
+3. Edit the configuration file:
+   ```bash
+   sudo nano /etc/luigi/motion-detection/mario/mario.conf
+   ```
+
+4. Restart the service to apply changes:
+   ```bash
+   sudo systemctl restart mario.service
+   ```
 
 ## Adding Custom Sounds
 
@@ -369,7 +401,7 @@ The mario module follows modern Python development practices:
 
 **Refactoring Improvements:**
 - Object-oriented architecture with hardware abstraction
-- Configuration management via Config class
+- Configuration file support (INI-style, `/etc/luigi/motion-detection/mario/mario.conf`)
 - Structured logging with rotation
 - Signal-based shutdown (no polling)
 - Mock GPIO support for testing
@@ -379,7 +411,6 @@ The mario module follows modern Python development practices:
 ## Future Enhancements
 
 Potential improvements:
-- Configuration file support (YAML/JSON)
 - Command-line arguments for runtime configuration
 - Multiple sound directories/themes
 - Web interface for remote control
