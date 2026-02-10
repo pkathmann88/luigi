@@ -40,7 +40,7 @@ DEFAULT_LOG_FILE="/var/log/ha-mqtt.log"
 DEFAULT_LOG_LEVEL="INFO"
 
 # Configuration file location
-CONFIG_FILE="/etc/luigi/iot/ha-mqtt/ha-mqtt.conf"
+CONFIG_FILE="${MQTT_CONFIG_FILE:-/etc/luigi/iot/ha-mqtt/ha-mqtt.conf}"
 
 #
 # Function: load_config
@@ -51,6 +51,9 @@ CONFIG_FILE="/etc/luigi/iot/ha-mqtt/ha-mqtt.conf"
 # Exports: MQTT_* variables for broker connection
 #
 load_config() {
+    # Use MQTT_CONFIG_FILE if set, otherwise use default
+    local config_file="${MQTT_CONFIG_FILE:-/etc/luigi/iot/ha-mqtt/ha-mqtt.conf}"
+    
     # Apply defaults first
     MQTT_HOST="${DEFAULT_HOST}"
     MQTT_PORT="${DEFAULT_PORT}"
@@ -77,18 +80,18 @@ load_config() {
     MQTT_LOG_LEVEL="${DEFAULT_LOG_LEVEL}"
     
     # Check if config file exists
-    if [ ! -f "$CONFIG_FILE" ]; then
+    if [ ! -f "$config_file" ]; then
         # Config file missing - use defaults
         return 0
     fi
     
     # Check config file permissions (should be 600 for security)
     local perms
-    perms=$(stat -c "%a" "$CONFIG_FILE" 2>/dev/null)
+    perms=$(stat -c "%a" "$config_file" 2>/dev/null)
     if [ "$perms" != "600" ] && [ "$perms" != "400" ]; then
-        >&2 echo "Warning: Config file $CONFIG_FILE has insecure permissions ($perms)"
+        >&2 echo "Warning: Config file $config_file has insecure permissions ($perms)"
         >&2 echo "         Should be 600 (owner read/write only)"
-        >&2 echo "         Run: sudo chmod 600 $CONFIG_FILE"
+        >&2 echo "         Run: sudo chmod 600 $config_file"
     fi
     
     # Parse INI file
@@ -179,7 +182,7 @@ load_config() {
                     ;;
             esac
         fi
-    done < "$CONFIG_FILE"
+    done < "$config_file"
     
     # Validate required parameters
     if [ -z "$MQTT_HOST" ]; then
