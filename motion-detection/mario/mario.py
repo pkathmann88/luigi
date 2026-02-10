@@ -505,7 +505,6 @@ class MotionDetectionApp:
                 return
             
             # Play sound (cooldown expired)
-            logging.info("Cooldown expired, playing sound")
             self.play_sound_for_motion()
             
             # Update last trigger time for sound cooldown
@@ -516,7 +515,11 @@ class MotionDetectionApp:
             logging.error(f"Error in motion callback: {e}")
     
     def play_sound_for_motion(self):
-        """Play random sound file when motion is detected (after cooldown check)."""
+        """
+        Play random sound file for motion detection.
+        
+        Only called after cooldown period has expired.
+        """
         try:
             sound_files = [
                 f for f in os.listdir(self.config.SOUND_DIR)
