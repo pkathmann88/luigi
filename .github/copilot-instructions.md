@@ -17,6 +17,33 @@
 
 This repository includes **Agent Skills** that provide specialized guidance for common tasks. Copilot will automatically load these skills when relevant to your work.
 
+### Module Design Skill
+
+**Location:** `.github/skills/module-design/`
+
+**Use when:**
+- Designing a new Luigi module BEFORE implementation
+- Planning hardware integration and component selection
+- Evaluating GPIO pin assignments and wiring safety
+- Architecting module structure and configuration
+- Creating wiring diagrams and documentation structure
+- Reviewing module designs before implementation
+- Ensuring safe hardware connections and proper setup
+
+**Provides:**
+- Module design philosophy and principles
+- Hardware design guidelines and safety checklists
+- GPIO pin assignment strategies
+- Wiring design and safety verification
+- Software architecture patterns
+- Configuration design standards
+- Service integration design
+- Setup script design patterns
+- Testing strategy planning
+- Documentation structure requirements
+- Security design considerations
+- Design review checklists and templates
+
 ### System Setup Skill
 
 **Location:** `.github/skills/system-setup/`
@@ -78,7 +105,13 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Development workflow (local development → deployment)
 - Complete example application demonstrating best practices
 
-**Note:** These skills complement each other. The `system-setup` skill helps create deployment automation scripts for Luigi modules, the `raspi-zero-w` skill focuses on hardware setup and wiring, while the `python-development` skill focuses on code structure and software development patterns. Together they provide complete guidance for developing and deploying any type of Luigi module (motion detection, sensors, automation, etc.).
+**Note:** These skills complement each other across the development lifecycle:
+- The `module-design` skill guides you through the **design phase** before implementation
+- The `raspi-zero-w` skill provides **hardware details** for wiring and GPIO during design and implementation
+- The `python-development` skill shows **code patterns** for implementing the designed module
+- The `system-setup` skill helps create **deployment automation** for the finished module
+
+Together they provide complete guidance for the entire lifecycle: design → implement → deploy any type of Luigi module (motion detection, sensors, automation, etc.).
 
 ## Repository Structure
 
@@ -87,6 +120,11 @@ luigi/
 ├── .github/
 │   ├── copilot-instructions.md     # This file
 │   └── skills/                      # Agent Skills for specialized guidance
+│       ├── module-design/           # Module design guidance (PRE-implementation)
+│       │   ├── SKILL.md             # Main design skill
+│       │   ├── hardware-design-checklist.md  # Hardware verification checklist
+│       │   ├── design-review-checklist.md    # Complete design review
+│       │   └── module-design-template.md     # Module design template
 │       ├── python-development/      # Python development patterns
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── python-patterns.md   # Advanced patterns
