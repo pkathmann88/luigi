@@ -47,35 +47,7 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 
 ---
 
-## Phase 1: Setup & Deployment Implementation
-
-**Goal:** Create installation automation and deployment scripts.
-
-**Skills Used:** `system-setup`
-
-**Based on:** DESIGN_ANALYSIS.md Phase 3
-
-### 1.1 Create setup.sh Script
-- [ ] Implement install() function with dependency installation, file deployment
-- [ ] Implement uninstall() function with service cleanup
-- [ ] Implement status() function
-- [ ] Add error handling and root privilege checking
-- [ ] Validate with: `shellcheck setup.sh`
-
-### 1.2 Create Configuration Example
-- [ ] Create {module-name}.conf.example with all parameters from DESIGN_ANALYSIS Phase 2
-- [ ] Document each parameter with comments
-
-### 1.3 File Deployment Plan
-- [ ] Python script → /usr/local/bin/ (755)
-- [ ] Service file → /etc/systemd/system/ (644)
-- [ ] Config → /etc/luigi/{category}/{module}/ (644)
-
-**Phase 1 Complete:** ____________ Date: __________
-
----
-
-## Phase 2: Testing Strategy Implementation
+## Phase 1: Testing Strategy Implementation
 
 **Goal:** Implement testing approach for the module.
 
@@ -96,6 +68,44 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 - [ ] Define hardware operation test
 - [ ] Define full workflow test
 - [ ] Define service lifecycle test
+
+**Phase 1 Complete:** ____________ Date: __________
+
+---
+
+## Phase 2: Core Implementation
+
+**Goal:** Implement the module following the design.
+
+**Skills Used:** `python-development`, `raspi-zero-w`, `system-setup`
+
+**Based on:** DESIGN_ANALYSIS.md (all phases)
+
+### 4.1 Hardware Assembly
+- [ ] Assemble hardware per DESIGN_ANALYSIS Phase 1 wiring diagram
+- [ ] Verify polarity, no shorts, power budget within limits
+- [ ] Pre-power continuity test
+
+### 4.2 Python Code Implementation
+- [ ] Implement Config class
+- [ ] Implement GPIOManager class
+- [ ] Implement Device-specific class
+- [ ] Implement Main App class
+- [ ] Implement signal handlers (SIGTERM/SIGINT)
+- [ ] Implement main() function
+- [ ] Validate: `python3 -m py_compile {module-name}.py`
+
+### 4.3 Service File Implementation
+- [ ] Create {module-name}.service per DESIGN_ANALYSIS Phase 3
+- [ ] Configure Type=simple, User=root, Restart=on-failure
+- [ ] Add security hardening options
+
+### 4.4 Integration Testing
+- [ ] Test installation: `sudo ./setup.sh install`
+- [ ] Test operation: Module functions as designed
+- [ ] Test service management: start/stop/restart
+- [ ] Test configuration: Changes applied correctly
+- [ ] Test uninstallation: Clean removal
 
 **Phase 2 Complete:** ____________ Date: __________
 
@@ -129,39 +139,29 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 
 ---
 
-## Phase 4: Core Implementation
+## Phase 4: Setup & Deployment Implementation
 
-**Goal:** Implement the module following the design.
+**Goal:** Create installation automation and deployment scripts.
 
-**Skills Used:** `python-development`, `raspi-zero-w`, `system-setup`
+**Skills Used:** `system-setup`
 
-**Based on:** DESIGN_ANALYSIS.md (all phases)
+**Based on:** DESIGN_ANALYSIS.md Phase 3
 
-### 4.1 Hardware Assembly
-- [ ] Assemble hardware per DESIGN_ANALYSIS Phase 1 wiring diagram
-- [ ] Verify polarity, no shorts, power budget within limits
-- [ ] Pre-power continuity test
+### 1.1 Create setup.sh Script
+- [ ] Implement install() function with dependency installation, file deployment
+- [ ] Implement uninstall() function with service cleanup
+- [ ] Implement status() function
+- [ ] Add error handling and root privilege checking
+- [ ] Validate with: `shellcheck setup.sh`
 
-### 4.2 Python Code Implementation
-- [ ] Implement Config class
-- [ ] Implement GPIOManager class
-- [ ] Implement Device-specific class
-- [ ] Implement Main App class
-- [ ] Implement signal handlers (SIGTERM/SIGINT)
-- [ ] Implement main() function
-- [ ] Validate: `python3 -m py_compile {module-name}.py`
+### 1.2 Create Configuration Example
+- [ ] Create {module-name}.conf.example with all parameters from DESIGN_ANALYSIS Phase 2
+- [ ] Document each parameter with comments
 
-### 4.3 Service File Implementation
-- [ ] Create {module-name}.service per DESIGN_ANALYSIS Phase 3
-- [ ] Configure Type=simple, User=root, Restart=on-failure
-- [ ] Add security hardening options
-
-### 4.4 Integration Testing
-- [ ] Test installation: `sudo ./setup.sh install`
-- [ ] Test operation: Module functions as designed
-- [ ] Test service management: start/stop/restart
-- [ ] Test configuration: Changes applied correctly
-- [ ] Test uninstallation: Clean removal
+### 1.3 File Deployment Plan
+- [ ] Python script → /usr/local/bin/ (755)
+- [ ] Service file → /etc/systemd/system/ (644)
+- [ ] Config → /etc/luigi/{category}/{module}/ (644)
 
 **Phase 4 Complete:** ____________ Date: __________
 
@@ -206,10 +206,10 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 
 | Phase | Description | Estimated | Actual | Status |
 |-------|-------------|-----------|--------|--------|
-| 1 | Setup & Deployment | ___ hours |  | ⬜ Not Started |
-| 2 | Testing Strategy | ___ hours |  | ⬜ Not Started |
+| 1 | Testing Strategy | ___ hours |  | ⬜ Not Started |
+| 2 | Core Implementation | ___ hours |  | ⬜ Not Started |
 | 3 | Documentation | ___ hours |  | ⬜ Not Started |
-| 4 | Core Implementation | ___ hours |  | ⬜ Not Started |
+| 4 | Setup & Deployment | ___ hours |  | ⬜ Not Started |
 | 5 | Final Verification | ___ hours |  | ⬜ Not Started |
 
 ---

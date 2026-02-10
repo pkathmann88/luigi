@@ -29,12 +29,38 @@ Use this skill when:
 ### Core Principles
 
 1. **Safety First** - Hardware connections must be safe for both components and users
-2. **Modularity** - Each module should be self-contained and independently deployable
-3. **Configuration Over Code** - Use config files for settings that users might change
-4. **Graceful Degradation** - Handle errors without crashing or damaging hardware
-5. **Documentation** - Provide clear setup instructions with wiring diagrams
-6. **Testability** - Design for testing without requiring full hardware setup
-7. **Maintainability** - Follow consistent patterns across all modules
+2. **Clear Requirements** - Every module, component, and script must have a clearly documented purpose explaining WHY it exists and HOW it should be used
+3. **Modularity** - Each module should be self-contained and independently deployable
+4. **Configuration Over Code** - Use config files for settings that users might change
+5. **Graceful Degradation** - Handle errors without crashing or damaging hardware
+6. **Documentation** - Provide clear setup instructions with wiring diagrams
+7. **Testability** - Design for testing without requiring full hardware setup
+8. **Maintainability** - Follow consistent patterns across all modules
+
+**Clear Requirements Principle:**
+
+Every design document must answer these questions for each component:
+- **What:** What does this component do?
+- **Why:** Why does it exist? What problem does it solve?
+- **How:** How should it be used? When is it called?
+- **Who:** Who uses it? (users, other modules, system)
+- **Responsibilities:** What are its key responsibilities?
+
+**Example of clear component documentation:**
+```
+Script: luigi-publish
+- What: Universal sensor data publisher
+- Why: Eliminates need for each module to understand MQTT/HA details
+- How: Called with sensor ID and value parameters when publishing data
+- Who: Any Luigi module that generates sensor readings
+- Responsibilities: Validate params, connect to broker, publish with QoS, report status
+```
+
+Without clear purpose documentation, modules become difficult to:
+- Understand (what does this script actually do?)
+- Maintain (why was it designed this way?)
+- Integrate (when should I call this?)
+- Debug (is it working as intended?)
 
 ### Module Types
 
@@ -115,19 +141,23 @@ When a feature request is received, **first** complete a design analysis documen
 
 After DESIGN_ANALYSIS.md is approved, **create** an implementation plan with **5 phases**:
 
-**Phase 1: Setup & Deployment Implementation**
-- Create setup.sh (install/uninstall/status)
-- Create configuration example file
-- Implement file deployment
-- **Skills:** `system-setup`
-- **Based on:** DESIGN_ANALYSIS Phase 3
-
-**Phase 2: Testing Strategy Implementation**
+**Phase 1: Testing Strategy Implementation (TDD - Red Phase)**
 - Set up syntax validation
+- Write test cases before implementation
 - Implement mock GPIO testing
 - Define hardware integration tests
+- Define expected behaviors and acceptance criteria
 - **Skills:** `python-development`, `raspi-zero-w`
 - **Based on:** DESIGN_ANALYSIS Phases 1 & 2
+
+**Phase 2: Core Implementation (TDD - Green Phase)**
+- Assemble hardware per design (if applicable)
+- Implement Python code to make tests pass (Config, GPIOManager, Device, App classes)
+- Create service file
+- Integration testing (verify tests pass)
+- Refactor code while keeping tests green
+- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
+- **Based on:** DESIGN_ANALYSIS all phases
 
 **Phase 3: Documentation Implementation**
 - Write README.md with all required sections
@@ -136,13 +166,12 @@ After DESIGN_ANALYSIS.md is approved, **create** an implementation plan with **5
 - **Skills:** `module-design`
 - **Based on:** DESIGN_ANALYSIS all phases
 
-**Phase 4: Core Implementation**
-- Assemble hardware per design
-- Implement Python code (Config, GPIOManager, Device, App classes)
-- Create service file
-- Integration testing
-- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
-- **Based on:** DESIGN_ANALYSIS all phases
+**Phase 4: Setup & Deployment Implementation**
+- Create setup.sh (install/uninstall/status)
+- Create configuration example file
+- Implement file deployment
+- **Skills:** `system-setup`
+- **Based on:** DESIGN_ANALYSIS Phase 3
 
 **Phase 5: Final Verification & Integration**
 - Complete design review checklist
@@ -168,17 +197,17 @@ DESIGN_ANALYSIS.md (Stage 1)
     ↓
 Design Review & Approval
     ↓
-IMPLEMENTATION_PLAN.md (Stage 2)
+IMPLEMENTATION_PLAN.md (Stage 2 - TDD Approach)
     ↓
-    Phase 1: Setup & Deployment
-        ↓ (use system-setup)
-    Phase 2: Testing Strategy
+    Phase 1: Testing Strategy (🔴 Red - Write failing tests)
         ↓ (use python-development + raspi-zero-w)
-    Phase 3: Documentation
-        ↓ (use module-design)
-    Phase 4: Core Implementation
+    Phase 2: Core Implementation (🟢 Green - Make tests pass)
         ↓ (use all skills)
-    Phase 5: Final Verification
+    Phase 3: Documentation (📝 Document working code)
+        ↓ (use module-design)
+    Phase 4: Setup & Deployment (📦 Package for distribution)
+        ↓ (use system-setup)
+    Phase 5: Final Verification (✅ Integration testing)
         ↓ (use module-design)
     ↓
 ✓ Complete Module
@@ -189,7 +218,9 @@ IMPLEMENTATION_PLAN.md (Stage 2)
 **When you receive a feature request:**
 
 1. **Start DESIGN_ANALYSIS.md**
+   - Create the future module directory: `{category}/{module-name}/`
    - Copy template from `.github/skills/module-design/DESIGN_ANALYSIS.md`
+   - Place in module directory: `{category}/{module-name}/DESIGN_ANALYSIS.md`
    - Fill in Phases 1-3 (analysis phases)
    - Reference appropriate skills for detailed guidance
    - Complete checklists and get sign-offs
@@ -201,6 +232,7 @@ IMPLEMENTATION_PLAN.md (Stage 2)
 
 3. **Create IMPLEMENTATION_PLAN.md**
    - Copy template from `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
+   - Place in same module directory: `{category}/{module-name}/IMPLEMENTATION_PLAN.md`
    - Summarize design decisions from DESIGN_ANALYSIS
    - Fill in implementation phases (Phases 1-5)
    - Reference the completed DESIGN_ANALYSIS for details
@@ -1145,8 +1177,8 @@ This template captures:
 - To analyze and design the approach
 
 **How to Use:**
-1. Copy `DESIGN_ANALYSIS.md` to project planning directory
-2. Rename (e.g., `temp-sensor-DESIGN_ANALYSIS.md`)
+1. Create the future module directory: `{category}/{module-name}/`
+2. Copy `DESIGN_ANALYSIS.md` to `{category}/{module-name}/DESIGN_ANALYSIS.md`
 3. Fill in all 3 analysis phases
 4. Use referenced skills for detailed guidance
 5. Get peer review and approval
@@ -1158,10 +1190,10 @@ This template captures:
 **Location:** `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
 
 This template contains:
-- **Phase 1:** Setup & Deployment Implementation
-- **Phase 2:** Testing Strategy Implementation
+- **Phase 1:** Testing Strategy Implementation (TDD - write tests first)
+- **Phase 2:** Core Implementation (TDD - implement to pass tests)
 - **Phase 3:** Documentation Implementation
-- **Phase 4:** Core Implementation
+- **Phase 4:** Setup & Deployment Implementation
 - **Phase 5:** Final Verification & Integration
 
 **When to Use:**
@@ -1169,8 +1201,8 @@ This template contains:
 - As the guide for implementation work
 
 **How to Use:**
-1. Copy `IMPLEMENTATION_PLAN.md` to project directory
-2. Rename (e.g., `temp-sensor-IMPLEMENTATION_PLAN.md`)
+1. Copy `IMPLEMENTATION_PLAN.md` to the module directory: `{category}/{module-name}/`
+2. Place as `{category}/{module-name}/IMPLEMENTATION_PLAN.md`
 3. Summarize key decisions from DESIGN_ANALYSIS.md
 4. Fill in implementation tasks
 5. Execute phases sequentially

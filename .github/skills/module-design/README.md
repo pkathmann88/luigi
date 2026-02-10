@@ -48,6 +48,7 @@ The module-design skill includes six files:
 ### 2. DESIGN_ANALYSIS.md (Stage 1 Template)
 **Purpose:** Initial analysis template when feature request received  
 **Size:** ~400 lines  
+**Location:** Place in future module directory: `{category}/{module-name}/DESIGN_ANALYSIS.md`  
 **Use for:** Analyzing and designing before implementation
 
 **3 Analysis Phases:**
@@ -64,16 +65,19 @@ The module-design skill includes six files:
 
 **Use this FIRST when you receive a feature request.**
 
+**Example:** For a temperature sensor module, create `sensors/temperature/DESIGN_ANALYSIS.md`
+
 ### 3. IMPLEMENTATION_PLAN.md (Stage 2 Template)
 **Purpose:** Implementation plan created from approved design analysis  
 **Size:** ~520 lines  
+**Location:** Place in same module directory: `{category}/{module-name}/IMPLEMENTATION_PLAN.md`  
 **Use for:** Executing implementation after analysis is approved
 
-**5 Implementation Phases:**
-1. Setup & Deployment Implementation
-2. Testing Strategy Implementation
+**5 Implementation Phases (TDD Approach):**
+1. Testing Strategy Implementation (write tests first)
+2. Core Implementation (implement to pass tests)
 3. Documentation Implementation
-4. Core Implementation
+4. Setup & Deployment Implementation
 5. Final Verification & Integration
 
 **Each phase includes:**
@@ -83,6 +87,8 @@ The module-design skill includes six files:
 - Sign-off sections
 
 **Use this AFTER DESIGN_ANALYSIS.md is approved.**
+
+**Example:** For a temperature sensor module, create `sensors/temperature/IMPLEMENTATION_PLAN.md`
 
 ### 4. hardware-design-checklist.md
 **Purpose:** Hardware safety and design verification  
@@ -125,9 +131,11 @@ Feature Request Received
     ↓
 STAGE 1: Design Analysis
     ↓
-Step 1: Copy DESIGN_ANALYSIS.md template
+Step 1: Create module directory {category}/{module-name}/
     ↓
-Step 2: Complete Analysis Phases 1-3
+Step 2: Copy DESIGN_ANALYSIS.md template to module directory
+    ↓
+Step 3: Complete Analysis Phases 1-3
     ↓
     Phase 1: Requirements & Hardware Analysis
         ↓ (use module-design + raspi-zero-w skills)
@@ -136,23 +144,23 @@ Step 2: Complete Analysis Phases 1-3
     Phase 3: Service & Deployment Analysis
         ↓ (use module-design + system-setup skills)
     ↓
-Step 3: Get peer review on analysis
+Step 4: Get peer review on analysis
     ↓
-Step 4: Address feedback and get approval
+Step 5: Address feedback and get approval
     ↓
 STAGE 2: Implementation
     ↓
-Step 5: Create IMPLEMENTATION_PLAN.md from approved analysis
+Step 6: Create IMPLEMENTATION_PLAN.md in same module directory
     ↓
-Step 6: Execute Implementation Phases 1-5
+Step 7: Execute Implementation Phases 1-5 (TDD Approach)
     ↓
-    Phase 1: Setup & Deployment (use system-setup)
-    Phase 2: Testing Strategy (use python-development + raspi-zero-w)
+    Phase 1: Testing Strategy (🔴 write tests first)
+    Phase 2: Core Implementation (🟢 make tests pass)
     Phase 3: Documentation (use module-design)
-    Phase 4: Core Implementation (use all skills)
+    Phase 4: Setup & Deployment (use system-setup)
     Phase 5: Final Verification (use module-design)
     ↓
-Step 7: Final approval and production deployment
+Step 8: Final approval and production deployment
     ↓
 ✓ Module Complete
 ```
@@ -172,11 +180,11 @@ Step 7: Final approval and production deployment
 - **When:** After DESIGN_ANALYSIS.md is approved
 - **Purpose:** Execute the implementation
 - **Input:** Results from DESIGN_ANALYSIS.md
-- **Phases:** 5 implementation phases
-  1. Setup & Deployment Implementation
-  2. Testing Strategy Implementation
+- **Phases:** 5 implementation phases (TDD approach)
+  1. Testing Strategy Implementation (write tests first)
+  2. Core Implementation (implement to pass tests)
   3. Documentation Implementation
-  4. Core Implementation
+  4. Setup & Deployment Implementation
   5. Final Verification & Integration
 
 ### Why Two Stages?
