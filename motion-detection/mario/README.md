@@ -33,9 +33,47 @@ GND       -------->  Ground (Pin 6, 9, 14, etc.)
 OUT       -------->  GPIO 23 (Pin 16)
 ```
 
-## Installation
+## Quick Start
 
-### 1. Extract Sound Files
+The easiest way to install the mario motion detection service is using the provided setup script:
+
+```bash
+# Clone or download the repository
+cd motion-detection/mario
+
+# Run the setup script
+sudo ./setup.sh install
+```
+
+This will automatically:
+- Install dependencies (python3-rpi.gpio, alsa-utils)
+- Extract and install sound files
+- Install the Python application
+- Install and enable the systemd service
+- Start the service
+
+### Other Setup Commands
+
+```bash
+# Check installation status
+./setup.sh status
+
+# Uninstall the service
+sudo ./setup.sh uninstall
+```
+
+## Manual Installation
+
+If you prefer to install manually, follow these steps:
+
+### 1. Install Dependencies
+
+```bash
+sudo apt-get update
+sudo apt-get install python3-rpi.gpio alsa-utils
+```
+
+### 2. Extract Sound Files
 
 ```bash
 sudo mkdir -p /usr/share/sounds/mario
@@ -44,14 +82,14 @@ sudo tar -xzf mario-sounds.tar.gz -C /usr/share/sounds/mario/
 
 The sound directory should contain `.wav` or compatible audio files that will be randomly selected during playback.
 
-### 2. Install Python Script
+### 3. Install Python Script
 
 ```bash
 sudo cp mario.py /usr/local/bin/mario.py
 sudo chmod +x /usr/local/bin/mario.py
 ```
 
-### 3. Install systemd Service
+### 4. Install systemd Service
 
 ```bash
 # Install service unit file
