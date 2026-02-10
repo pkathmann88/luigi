@@ -169,6 +169,42 @@ sudo python3 /usr/local/bin/mario.py
 # The application will shut down gracefully
 ```
 
+### Resetting Sound Cooldown
+
+The mario module includes a utility script to reset the sound playback cooldown timer:
+
+```bash
+# Reset cooldown (installed system-wide)
+mario-reset-cooldown
+
+# View help and options
+mario-reset-cooldown --help
+
+# Use custom timer file location
+mario-reset-cooldown --file /custom/path/mario_timer
+
+# Use timer file from custom config
+mario-reset-cooldown --config /custom/mario.conf
+```
+
+**Alternative: Run from source directory**
+```bash
+cd motion-detection/mario
+./reset-cooldown.sh
+```
+
+**What it does:**
+- Removes the timer file that tracks the last sound playback time
+- Next motion detection will trigger sound immediately (regardless of when last sound played)
+- **Note**: This only affects sound playback cooldown; MQTT events are always published
+
+**When to use:**
+- After testing when you want to trigger sound immediately
+- When you want to manually reset the 30-minute cooldown
+- After maintenance or system changes
+
+**Safety**: The service gracefully handles missing timer files - if the timer file doesn't exist, it simply initializes the cooldown as expired, allowing sound on the next motion event.
+
 ## How It Works
 
 1. **Initialization**: The script sets up GPIO pin 23 as an input for the PIR sensor

@@ -27,12 +27,14 @@ SERVICE_FILE="mario.service"
 SOUNDS_ARCHIVE="mario-sounds.tar.gz"
 CONFIG_EXAMPLE="mario.conf.example"
 SENSOR_DESCRIPTOR="mario_motion_descriptor.json"
+RESET_SCRIPT="reset-cooldown.sh"
 
 INSTALL_BIN="/usr/local/bin/mario.py"
 INSTALL_SERVICE="/etc/systemd/system/mario.service"
 INSTALL_SOUNDS="/usr/share/sounds/mario"
 INSTALL_CONFIG_DIR="/etc/luigi/motion-detection/mario"
 INSTALL_CONFIG="/etc/luigi/motion-detection/mario/mario.conf"
+INSTALL_RESET_SCRIPT="/usr/local/bin/mario-reset-cooldown"
 LOG_FILE="/var/log/motion.log"
 
 # ha-mqtt integration paths
@@ -93,6 +95,11 @@ check_files() {
     
     if [ ! -f "$SCRIPT_DIR/$SENSOR_DESCRIPTOR" ]; then
         log_error "Missing: $SENSOR_DESCRIPTOR"
+        missing_files=1
+    fi
+    
+    if [ ! -f "$SCRIPT_DIR/$RESET_SCRIPT" ]; then
+        log_error "Missing: $RESET_SCRIPT"
         missing_files=1
     fi
     
@@ -182,6 +189,33 @@ install_script() {
     }
     
     log_info "Python script installed to $INSTALL_BIN"
+}
+
+# Install reset cooldown script
+install_reset_script() {
+    log_step "Installing reset cooldown utility script..."
+    
+    # Copy script
+    cp "$SCRIPT_DIR/$RESET_SCRIPT" "$INSTALL_RESET_SCRIPT" || {
+        log_error "Failed to copy reset script"
+        exit 1
+    }
+    
+    # Set permissions
+    chmod 755 "$INSTALL_RESET_SCRIPT" || {
+        log_error "Failed to set reset script permissions"
+        exit 1
+    }
+    
+    # Validate shell script syntax
+    log_info "Validating shell script syntax..."
+    if command -v shellcheck >/dev/null 2>&1; then
+        shellcheck "$INSTALL_RESET_SCRIPT" || {
+            log_warn "Shellcheck validation reported warnings (non-fatal)"
+        }
+    fi
+    
+    log_info "Reset script installed to $INSTALL_RESET_SCRIPT"
 }
 
 # Install configuration file
@@ -333,6 +367,13 @@ verify_installation() {
         errors=1
     fi
     
+    # Check reset script
+    if [ -f "$INSTALL_RESET_SCRIPT" ]; then
+        log_info "✓ Reset script: $INSTALL_RESET_SCRIPT"
+    else
+        log_warn "✗ Reset script not found"
+    fi
+    
     # Check service file
     if [ -f "$INSTALL_SERVICE" ]; then
         log_info "✓ Service file: $INSTALL_SERVICE"
@@ -413,6 +454,12 @@ uninstall() {
         rm -f "$INSTALL_BIN"
     fi
     
+    # Remove reset cooldown script
+    if [ -f "$INSTALL_RESET_SCRIPT" ]; then
+        log_info "Removing reset cooldown script..."
+        rm -f "$INSTALL_RESET_SCRIPT"
+    fi
+    
     # Remove ha-mqtt sensor descriptor
     if [ -f "$HA_MQTT_DESCRIPTOR" ]; then
         log_info "Removing ha-mqtt sensor descriptor..."
@@ -477,6 +524,7 @@ show_status() {
     # Check files
     echo "Files:"
     [ -f "$INSTALL_BIN" ] && echo "  ✓ Python script: $INSTALL_BIN" || echo "  ✗ Python script not installed"
+    [ -f "$INSTALL_RESET_SCRIPT" ] && echo "  ✓ Reset script: $INSTALL_RESET_SCRIPT" || echo "  ✗ Reset script not installed"
     [ -f "$INSTALL_SERVICE" ] && echo "  ✓ Service file: $INSTALL_SERVICE" || echo "  ✗ Service file not installed"
     [ -d "$INSTALL_SOUNDS" ] && echo "  ✓ Sound directory: $INSTALL_SOUNDS" || echo "  ✗ Sound directory not found"
     [ -f "$INSTALL_CONFIG" ] && echo "  ✓ Config file: $INSTALL_CONFIG" || echo "  ✗ Config file not found (using defaults)"
@@ -513,6 +561,7 @@ install() {
     install_dependencies
     install_sounds
     install_script
+    install_reset_script
     install_config
     deploy_ha_mqtt_descriptor
     install_service
