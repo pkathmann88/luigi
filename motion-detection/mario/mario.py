@@ -279,6 +279,60 @@ def safe_write_file(filepath, content):
         return False
 
 
+def publish_sensor_value(sensor_id, value, is_binary=False, unit=None):
+    """
+    Publish sensor value to Home Assistant via MQTT.
+    
+    Optional integration with ha-mqtt module. Module works standalone
+    if ha-mqtt is not installed.
+    
+    Args:
+        sensor_id: Unique sensor identifier (e.g., 'mario_motion')
+        value: Sensor value (e.g., 'ON', 'OFF', '23.5')
+        is_binary: True for binary sensors (motion, door), False for measurements
+        unit: Unit of measurement for numeric sensors (e.g., '°C', '%', 'lux')
+        
+    Returns:
+        bool: True if published successfully, False otherwise
+    """
+    try:
+        cmd = ['/usr/local/bin/luigi-publish', '--sensor', sensor_id, '--value', str(value)]
+        
+        if is_binary:
+            cmd.append('--binary')
+        
+        if unit:
+            cmd.extend(['--unit', unit])
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=5,
+            check=True
+        )
+        
+        logging.debug(f"Published {sensor_id}={value} to MQTT")
+        return True
+        
+    except subprocess.TimeoutExpired:
+        logging.warning(f"MQTT publish timeout for {sensor_id}")
+        return False
+        
+    except subprocess.CalledProcessError as e:
+        stderr_msg = e.stderr.decode('utf-8', errors='replace') if e.stderr else 'no output'
+        logging.warning(f"MQTT publish failed for {sensor_id}: {stderr_msg}")
+        return False
+        
+    except FileNotFoundError:
+        # ha-mqtt not installed - this is OK, module should work standalone
+        logging.debug("ha-mqtt not available, skipping MQTT publish")
+        return False
+        
+    except Exception as e:
+        logging.error(f"Unexpected error publishing to MQTT: {e}")
+        return False
+
+
 # ============================================================================
 # Hardware Abstraction Layer
 # ============================================================================
@@ -428,32 +482,44 @@ class MotionDetectionApp:
         """
         Callback for motion detection events.
         
+        All motion events are logged and published to MQTT/Home Assistant.
+        Sound playback respects cooldown period to prevent spam.
+        
         Args:
             channel: GPIO channel that triggered the event
         """
         try:
-            # Check cooldown period
             now = int(time.time())
             time_since_last = now - self.last_trigger_time
             
+            # Always log motion detection
+            logging.info(f"Motion detected on GPIO{channel}")
+            
+            # Always publish to MQTT (Home Assistant tracks all motion)
+            publish_sensor_value('mario_motion', 'ON', is_binary=True)
+            
+            # Check cooldown for sound playback only
             if time_since_last < self.config.COOLDOWN_SECONDS:
                 remaining = self.config.COOLDOWN_SECONDS - time_since_last
-                logging.debug(f"Cooldown active ({remaining}s remaining)")
+                logging.info(f"Sound cooldown active ({remaining}s remaining), skipping playback")
                 return
             
-            # Process motion event
-            logging.info(f"Motion detected on GPIO{channel}")
-            self.handle_motion()
+            # Play sound (cooldown expired)
+            self.play_sound_for_motion()
             
-            # Update last trigger time
+            # Update last trigger time for sound cooldown
             self.last_trigger_time = now
             safe_write_file(self.config.TIMER_FILE, now)
             
         except Exception as e:
             logging.error(f"Error in motion callback: {e}")
     
-    def handle_motion(self):
-        """Process motion detection event."""
+    def play_sound_for_motion(self):
+        """
+        Play random sound file for motion detection.
+        
+        Only called after cooldown period has expired.
+        """
         try:
             sound_files = [
                 f for f in os.listdir(self.config.SOUND_DIR)
@@ -473,7 +539,7 @@ class MotionDetectionApp:
         except FileNotFoundError:
             logging.error(f"Sound directory not found: {self.config.SOUND_DIR}")
         except Exception as e:
-            logging.error(f"Failed to handle motion: {e}")
+            logging.error(f"Failed to play sound: {e}")
     
     def play_sound(self, filepath):
         """
