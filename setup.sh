@@ -171,7 +171,7 @@ sort_modules_by_dependencies() {
                 
                 if [ $dep_exists -eq 0 ]; then
                     log_warn "Module $module depends on $dep, but $dep is not found"
-                    log_warn "Skipping dependency resolution for this module"
+                    log_warn "Continuing installation, but $module may not work correctly"
                 else
                     # Recursively visit dependency
                     if ! visit_module "$dep"; then
@@ -244,15 +244,53 @@ install_modules() {
     local success_count=0
     
     if [ -n "$specific_module" ]; then
-        # Install specific module (with its dependencies if needed)
-        modules=("$specific_module")
+        # Install specific module with its dependencies
         log_info "Installing specific module: $specific_module"
         
-        # Check if module has dependencies and needs them installed first
-        local deps
-        deps=$(get_module_dependencies "$specific_module")
-        if [ -n "$deps" ]; then
-            log_info "Module has dependencies that may need to be installed first"
+        # Collect the module and all its dependencies recursively
+        local modules_with_deps=()
+        local visited_modules=()
+        
+        collect_dependencies() {
+            local mod="$1"
+            
+            # Check if already visited
+            for v in "${visited_modules[@]}"; do
+                if [ "$v" = "$mod" ]; then
+                    return 0
+                fi
+            done
+            
+            visited_modules+=("$mod")
+            
+            # Get dependencies
+            local deps
+            deps=$(get_module_dependencies "$mod")
+            
+            # Recursively collect dependencies first
+            if [ -n "$deps" ]; then
+                while IFS= read -r dep; do
+                    # Verify dependency exists
+                    if [ -f "$SCRIPT_DIR/$dep/setup.sh" ]; then
+                        collect_dependencies "$dep"
+                    else
+                        log_warn "Dependency $dep not found, skipping"
+                    fi
+                done <<< "$deps"
+            fi
+            
+            # Add this module
+            modules_with_deps+=("$mod")
+        }
+        
+        collect_dependencies "$specific_module"
+        modules=("${modules_with_deps[@]}")
+        
+        if [ ${#modules[@]} -gt 1 ]; then
+            log_info "Installing with dependencies (${#modules[@]} module(s) total):"
+            for module in "${modules[@]}"; do
+                echo "  - $module"
+            done
         fi
     else
         # Discover and install all modules
