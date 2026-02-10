@@ -32,35 +32,14 @@ That's it! Services are now running and will start automatically on boot.
 
 ## Current Modules
 
-### Mario Motion Detection
-**Location:** `motion-detection/mario/`  
-**Description:** Plays random Mario-themed sound effects when motion is detected via PIR sensor
+Luigi currently includes the following modules. See each module's README for detailed documentation:
 
-**Features:**
-- PIR sensor integration (default GPIO 23)
-- Random audio playback with configurable cooldown (default 30 min)
-- Modern OOP architecture (Config, GPIOManager, PIRSensor, MotionDetectionApp classes)
-- Rotating logs with structured logging
-- Graceful shutdown via signal handlers
-- Comprehensive automated setup script
+| Module | Category | Description |
+|--------|----------|-------------|
+| [Mario Motion Detection](motion-detection/mario/) | motion-detection | Plays random Mario-themed sounds when motion is detected via PIR sensor |
+| [System Optimization](system/optimization/) | system | Optimizes Raspberry Pi performance by disabling services and tuning boot config |
 
-**Hardware:** PIR motion sensor, audio output device  
-**Service:** `mario.service` (systemd)
-
-### System Optimization
-**Location:** `system/optimization/`  
-**Description:** Optimizes Raspberry Pi Zero W for performance by disabling unnecessary services and configuring boot parameters
-
-**Features:**
-- Disables unused systemd services (bluetooth, avahi-daemon, etc.)
-- Optimizes boot configuration (GPU memory, hardware interfaces)
-- Blacklists unused kernel modules
-- Removes unnecessary packages
-- Dry-run mode for safe testing
-- Automatic boot config backup
-
-**Benefits:** 50-100MB+ RAM savings, 10-30% faster boot time  
-**Usage:** `sudo optimize.py` (one-time script, not a service)
+For detailed information about each module (features, installation, configuration, troubleshooting), please refer to the module-specific README files.
 
 ## Platform
 
@@ -120,29 +99,28 @@ sudo ./setup.sh uninstall
 
 ### Managing Services
 
-After installation, manage services using systemctl:
+Modules that run as services can be managed using standard systemctl commands:
 
 ```bash
 # Start/stop/restart a service
-sudo systemctl start mario.service
-sudo systemctl stop mario.service
-sudo systemctl restart mario.service
+sudo systemctl start <service-name>
+sudo systemctl stop <service-name>
+sudo systemctl restart <service-name>
 
 # Check service status
-sudo systemctl status mario.service
+sudo systemctl status <service-name>
 
 # Enable/disable autostart on boot
-sudo systemctl enable mario.service
-sudo systemctl disable mario.service
+sudo systemctl enable <service-name>
+sudo systemctl disable <service-name>
 
 # View real-time logs
-sudo journalctl -u mario.service -f
+sudo journalctl -u <service-name> -f
 ```
 
 ### Module-Specific Usage
 
-Each module has its own README with detailed usage instructions:
-- **Mario Motion Detection:** See `motion-detection/mario/README.md`
+Each module has its own README with detailed usage instructions, configuration options, and troubleshooting guidance. Refer to the module's README for complete documentation.
 
 ## Development
 
@@ -232,15 +210,15 @@ luigi/
 │       ├── python-development/    # Python patterns and testing
 │       ├── raspi-zero-w/         # Hardware and GPIO reference
 │       └── system-setup/         # Deployment automation
-├── motion-detection/
-│   └── mario/                    # Mario motion detection module
-│       ├── README.md
-│       ├── setup.sh
-│       ├── mario.py
-│       ├── mario.service
-│       └── mario-sounds.tar.gz
-├── README.md                     # This file
-├── setup.sh                      # Centralized module management
+├── motion-detection/             # Motion detection modules
+│   ├── README.md                 # Category overview
+│   └── mario/                    # Mario motion detection
+│       └── README.md             # Module documentation
+├── system/                       # System-level modules
+│   └── optimization/            # System optimization
+│       └── README.md            # Module documentation
+├── README.md                    # This file
+├── setup.sh                     # Centralized module management
 └── .gitignore
 ```
 
@@ -260,7 +238,7 @@ Contributions are welcome! When contributing:
 
 ## Resources
 
-- **Mario Module:** Full-featured reference implementation with modern architecture
+- **Module Documentation:** See individual module READMEs for detailed documentation
 - **Agent Skills:** Context-aware development guidance in `.github/skills/`
 - **Raspberry Pi GPIO:** See `.github/skills/raspi-zero-w/gpio-pinout.md`
 
