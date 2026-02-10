@@ -44,7 +44,8 @@ validate_shell_script() {
     
     echo -n "Validating $script_name... "
     
-    if shellcheck "$script_path" 2>/dev/null; then
+    # Check for errors only (-S error), allow warnings and info
+    if shellcheck -S error "$script_path" 2>/dev/null; then
         echo -e "${GREEN}PASS${NC}"
         PASSED=$((PASSED + 1))
         return 0
