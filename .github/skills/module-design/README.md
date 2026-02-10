@@ -73,9 +73,9 @@ The module-design skill includes six files:
 **Location:** Place in same module directory: `{category}/{module-name}/IMPLEMENTATION_PLAN.md`  
 **Use for:** Executing implementation after analysis is approved
 
-**5 Implementation Phases:**
-1. Core Implementation
-2. Testing Strategy Implementation
+**5 Implementation Phases (TDD Approach):**
+1. Testing Strategy Implementation (write tests first)
+2. Core Implementation (implement to pass tests)
 3. Documentation Implementation
 4. Setup & Deployment Implementation
 5. Final Verification & Integration
@@ -152,10 +152,10 @@ STAGE 2: Implementation
     ↓
 Step 6: Create IMPLEMENTATION_PLAN.md in same module directory
     ↓
-Step 7: Execute Implementation Phases 1-5
+Step 7: Execute Implementation Phases 1-5 (TDD Approach)
     ↓
-    Phase 1: Core Implementation (use all skills)
-    Phase 2: Testing Strategy (use python-development + raspi-zero-w)
+    Phase 1: Testing Strategy (🔴 write tests first)
+    Phase 2: Core Implementation (🟢 make tests pass)
     Phase 3: Documentation (use module-design)
     Phase 4: Setup & Deployment (use system-setup)
     Phase 5: Final Verification (use module-design)
@@ -180,9 +180,9 @@ Step 8: Final approval and production deployment
 - **When:** After DESIGN_ANALYSIS.md is approved
 - **Purpose:** Execute the implementation
 - **Input:** Results from DESIGN_ANALYSIS.md
-- **Phases:** 5 implementation phases
-  1. Core Implementation
-  2. Testing Strategy Implementation
+- **Phases:** 5 implementation phases (TDD approach)
+  1. Testing Strategy Implementation (write tests first)
+  2. Core Implementation (implement to pass tests)
   3. Documentation Implementation
   4. Setup & Deployment Implementation
   5. Final Verification & Integration

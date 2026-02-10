@@ -141,20 +141,23 @@ When a feature request is received, **first** complete a design analysis documen
 
 After DESIGN_ANALYSIS.md is approved, **create** an implementation plan with **5 phases**:
 
-**Phase 1: Core Implementation**
-- Assemble hardware per design (if applicable)
-- Implement Python code (Config, GPIOManager, Device, App classes)
-- Create service file
-- Integration testing
-- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
-- **Based on:** DESIGN_ANALYSIS all phases
-
-**Phase 2: Testing Strategy Implementation**
+**Phase 1: Testing Strategy Implementation (TDD - Red Phase)**
 - Set up syntax validation
+- Write test cases before implementation
 - Implement mock GPIO testing
 - Define hardware integration tests
+- Define expected behaviors and acceptance criteria
 - **Skills:** `python-development`, `raspi-zero-w`
 - **Based on:** DESIGN_ANALYSIS Phases 1 & 2
+
+**Phase 2: Core Implementation (TDD - Green Phase)**
+- Assemble hardware per design (if applicable)
+- Implement Python code to make tests pass (Config, GPIOManager, Device, App classes)
+- Create service file
+- Integration testing (verify tests pass)
+- Refactor code while keeping tests green
+- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
+- **Based on:** DESIGN_ANALYSIS all phases
 
 **Phase 3: Documentation Implementation**
 - Write README.md with all required sections
@@ -194,17 +197,17 @@ DESIGN_ANALYSIS.md (Stage 1)
     ↓
 Design Review & Approval
     ↓
-IMPLEMENTATION_PLAN.md (Stage 2)
+IMPLEMENTATION_PLAN.md (Stage 2 - TDD Approach)
     ↓
-    Phase 1: Core Implementation
-        ↓ (use all skills)
-    Phase 2: Testing Strategy
+    Phase 1: Testing Strategy (🔴 Red - Write failing tests)
         ↓ (use python-development + raspi-zero-w)
-    Phase 3: Documentation
+    Phase 2: Core Implementation (🟢 Green - Make tests pass)
+        ↓ (use all skills)
+    Phase 3: Documentation (📝 Document working code)
         ↓ (use module-design)
-    Phase 4: Setup & Deployment
+    Phase 4: Setup & Deployment (📦 Package for distribution)
         ↓ (use system-setup)
-    Phase 5: Final Verification
+    Phase 5: Final Verification (✅ Integration testing)
         ↓ (use module-design)
     ↓
 ✓ Complete Module
@@ -1187,8 +1190,8 @@ This template captures:
 **Location:** `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
 
 This template contains:
-- **Phase 1:** Core Implementation
-- **Phase 2:** Testing Strategy Implementation
+- **Phase 1:** Testing Strategy Implementation (TDD - write tests first)
+- **Phase 2:** Core Implementation (TDD - implement to pass tests)
 - **Phase 3:** Documentation Implementation
 - **Phase 4:** Setup & Deployment Implementation
 - **Phase 5:** Final Verification & Integration

@@ -63,7 +63,102 @@ Provide a fully generic, decoupled MQTT bridge between Luigi sensor modules and 
 
 ---
 
-## Phase 1: Core Implementation
+## Phase 1: Testing Strategy Implementation
+
+**Goal:** Implement testing approach for the module.
+
+**Skills Used:** `python-development`, `system-setup`
+
+**Based on:** DESIGN_ANALYSIS.md Phases 2 & 3
+
+### 2.1 Syntax Validation
+
+- [ ] Document shell script validation: `shellcheck setup.sh`
+- [ ] Document shell script validation: `shellcheck bin/luigi-publish`
+- [ ] Document shell script validation: `shellcheck bin/luigi-discover`
+- [ ] Document shell script validation: `shellcheck bin/luigi-mqtt-status`
+- [ ] Document shell script validation: `shellcheck lib/mqtt_helpers.sh`
+- [ ] Document shell script validation: `shellcheck lib/ha_discovery_generator.sh`
+- [ ] Document Python validation (if using service): `python3 -m py_compile ha-mqtt-bridge.py`
+
+### 2.2 Functional Testing (No Hardware Required)
+
+Since this is a network-only module, testing focuses on:
+
+- [ ] **Configuration Loading Test:**
+  - [ ] Test config file parsing
+  - [ ] Test defaults when config missing
+  - [ ] Test validation of required parameters
+  - [ ] Test 600 permissions enforcement
+
+- [ ] **luigi-publish Script Test:**
+  - [ ] Test parameter validation (--sensor, --value required)
+  - [ ] Test optional parameters (--unit, --device-class)
+  - [ ] Test error handling for missing config
+  - [ ] Test topic construction from sensor ID
+  - [ ] Test return codes (0 for success, non-zero for errors)
+
+- [ ] **luigi-discover Script Test:**
+  - [ ] Test descriptor scanning from sensors.d/
+  - [ ] Test JSON parsing and validation
+  - [ ] Test discovery payload generation
+  - [ ] Test handling of malformed descriptors
+
+- [ ] **luigi-mqtt-status Script Test:**
+  - [ ] Test connection check logic
+  - [ ] Test error message generation
+  - [ ] Test return codes for different failure modes
+
+### 2.3 Integration Tests (Requires MQTT Broker)
+
+- [ ] **MQTT Connection Test:**
+  - [ ] Test successful connection to broker
+  - [ ] Test authentication with credentials
+  - [ ] Test connection failure handling
+  - [ ] Test TLS encryption (if configured)
+
+- [ ] **Publish Test:**
+  - [ ] Publish test message with luigi-publish
+  - [ ] Verify message received by broker
+  - [ ] Test QoS 0, 1, 2 settings
+  - [ ] Test retained message flag
+
+- [ ] **Discovery Test:**
+  - [ ] Register test sensor with luigi-discover
+  - [ ] Verify discovery message format
+  - [ ] Verify sensor appears in Home Assistant
+  - [ ] Test re-registration after descriptor change
+
+- [ ] **Service Test (if using Python service):**
+  - [ ] Test service start/stop
+  - [ ] Test automatic reconnection on network loss
+  - [ ] Test periodic descriptor scanning
+  - [ ] Test log rotation
+
+### 2.4 End-to-End Scenario Tests
+
+- [ ] **Scenario 1: New Module Integration**
+  - [ ] Create test sensor descriptor
+  - [ ] Install descriptor to sensors.d/
+  - [ ] Run luigi-discover
+  - [ ] Publish test value with luigi-publish
+  - [ ] Verify in Home Assistant
+
+- [ ] **Scenario 2: Module Update**
+  - [ ] Modify existing descriptor
+  - [ ] Re-run discovery
+  - [ ] Verify changes reflected in HA
+
+- [ ] **Scenario 3: Module Removal**
+  - [ ] Remove descriptor from sensors.d/
+  - [ ] Verify sensor still in HA (manual cleanup required)
+  - [ ] Document removal process in README
+
+**Phase 1 Complete:** ____________ Date: __________
+
+---
+
+## Phase 2: Core Implementation
 
 **Goal:** Implement the module following the design.
 
@@ -260,101 +355,6 @@ Provide a fully generic, decoupled MQTT bridge between Luigi sensor modules and 
   - [ ] Verify files removed
   - [ ] Verify config preserved (if user chose)
   - [ ] Verify clean removal
-
-**Phase 1 Complete:** ____________ Date: __________
-
----
-
-## Phase 2: Testing Strategy Implementation
-
-**Goal:** Implement testing approach for the module.
-
-**Skills Used:** `python-development`, `system-setup`
-
-**Based on:** DESIGN_ANALYSIS.md Phases 2 & 3
-
-### 2.1 Syntax Validation
-
-- [ ] Document shell script validation: `shellcheck setup.sh`
-- [ ] Document shell script validation: `shellcheck bin/luigi-publish`
-- [ ] Document shell script validation: `shellcheck bin/luigi-discover`
-- [ ] Document shell script validation: `shellcheck bin/luigi-mqtt-status`
-- [ ] Document shell script validation: `shellcheck lib/mqtt_helpers.sh`
-- [ ] Document shell script validation: `shellcheck lib/ha_discovery_generator.sh`
-- [ ] Document Python validation (if using service): `python3 -m py_compile ha-mqtt-bridge.py`
-
-### 2.2 Functional Testing (No Hardware Required)
-
-Since this is a network-only module, testing focuses on:
-
-- [ ] **Configuration Loading Test:**
-  - [ ] Test config file parsing
-  - [ ] Test defaults when config missing
-  - [ ] Test validation of required parameters
-  - [ ] Test 600 permissions enforcement
-
-- [ ] **luigi-publish Script Test:**
-  - [ ] Test parameter validation (--sensor, --value required)
-  - [ ] Test optional parameters (--unit, --device-class)
-  - [ ] Test error handling for missing config
-  - [ ] Test topic construction from sensor ID
-  - [ ] Test return codes (0 for success, non-zero for errors)
-
-- [ ] **luigi-discover Script Test:**
-  - [ ] Test descriptor scanning from sensors.d/
-  - [ ] Test JSON parsing and validation
-  - [ ] Test discovery payload generation
-  - [ ] Test handling of malformed descriptors
-
-- [ ] **luigi-mqtt-status Script Test:**
-  - [ ] Test connection check logic
-  - [ ] Test error message generation
-  - [ ] Test return codes for different failure modes
-
-### 2.3 Integration Tests (Requires MQTT Broker)
-
-- [ ] **MQTT Connection Test:**
-  - [ ] Test successful connection to broker
-  - [ ] Test authentication with credentials
-  - [ ] Test connection failure handling
-  - [ ] Test TLS encryption (if configured)
-
-- [ ] **Publish Test:**
-  - [ ] Publish test message with luigi-publish
-  - [ ] Verify message received by broker
-  - [ ] Test QoS 0, 1, 2 settings
-  - [ ] Test retained message flag
-
-- [ ] **Discovery Test:**
-  - [ ] Register test sensor with luigi-discover
-  - [ ] Verify discovery message format
-  - [ ] Verify sensor appears in Home Assistant
-  - [ ] Test re-registration after descriptor change
-
-- [ ] **Service Test (if using Python service):**
-  - [ ] Test service start/stop
-  - [ ] Test automatic reconnection on network loss
-  - [ ] Test periodic descriptor scanning
-  - [ ] Test log rotation
-
-### 2.4 End-to-End Scenario Tests
-
-- [ ] **Scenario 1: New Module Integration**
-  - [ ] Create test sensor descriptor
-  - [ ] Install descriptor to sensors.d/
-  - [ ] Run luigi-discover
-  - [ ] Publish test value with luigi-publish
-  - [ ] Verify in Home Assistant
-
-- [ ] **Scenario 2: Module Update**
-  - [ ] Modify existing descriptor
-  - [ ] Re-run discovery
-  - [ ] Verify changes reflected in HA
-
-- [ ] **Scenario 3: Module Removal**
-  - [ ] Remove descriptor from sensors.d/
-  - [ ] Verify sensor still in HA (manual cleanup required)
-  - [ ] Document removal process in README
 
 **Phase 2 Complete:** ____________ Date: __________
 
@@ -645,8 +645,8 @@ Complete `.github/skills/module-design/design-review-checklist.md`:
 
 | Phase | Description | Estimated | Actual | Status |
 |-------|-------------|-----------|--------|--------|
-| 1 | Core Implementation | 16 hours |  | ⬜ Not Started |
-| 2 | Testing Strategy | 6 hours |  | ⬜ Not Started |
+| 1 | Testing Strategy | 6 hours |  | ⬜ Not Started |
+| 2 | Core Implementation | 16 hours |  | ⬜ Not Started |
 | 3 | Documentation | 10 hours |  | ⬜ Not Started |
 | 4 | Setup & Deployment | 8 hours |  | ⬜ Not Started |
 | 5 | Final Verification | 6 hours |  | ⬜ Not Started |

@@ -47,7 +47,33 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 
 ---
 
-## Phase 1: Core Implementation
+## Phase 1: Testing Strategy Implementation
+
+**Goal:** Implement testing approach for the module.
+
+**Skills Used:** `python-development`, `raspi-zero-w`
+
+**Based on:** DESIGN_ANALYSIS.md Phases 1 & 2
+
+### 2.1 Syntax Validation
+- [ ] Document Python syntax check: `python3 -m py_compile {module-name}.py`
+- [ ] Document shell script check: `shellcheck setup.sh`
+
+### 2.2 Mock GPIO Testing
+- [ ] Implement mock GPIO support for development without hardware
+- [ ] Test configuration loading, error handling, state management
+
+### 2.3 Hardware Integration Tests
+- [ ] Define GPIO initialization test
+- [ ] Define hardware operation test
+- [ ] Define full workflow test
+- [ ] Define service lifecycle test
+
+**Phase 1 Complete:** ____________ Date: __________
+
+---
+
+## Phase 2: Core Implementation
 
 **Goal:** Implement the module following the design.
 
@@ -80,32 +106,6 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 - [ ] Test service management: start/stop/restart
 - [ ] Test configuration: Changes applied correctly
 - [ ] Test uninstallation: Clean removal
-
-**Phase 1 Complete:** ____________ Date: __________
-
----
-
-## Phase 2: Testing Strategy Implementation
-
-**Goal:** Implement testing approach for the module.
-
-**Skills Used:** `python-development`, `raspi-zero-w`
-
-**Based on:** DESIGN_ANALYSIS.md Phases 1 & 2
-
-### 2.1 Syntax Validation
-- [ ] Document Python syntax check: `python3 -m py_compile {module-name}.py`
-- [ ] Document shell script check: `shellcheck setup.sh`
-
-### 2.2 Mock GPIO Testing
-- [ ] Implement mock GPIO support for development without hardware
-- [ ] Test configuration loading, error handling, state management
-
-### 2.3 Hardware Integration Tests
-- [ ] Define GPIO initialization test
-- [ ] Define hardware operation test
-- [ ] Define full workflow test
-- [ ] Define service lifecycle test
 
 **Phase 2 Complete:** ____________ Date: __________
 
@@ -206,8 +206,8 @@ Feature Request → DESIGN_ANALYSIS.md (Approved) → IMPLEMENTATION_PLAN.md (Th
 
 | Phase | Description | Estimated | Actual | Status |
 |-------|-------------|-----------|--------|--------|
-| 1 | Core Implementation | ___ hours |  | ⬜ Not Started |
-| 2 | Testing Strategy | ___ hours |  | ⬜ Not Started |
+| 1 | Testing Strategy | ___ hours |  | ⬜ Not Started |
+| 2 | Core Implementation | ___ hours |  | ⬜ Not Started |
 | 3 | Documentation | ___ hours |  | ⬜ Not Started |
 | 4 | Setup & Deployment | ___ hours |  | ⬜ Not Started |
 | 5 | Final Verification | ___ hours |  | ⬜ Not Started |
