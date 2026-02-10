@@ -1,0 +1,7 @@
+{
+  "sensor_id": "example_motion",
+  "name": "Example Motion Detector",
+  "device_class": "motion",
+  "icon": "mdi:motion-sensor",
+  "module": "example-module"
+}

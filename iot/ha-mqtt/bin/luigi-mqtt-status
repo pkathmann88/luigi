@@ -1,0 +1,242 @@
+#!/bin/bash
+#
+# luigi-mqtt-status - Connection diagnostics for Luigi MQTT integration
+#
+# Purpose: Test and diagnose MQTT broker connectivity
+# Why: Provides troubleshooting tool for connection issues
+# How: luigi-mqtt-status [--verbose]
+# Who: System administrators, during setup, troubleshooting
+#
+# Key Responsibilities:
+# 1. Load and display MQTT configuration
+# 2. Test DNS resolution of broker hostname
+# 3. Test network connectivity to broker
+# 4. Attempt MQTT connection with authentication
+# 5. Publish test message to verify full functionality
+# 6. Report clear status with colored output
+#
+# Part of Phase 2: Core Implementation
+
+# Library path - adjust for installed location
+LIB_DIR="/usr/local/lib/luigi"
+if [ ! -d "$LIB_DIR" ]; then
+    # Development fallback
+    LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+fi
+
+# Source MQTT helpers library
+# shellcheck source=../lib/mqtt_helpers.sh
+if [ -f "$LIB_DIR/mqtt_helpers.sh" ]; then
+    source "$LIB_DIR/mqtt_helpers.sh"
+else
+    >&2 echo "Error: Cannot find mqtt_helpers.sh library"
+    exit 2
+fi
+
+# Script version
+VERSION="1.0.0"
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Usage information
+usage() {
+    cat << EOF
+Usage: luigi-mqtt-status [OPTIONS]
+
+Test MQTT broker connectivity and diagnose connection issues.
+
+Options:
+  --verbose            Show detailed diagnostic information
+  -h, --help           Show this help message
+  -v, --version        Show version information
+
+Description:
+  Tests connectivity to the configured MQTT broker and reports
+  connection status with diagnostic information.
+
+  Checks performed:
+    1. Configuration loading
+    2. DNS resolution of broker hostname
+    3. Network connectivity (ping/telnet)
+    4. MQTT authentication
+    5. Message publishing capability
+
+Exit Codes:
+  0  Connection successful
+  1  Connection failed
+  2  Configuration or dependency error
+
+Examples:
+  # Quick status check
+  luigi-mqtt-status
+
+  # Detailed diagnostic information
+  luigi-mqtt-status --verbose
+
+For more information, see: https://github.com/pkathmann88/luigi/tree/main/iot/ha-mqtt
+EOF
+}
+
+# Parse command-line arguments
+VERBOSE_MODE=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --verbose)
+            VERBOSE_MODE=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -v|--version)
+            echo "luigi-mqtt-status version $VERSION"
+            exit 0
+            ;;
+        *)
+            >&2 echo "Error: Unknown option: $1"
+            >&2 echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Load MQTT configuration
+echo "========================================="
+echo "Luigi MQTT Connection Status"
+echo "========================================="
+echo ""
+
+if ! load_config; then
+    echo -e "${RED}✗ Failed to load configuration${NC}"
+    echo ""
+    echo "Check configuration file:"
+    echo "  /etc/luigi/iot/ha-mqtt/ha-mqtt.conf"
+    exit 2
+fi
+
+echo -e "${GREEN}✓ Configuration loaded${NC}"
+
+# Display configuration (if verbose or always show key info)
+if [ "$VERBOSE_MODE" = true ] || true; then
+    echo ""
+    echo "Configuration:"
+    echo "  Broker: $MQTT_HOST:$MQTT_PORT"
+    echo "  Username: $MQTT_USERNAME"
+    echo "  Client ID: $MQTT_CLIENT_ID"
+    echo "  TLS: $MQTT_TLS"
+    echo "  QoS: $MQTT_QOS"
+    echo "  Base Topic: $MQTT_BASE_TOPIC"
+fi
+
+echo ""
+echo "Running connectivity tests..."
+echo ""
+
+# Test 1: Check mosquitto_pub is available
+echo -n "Test 1: mosquitto_pub available... "
+if command -v mosquitto_pub >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Pass${NC}"
+else
+    echo -e "${RED}✗ Fail${NC}"
+    echo ""
+    echo "mosquitto-clients package not installed"
+    echo "Install with: sudo apt-get install mosquitto-clients"
+    exit 2
+fi
+
+# Test 2: DNS resolution
+echo -n "Test 2: DNS resolution... "
+if host "$MQTT_HOST" >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Pass${NC}"
+    if [ "$VERBOSE_MODE" = true ]; then
+        host "$MQTT_HOST" | head -1
+    fi
+elif getent hosts "$MQTT_HOST" >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Pass${NC}"
+    if [ "$VERBOSE_MODE" = true ]; then
+        getent hosts "$MQTT_HOST"
+    fi
+else
+    echo -e "${RED}✗ Fail${NC}"
+    echo ""
+    echo "Cannot resolve hostname: $MQTT_HOST"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Check hostname is correct in ha-mqtt.conf"
+    echo "  2. Try using IP address instead of hostname"
+    echo "  3. Check DNS server configuration: cat /etc/resolv.conf"
+    exit 1
+fi
+
+# Test 3: Network connectivity (ping)
+echo -n "Test 3: Network connectivity... "
+if ping -c 1 -W 2 "$MQTT_HOST" >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ Pass${NC}"
+else
+    echo -e "${YELLOW}⚠ Warning${NC}"
+    echo "  (Host doesn't respond to ping, but may still be reachable)"
+fi
+
+# Test 4: Port connectivity
+echo -n "Test 4: Port $MQTT_PORT connectivity... "
+if timeout 5 bash -c "</dev/tcp/$MQTT_HOST/$MQTT_PORT" 2>/dev/null; then
+    echo -e "${GREEN}✓ Pass${NC}"
+else
+    echo -e "${RED}✗ Fail${NC}"
+    echo ""
+    echo "Cannot connect to $MQTT_HOST:$MQTT_PORT"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Check broker is running on the host"
+    echo "  2. Check firewall rules allow port $MQTT_PORT"
+    echo "  3. Verify port number in ha-mqtt.conf"
+    echo "  4. Check broker is listening: netstat -tuln | grep $MQTT_PORT"
+    exit 1
+fi
+
+# Test 5: MQTT publish test
+echo -n "Test 5: MQTT publish test... "
+TEST_TOPIC="luigi/test/$(hostname)/status"
+TEST_MESSAGE="test-$(date +%s)"
+
+if mqtt_publish "$TEST_TOPIC" "$TEST_MESSAGE" "" 2>/dev/null; then
+    echo -e "${GREEN}✓ Pass${NC}"
+else
+    echo -e "${RED}✗ Fail${NC}"
+    echo ""
+    echo "Failed to publish test message"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Check username/password in ha-mqtt.conf"
+    echo "  2. Verify user has publish permissions on broker"
+    echo "  3. Check broker logs for authentication errors"
+    echo "  4. Test manually: mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USERNAME -P PASSWORD -t test -m test"
+    exit 1
+fi
+
+# All tests passed
+echo ""
+echo "========================================="
+echo -e "${GREEN}✓ All tests passed${NC}"
+echo "========================================="
+echo ""
+echo "MQTT broker is reachable and authentication is working."
+echo "Luigi modules can publish sensor data successfully."
+echo ""
+
+if [ "$VERBOSE_MODE" = true ]; then
+    echo "Next steps:"
+    echo "  1. Add sensor descriptors to: $MQTT_SENSORS_DIR"
+    echo "  2. Run: luigi-discover"
+    echo "  3. Publish test value: luigi-publish --sensor test --value 42"
+    echo ""
+fi
+
+exit 0
