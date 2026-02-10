@@ -54,7 +54,7 @@ category/module-name/
   "author": "Luigi Project",
   "hardware": {
     "gpio_pins": [23],
-    "sensors": ["PIR motion sensor"]
+    "sensors": ["HC-SR501"]
   }
 }
 ```

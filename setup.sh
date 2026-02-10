@@ -274,7 +274,7 @@ install_modules() {
                     if [ -f "$SCRIPT_DIR/$dep/setup.sh" ]; then
                         collect_dependencies "$dep"
                     else
-                        log_warn "Dependency $dep not found, skipping"
+                        log_warn "Dependency $dep not found, $mod may not work correctly"
                     fi
                 done <<< "$deps"
             fi
