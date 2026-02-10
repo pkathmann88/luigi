@@ -129,14 +129,44 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Performance optimization for resource-constrained devices
 - Complete example backend application
 
+### Web-Frontend Development Skill
+
+**Location:** `.github/skills/web-frontend-development/`
+
+**Use when:**
+- Developing web-based user interfaces or dashboards
+- Creating responsive, mobile-first web applications
+- Building single-page applications (SPAs)
+- Implementing progressive web apps (PWAs)
+- Integrating frontend with backend APIs
+- Optimizing web application performance
+- Ensuring cross-browser compatibility (Chrome, Edge, Firefox - MANDATORY)
+- Implementing accessible (WCAG-compliant) interfaces
+- Setting up modern build tooling and workflows
+
+**Provides:**
+- Modern tech stack (React, Vue, TypeScript, Vite)
+- Cross-browser support requirements (Chrome, Edge, Firefox)
+- Component development patterns (React, Vue, Web Components)
+- State management solutions (Context, Zustand, Redux)
+- API integration (Fetch, React Query, WebSocket)
+- Responsive design patterns (mobile-first, CSS Grid, container queries)
+- Accessibility guidelines (WCAG 2.1 AA, ARIA, keyboard navigation)
+- Performance optimization (code splitting, lazy loading, memoization)
+- Security best practices (XSS prevention, CSP, authentication)
+- Testing strategies (Vitest, Playwright, cross-browser E2E)
+- Build and deployment (Vite, PWA, Docker, nginx)
+- Complete React + TypeScript example application
+
 **Note:** These skills complement each other across the development lifecycle:
 - The `module-design` skill guides you through the **design phase** before implementation
 - The `raspi-zero-w` skill provides **hardware details** for wiring and GPIO during design and implementation
 - The `python-development` skill shows **code patterns** for implementing modules in Python
 - The `nodejs-backend-development` skill shows **how to create backend APIs** for hardware control
+- The `web-frontend-development` skill shows **how to build modern web UIs** that interact with backend APIs
 - The `system-setup` skill helps create **deployment automation** for the finished module
 
-Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, etc.).
+Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
 
 ## Repository Structure
 
