@@ -226,10 +226,15 @@ The project is designed for extensibility. When adding new modules (whether for 
 
 ### File Organization
 
-- **Configuration:** Hardcoded in Python files (e.g., `SENSOR_PIN = 23`)
+- **Configuration:** Config files in `/etc/luigi/{module-path}/` (e.g., `/etc/luigi/motion-detection/mario/mario.conf`)
+  - For modules under `motion-detection/mario/`, config path is `/etc/luigi/motion-detection/mario/`
+  - For modules under `sensors/temp/`, config path is `/etc/luigi/sensors/temp/`
+  - Config files should use `.conf` extension with INI or key=value format
+  - Legacy modules may still use hardcoded constants (transitioning to config files)
 - **Logs:** Written to `/var/log/motion.log` on Raspberry Pi
 - **Temp files:** Use `/tmp/` for runtime state (e.g., `/tmp/stop_mario`, `/tmp/mario_timer`)
 - **Sound files:** Install to `/usr/share/sounds/mario/` on target system
+- **Module resources:** Install to `/usr/share/{module-name}/` on target system
 
 ## Hardware-Specific Notes
 
@@ -288,8 +293,14 @@ The project is designed for extensibility. When adding new modules (whether for 
 6. **Hardware compatibility:** Test on actual Raspberry Pi hardware when possible
 7. **Generalize when useful:** Create shared libraries for common operations
 
+**Configuration Standard:**
+All modules MUST be configured via config files in `/etc/luigi/{module-path}/`:
+- Path structure matches repository structure: `/etc/luigi/motion-detection/mario/` for `motion-detection/mario/` module
+- Use simple `.conf` files with key=value format (INI-style) for ease of editing
+- Python modules should read config on startup with fallback to defaults
+- Example: `/etc/luigi/motion-detection/mario/mario.conf` contains `GPIO_PIN=23`, `COOLDOWN_SECONDS=1800`
+
 **Potential Improvements (Applicable to All Modules):**
-- Configuration file support (YAML/JSON instead of hardcoded values)
 - Web interface for remote monitoring/control
 - Multiple sensor support per module
 - Integration with home automation platforms (Home Assistant, OpenHAB)

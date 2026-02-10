@@ -491,30 +491,215 @@ ls -l /usr/share/sounds/mario/
 
 ## Configuration Management
 
-### Hardcoded Configuration
+### Configuration File Standard
 
-Current Mario implementation uses hardcoded values:
-- GPIO pin: 23
-- Cooldown: 10 seconds
-- Sound directory: `/usr/share/sounds/mario/`
+**All Luigi modules MUST use configuration files in `/etc/luigi/{module-path}/`.**
 
-### Future: Configuration File Support
+The configuration path follows the repository module structure:
+- Module at `motion-detection/mario/` → Config at `/etc/luigi/motion-detection/mario/`
+- Module at `sensors/temperature/` → Config at `/etc/luigi/sensors/temperature/`
+- Module at `automation/relay/` → Config at `/etc/luigi/automation/relay/`
 
-For enhanced modules, generate config file patterns:
+### Configuration File Format
 
-```bash
-# /etc/luigi/mario.conf
-GPIO_PIN=23
-COOLDOWN_SECONDS=10
-SOUND_DIR=/usr/share/sounds/mario
+Use simple INI-style `.conf` files with key=value format:
+
+```ini
+# /etc/luigi/motion-detection/mario/mario.conf
+# Mario Motion Detection Configuration
+
+[GPIO]
+SENSOR_PIN=23
+
+[Timing]
+COOLDOWN_SECONDS=1800
+MAIN_LOOP_SLEEP=100
+
+[Files]
+SOUND_DIR=/usr/share/sounds/mario/
+TIMER_FILE=/tmp/mario_timer
 LOG_FILE=/var/log/motion.log
+
+[Logging]
+LOG_LEVEL=INFO
+LOG_MAX_BYTES=10485760
+LOG_BACKUP_COUNT=5
 ```
 
-**Deployment**:
+### Deployment Pattern
+
+**Always include config file deployment in setup scripts:**
+
 ```bash
-mkdir -p /etc/luigi
-cp mario.conf /etc/luigi/
-chmod 644 /etc/luigi/mario.conf
+#!/bin/bash
+# Deploy configuration file for a Luigi module
+
+MODULE_PATH="motion-detection/mario"  # Adjust for each module
+CONFIG_DIR="/etc/luigi/${MODULE_PATH}"
+CONFIG_FILE="${CONFIG_DIR}/mario.conf"
+
+# Create config directory matching module path
+log_info "Creating configuration directory..."
+mkdir -p "${CONFIG_DIR}"
+
+# Deploy config file (from repository or inline)
+log_info "Deploying configuration file..."
+cat > "${CONFIG_FILE}" << 'EOF'
+# Mario Motion Detection Configuration
+
+[GPIO]
+SENSOR_PIN=23
+
+[Timing]
+COOLDOWN_SECONDS=1800
+
+[Files]
+SOUND_DIR=/usr/share/sounds/mario/
+LOG_FILE=/var/log/motion.log
+
+[Logging]
+LOG_LEVEL=INFO
+EOF
+
+# Set permissions (readable by all, writable by root)
+chmod 644 "${CONFIG_FILE}"
+
+log_info "Configuration deployed to ${CONFIG_FILE}"
+```
+
+### Config File in Complete Deployment
+
+Update the complete deployment script template to include config deployment:
+
+```bash
+#!/bin/bash
+# deploy_{module-name}.sh - Deploy Luigi module with configuration
+
+set -e
+
+# ... (logging functions, root check) ...
+
+MODULE_PATH="motion-detection/mario"  # Adjust for each module
+
+# 1. Update package list
+log_info "Updating package list..."
+apt-get update
+
+# 2. Install dependencies
+log_info "Installing dependencies..."
+apt-get install -y python3-rpi.gpio alsa-utils
+
+# 3. Create directories
+log_info "Creating directories..."
+mkdir -p /usr/share/sounds/mario
+mkdir -p "/etc/luigi/${MODULE_PATH}"
+
+# 4. Deploy configuration file
+log_info "Deploying configuration..."
+cat > "/etc/luigi/${MODULE_PATH}/mario.conf" << 'EOF'
+[GPIO]
+SENSOR_PIN=23
+
+[Timing]
+COOLDOWN_SECONDS=1800
+
+[Files]
+SOUND_DIR=/usr/share/sounds/mario/
+LOG_FILE=/var/log/motion.log
+EOF
+chmod 644 "/etc/luigi/${MODULE_PATH}/mario.conf"
+
+# 5. Deploy sound files
+log_info "Deploying sound files..."
+tar -xzf mario-sounds.tar.gz -C /usr/share/sounds/mario/
+
+# 6. Deploy Python script
+log_info "Deploying Python script..."
+cp mario.py /usr/local/bin/
+chmod 755 /usr/local/bin/mario.py
+
+# 7. Deploy and start service
+log_info "Deploying service..."
+cp mario.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable mario.service
+systemctl start mario.service
+
+log_info "Deployment complete!"
+log_info "Config file: /etc/luigi/${MODULE_PATH}/mario.conf"
+log_info "Edit config and restart service: sudo systemctl restart mario.service"
+```
+
+### Configuration Verification
+
+Add config verification to post-deployment checks:
+
+```bash
+# verify_deployment.sh - Include config file checks
+
+log_info "Checking configuration..."
+CONFIG_FILE="/etc/luigi/motion-detection/mario/mario.conf"
+if [ -f "${CONFIG_FILE}" ]; then
+    log_info "✓ Configuration file exists"
+    
+    # Verify it's readable
+    if [ -r "${CONFIG_FILE}" ]; then
+        log_info "✓ Configuration file is readable"
+    else
+        log_error "✗ Configuration file is not readable"
+        ERRORS=$((ERRORS + 1))
+    fi
+    
+    # Show configuration summary
+    log_info "Configuration settings:"
+    grep -E "^[A-Z_]+=|^\[" "${CONFIG_FILE}" | head -10
+else
+    log_error "✗ Configuration file missing: ${CONFIG_FILE}"
+    ERRORS=$((ERRORS + 1))
+fi
+```
+
+### User Configuration Instructions
+
+When generating README or documentation, include config editing instructions:
+
+```markdown
+## Configuration
+
+The Mario module is configured via `/etc/luigi/motion-detection/mario/mario.conf`.
+
+### Changing Settings
+
+1. Edit the configuration file:
+   ```bash
+   sudo nano /etc/luigi/motion-detection/mario/mario.conf
+   ```
+
+2. Modify desired settings (e.g., change cooldown period):
+   ```ini
+   [Timing]
+   COOLDOWN_SECONDS=900  # 15 minutes instead of 30
+   ```
+
+3. Restart the service to apply changes:
+   ```bash
+   sudo systemctl restart mario.service
+   ```
+
+### Configuration Options
+
+**GPIO Section:**
+- `SENSOR_PIN`: GPIO pin number (BCM numbering) for PIR sensor
+
+**Timing Section:**
+- `COOLDOWN_SECONDS`: Minimum seconds between motion triggers
+
+**Files Section:**
+- `SOUND_DIR`: Directory containing sound files
+- `LOG_FILE`: Path to log file
+
+**Logging Section:**
+- `LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
 ```
 
 ## Testing and Verification

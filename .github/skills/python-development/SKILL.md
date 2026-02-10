@@ -83,46 +83,166 @@ project-name/
 
 ### Configuration Management
 
-**Separate configuration from code:**
+**Luigi modules MUST use configuration files in `/etc/luigi/{module-path}/`:**
 
-```python
-# config.py
-"""Configuration constants for hardware project."""
+The configuration path follows the repository structure. For a module at `motion-detection/mario/`, the config file is `/etc/luigi/motion-detection/mario/mario.conf`.
 
-# GPIO Pin Assignments (BCM numbering)
-SENSOR_PIN = 23         # PIR motion sensor
-TEMPERATURE_PIN = 4     # DHT22 temperature sensor  
-LED_PIN = 18           # Status LED
-BUTTON_PIN = 24        # Manual trigger button
-RELAY_PIN = 17         # Relay control
+**Configuration File Format (INI-style):**
 
-# File Paths
-DATA_DIR = "/usr/share/{project-name}/"
-STOP_FILE = "/tmp/stop_{project-name}"
-LOG_FILE = "/var/log/{project-name}.log"
+```ini
+# /etc/luigi/motion-detection/mario/mario.conf
+# Mario Motion Detection Configuration
 
-# Application Settings
-COOLDOWN_SECONDS = 5
-ENABLE_LOGGING = True
-DEBUG_MODE = False
-LOG_FILE = "/var/log/motion.log"
+[GPIO]
+# GPIO pin for PIR sensor (BCM numbering)
+SENSOR_PIN=23
 
-# Timing Configuration
-COOLDOWN_SECONDS = 1800  # 30 minutes
-SENSOR_DEBOUNCE_MS = 200
+[Timing]
+# Cooldown period in seconds (30 minutes = 1800)
+COOLDOWN_SECONDS=1800
+# Main loop sleep interval
+MAIN_LOOP_SLEEP=100
 
-# Feature Flags
-DEBUG_MODE = False
-VERBOSE_LOGGING = True
+[Files]
+# Sound directory
+SOUND_DIR=/usr/share/sounds/mario/
+# Timer file location
+TIMER_FILE=/tmp/mario_timer
+# Log file location
+LOG_FILE=/var/log/motion.log
+
+[Logging]
+# Log level (DEBUG, INFO, WARNING, ERROR)
+LOG_LEVEL=INFO
+# Maximum log file size in bytes
+LOG_MAX_BYTES=10485760
+# Number of backup log files
+LOG_BACKUP_COUNT=5
 ```
 
-**Usage in main code:**
+**Python Config Loader Pattern:**
+
 ```python
 #!/usr/bin/env python3
-from config import SENSOR_PIN, COOLDOWN_SECONDS, LOG_FILE
+"""Configuration loader for Luigi modules."""
+import os
+import configparser
+from pathlib import Path
 
-# Use configuration constants
-GPIO.setup(SENSOR_PIN, GPIO.IN)
+class Config:
+    """Load configuration from file with fallback to defaults."""
+    
+    # Default configuration values
+    DEFAULT_SENSOR_PIN = 23
+    DEFAULT_COOLDOWN_SECONDS = 1800
+    DEFAULT_SOUND_DIR = "/usr/share/sounds/mario/"
+    DEFAULT_LOG_FILE = "/var/log/motion.log"
+    DEFAULT_LOG_LEVEL = "INFO"
+    
+    def __init__(self, module_path="motion-detection/mario"):
+        """
+        Initialize configuration.
+        
+        Args:
+            module_path: Module path matching repository structure
+                        (e.g., "motion-detection/mario", "sensors/temp")
+        """
+        self.module_path = module_path
+        self.config_file = f"/etc/luigi/{module_path}/config.conf"
+        self._load_config()
+    
+    def _load_config(self):
+        """Load configuration from file or use defaults."""
+        parser = configparser.ConfigParser()
+        
+        if os.path.exists(self.config_file):
+            try:
+                parser.read(self.config_file)
+                self.SENSOR_PIN = parser.getint('GPIO', 'SENSOR_PIN', 
+                                                 fallback=self.DEFAULT_SENSOR_PIN)
+                self.COOLDOWN_SECONDS = parser.getint('Timing', 'COOLDOWN_SECONDS',
+                                                       fallback=self.DEFAULT_COOLDOWN_SECONDS)
+                self.SOUND_DIR = parser.get('Files', 'SOUND_DIR',
+                                             fallback=self.DEFAULT_SOUND_DIR)
+                self.LOG_FILE = parser.get('Files', 'LOG_FILE',
+                                            fallback=self.DEFAULT_LOG_FILE)
+                self.LOG_LEVEL = parser.get('Logging', 'LOG_LEVEL',
+                                             fallback=self.DEFAULT_LOG_LEVEL)
+                print(f"Configuration loaded from {self.config_file}")
+            except Exception as e:
+                print(f"Warning: Error reading config file: {e}")
+                print("Using default configuration")
+                self._use_defaults()
+        else:
+            print(f"Config file not found: {self.config_file}")
+            print("Using default configuration")
+            self._use_defaults()
+    
+    def _use_defaults(self):
+        """Set all values to defaults."""
+        self.SENSOR_PIN = self.DEFAULT_SENSOR_PIN
+        self.COOLDOWN_SECONDS = self.DEFAULT_COOLDOWN_SECONDS
+        self.SOUND_DIR = self.DEFAULT_SOUND_DIR
+        self.LOG_FILE = self.DEFAULT_LOG_FILE
+        self.LOG_LEVEL = self.DEFAULT_LOG_LEVEL
+
+# Usage in main code
+config = Config(module_path="motion-detection/mario")
+GPIO.setup(config.SENSOR_PIN, GPIO.IN)
+```
+
+**Alternative: Simple Key=Value Parser (No Dependencies):**
+
+```python
+def load_config(config_file, defaults):
+    """
+    Load simple key=value config file.
+    
+    Args:
+        config_file: Path to config file
+        defaults: Dictionary of default values
+        
+    Returns:
+        Dictionary of configuration values
+    """
+    config = defaults.copy()
+    
+    if not os.path.exists(config_file):
+        return config
+    
+    try:
+        with open(config_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                # Skip comments and empty lines
+                if not line or line.startswith('#'):
+                    continue
+                # Parse key=value
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    # Convert types
+                    if value.isdigit():
+                        config[key] = int(value)
+                    elif value.lower() in ('true', 'false'):
+                        config[key] = value.lower() == 'true'
+                    else:
+                        config[key] = value
+    except Exception as e:
+        print(f"Warning: Error reading config: {e}")
+    
+    return config
+
+# Usage
+defaults = {
+    'SENSOR_PIN': 23,
+    'COOLDOWN_SECONDS': 1800,
+    'SOUND_DIR': '/usr/share/sounds/mario/',
+    'LOG_FILE': '/var/log/motion.log'
+}
+config = load_config('/etc/luigi/motion-detection/mario/mario.conf', defaults)
+GPIO.setup(config['SENSOR_PIN'], GPIO.IN)
 ```
 
 ### Hardware Abstraction Pattern
