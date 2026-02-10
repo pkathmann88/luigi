@@ -11,12 +11,10 @@ Features:
 - 30-minute cooldown between triggers
 - Graceful shutdown handling
 - Structured logging with rotation
-- File-based stop signal mechanism (legacy compatibility)
 
 Shutdown Methods:
 - **SIGTERM signal** (recommended): Graceful shutdown via signal handler
 - **SIGINT signal** (Ctrl+C): Interactive shutdown
-- **Stop file** (/tmp/stop_mario): Legacy method for backwards compatibility
 
 Hardware Requirements:
 - Raspberry Pi Zero W (or compatible)
@@ -83,7 +81,6 @@ class Config:
     
     # File Paths
     SOUND_DIR = "/usr/share/sounds/mario/"
-    STOP_FILE = "/tmp/stop_mario"
     TIMER_FILE = "/tmp/mario_timer"
     LOG_FILE = "/var/log/motion.log"
     
@@ -179,26 +176,6 @@ def safe_write_file(filepath, content):
     except IOError as e:
         logging.error(f"Failed to write {filepath}: {e}")
         return False
-
-
-def check_stop_signal():
-    """
-    Check if stop signal file exists.
-    
-    Returns:
-        bool: True if stop requested, False otherwise
-    """
-    return os.path.isfile(Config.STOP_FILE)
-
-
-def remove_stop_signal():
-    """Remove stop signal file if it exists."""
-    try:
-        if os.path.isfile(Config.STOP_FILE):
-            os.remove(Config.STOP_FILE)
-            logging.info("Stop signal file removed")
-    except OSError as e:
-        logging.error(f"Failed to remove stop file: {e}")
 
 
 # ============================================================================
@@ -302,9 +279,6 @@ class MotionDetectionApp:
         self.sensor = PIRSensor(Config.SENSOR_PIN, self.on_motion_detected)
         self.sensor.setup()
         
-        # Remove any lingering stop signal
-        remove_stop_signal()
-        
         # Validate sound directory at startup
         self._validate_sound_directory()
         
@@ -341,19 +315,8 @@ class MotionDetectionApp:
         
         Args:
             channel: GPIO channel that triggered the event
-        
-        Note:
-            The stop file check is maintained for backwards compatibility
-            with the old init.d script. Modern service managers should use
-            SIGTERM signal (handled by signal_handler) for graceful shutdown.
         """
         try:
-            # Check for stop signal file (backwards compatibility)
-            if check_stop_signal():
-                logging.info("Stop signal file detected, shutting down...")
-                self.stop()
-                return
-            
             # Check cooldown period
             now = int(time.time())
             time_since_last = now - self.last_trigger_time
@@ -480,9 +443,6 @@ class MotionDetectionApp:
         
         # Cleanup GPIO
         self.gpio_manager.cleanup()
-        
-        # Remove stop signal file
-        remove_stop_signal()
         
         logging.info("Motion detection service stopped")
 

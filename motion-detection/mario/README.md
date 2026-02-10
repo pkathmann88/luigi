@@ -131,7 +131,7 @@ sudo python3 /usr/local/bin/mario.py
 
 ### Shutdown Mechanisms
 
-The application supports multiple shutdown methods:
+The application uses signal handlers for graceful shutdown:
 
 - **systemctl stop** (Recommended): Uses SIGTERM for graceful shutdown
   ```bash
@@ -148,13 +148,7 @@ The application supports multiple shutdown methods:
   # Press Ctrl+C to stop
   ```
 
-- **Stop File** (Legacy): Backwards compatibility mechanism
-  ```bash
-  touch /tmp/stop_mario
-  # Application will detect and shut down on next motion event
-  ```
-
-All methods trigger a graceful shutdown that:
+All shutdown methods trigger a graceful shutdown that:
 - Stops motion monitoring
 - Cleans up GPIO resources
 - Closes log files properly
@@ -170,7 +164,6 @@ SENSOR_PIN = 23                           # GPIO pin for PIR sensor (BCM numberi
 
 # File Paths
 SOUND_DIR = "/usr/share/sounds/mario/"    # Directory containing sound files
-STOP_FILE = "/tmp/stop_mario"             # Stop signal file (legacy)
 TIMER_FILE = "/tmp/mario_timer"           # Cooldown tracking file
 LOG_FILE = "/var/log/motion.log"          # Application log file
 
@@ -189,11 +182,7 @@ class Config:
 
 After changing configuration, restart the service:
 ```bash
-# systemd
 sudo systemctl restart mario.service
-
-# init.d
-sudo service mario restart
 ```
 
 ## Adding Custom Sounds
@@ -273,7 +262,7 @@ The system will randomly select from all files in the directory.
 - The script uses BCM GPIO numbering (not physical pin numbers)
 - Motion detection has a 30-minute cooldown to prevent spam
 - The service runs as a background daemon with output logged to `/var/log/motion.log`
-- Stopping the service creates a stop file that the script monitors for graceful shutdown
+- The service can be stopped gracefully using systemctl or by sending SIGTERM signal
 
 ## Future Enhancements
 
