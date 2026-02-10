@@ -171,9 +171,10 @@ class Config:
         
         Args:
             level_str: String representation (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+                       or any other type (will be treated as invalid)
             
         Returns:
-            logging level constant (defaults to INFO for invalid values)
+            logging level constant (defaults to INFO for invalid or non-string values)
         """
         # Handle non-string values
         if not isinstance(level_str, str):
