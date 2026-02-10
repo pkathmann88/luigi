@@ -1,0 +1,41 @@
+[Unit]
+Description=Luigi Management API Server
+Documentation=https://github.com/pkathmann88/luigi
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/luigi/system/management-api
+
+# Environment
+Environment="NODE_ENV=production"
+EnvironmentFile=/etc/luigi/system/management-api/.env
+
+# Execute
+ExecStart=/usr/bin/node server.js
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=management-api
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/log
+
+# Resource limits (Raspberry Pi Zero W constraints)
+LimitNOFILE=1024
+MemoryMax=200M
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target
