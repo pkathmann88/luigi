@@ -292,11 +292,15 @@ class SystemOptimizer:
             # Remove old section
             new_lines = []
             skip = False
+            optimization_prefixes = ('dtparam', 'dtoverlay', 'gpu_mem', 'camera', 'display_auto_detect')
+            
             for line in lines:
                 if section_marker in line:
                     skip = True
-                elif skip and line.strip() and not line.startswith('#') and not line.startswith('dtparam') and not line.startswith('dtoverlay') and not line.startswith('gpu_mem') and not line.startswith('camera'):
-                    skip = False
+                elif skip and line.strip():
+                    # Check if this line is NOT an optimization line
+                    if not line.startswith('#') and not line.startswith(optimization_prefixes):
+                        skip = False
                 
                 if not skip:
                     new_lines.append(line)
