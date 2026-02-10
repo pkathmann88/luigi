@@ -37,7 +37,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Category directories to search for modules
-CATEGORIES=("motion-detection" "sensors" "automation" "security" "iot")
+CATEGORIES=("motion-detection" "sensors" "automation" "security" "iot" "system")
 
 # Logging functions
 log_info() {
