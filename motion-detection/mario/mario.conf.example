@@ -7,6 +7,8 @@ SENSOR_PIN=23
 
 [Timing]
 # Cooldown period in seconds (30 minutes = 1800)
+# NOTE: Cooldown applies ONLY to sound playback, not MQTT publishing
+# All motion events are sent to Home Assistant regardless of cooldown status
 COOLDOWN_SECONDS=1800
 # Main loop sleep interval in seconds
 MAIN_LOOP_SLEEP=100

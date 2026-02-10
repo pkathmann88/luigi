@@ -173,10 +173,13 @@ sudo python3 /usr/local/bin/mario.py
 
 1. **Initialization**: The script sets up GPIO pin 23 as an input for the PIR sensor
 2. **Event Detection**: When the PIR sensor detects motion (rising edge), it triggers the callback function
-3. **Cooldown Check**: The system checks if 30 minutes (1800 seconds) have passed since the last trigger
-4. **Sound Playback**: If the cooldown has expired, a random sound file is selected and played using `aplay`
-5. **Timer Update**: The current timestamp is saved to track the cooldown period
-6. **Graceful Shutdown**: The service responds to SIGTERM/SIGINT signals for clean shutdown
+3. **MQTT Publishing**: Motion event is immediately published to Home Assistant (if ha-mqtt installed)
+4. **Cooldown Check**: The system checks if 30 minutes (1800 seconds) have passed since the last sound playback
+5. **Sound Playback**: If the cooldown has expired, a random sound file is selected and played using `aplay`
+6. **Timer Update**: The current timestamp is saved to track the sound cooldown period
+7. **Graceful Shutdown**: The service responds to SIGTERM/SIGINT signals for clean shutdown
+
+**Key Behavior**: All motion events are tracked in Home Assistant, but sound playback is limited by a 30-minute cooldown to prevent spam.
 
 ### Shutdown Mechanisms
 
@@ -218,6 +221,8 @@ SENSOR_PIN=23
 
 [Timing]
 # Cooldown period in seconds (30 minutes = 1800)
+# NOTE: Cooldown applies ONLY to sound playback, not MQTT publishing
+# All motion events are sent to Home Assistant regardless of cooldown
 COOLDOWN_SECONDS=1800
 # Main loop sleep interval in seconds
 MAIN_LOOP_SLEEP=100
@@ -245,7 +250,7 @@ A sample configuration file (`mario.conf.example`) is included in this directory
 
 If the configuration file does not exist, the application will use default values:
 - **GPIO Pin**: 23 (BCM)
-- **Cooldown**: 1800 seconds (30 minutes)
+- **Sound Cooldown**: 1800 seconds (30 minutes - applies only to sound playback)
 - **Sound Directory**: `/usr/share/sounds/mario/`
 - **Log File**: `/var/log/motion.log`
 - **Log Level**: INFO
@@ -300,6 +305,8 @@ The mario module integrates with Home Assistant through the **ha-mqtt module**, 
 - **Automatic Discovery**: Sensor automatically appears in Home Assistant
 - **Binary Sensor**: Motion events published as ON state to Home Assistant
 - **Graceful Degradation**: Module continues working if MQTT is unavailable
+- **Complete Motion Tracking**: All motion events published to MQTT, independent of sound cooldown
+- **Smart Cooldown**: 30-minute cooldown applies only to sound playback, not MQTT publishing
 
 ### Prerequisites
 
