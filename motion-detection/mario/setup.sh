@@ -126,7 +126,7 @@ install_sounds() {
     
     # Extract sound files
     log_info "Extracting sound files to $INSTALL_SOUNDS..."
-    tar -xzf "$SCRIPT_DIR/$SOUNDS_ARCHIVE" -C "$INSTALL_SOUNDS/" || {
+    tar -xzf "$SCRIPT_DIR/$SOUNDS_ARCHIVE" -C "$INSTALL_SOUNDS" || {
         log_error "Failed to extract sound files"
         exit 1
     }
@@ -311,8 +311,7 @@ uninstall() {
     fi
     
     # Ask about sound files
-    echo -e "${YELLOW}Remove sound files from $INSTALL_SOUNDS? [y/N]${NC} "
-    read -r response
+    read -rp "$(echo -e "${YELLOW}Remove sound files from $INSTALL_SOUNDS? [y/N]${NC} ")" response
     if [[ "$response" =~ ^[Yy]$ ]]; then
         if [ -d "$INSTALL_SOUNDS" ]; then
             log_info "Removing sound files..."
@@ -323,8 +322,7 @@ uninstall() {
     fi
     
     # Ask about log file
-    echo -e "${YELLOW}Remove log file $LOG_FILE? [y/N]${NC} "
-    read -r response
+    read -rp "$(echo -e "${YELLOW}Remove log file $LOG_FILE? [y/N]${NC} ")" response
     if [[ "$response" =~ ^[Yy]$ ]]; then
         if [ -f "$LOG_FILE" ]; then
             log_info "Removing log file..."
