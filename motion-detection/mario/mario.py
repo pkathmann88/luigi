@@ -32,6 +32,7 @@ import signal
 import logging
 import random
 import subprocess
+import configparser
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
@@ -60,6 +61,10 @@ except (ImportError, RuntimeError):
             print(f"[MOCK] Event detect added on pin {pin}")
         
         @classmethod
+        def remove_event_detect(cls, pin):
+            print(f"[MOCK] Event detect removed from pin {pin}")
+        
+        @classmethod
         def cleanup(cls):
             print("[MOCK] GPIO cleaned up")
     
@@ -73,35 +78,131 @@ except (ImportError, RuntimeError):
 # ============================================================================
 
 class Config:
-    """Application configuration constants."""
+    """Load application configuration from file with fallback to defaults."""
     
-    # GPIO Settings (BCM numbering)
-    GPIO_MODE = GPIO.BCM
-    SENSOR_PIN = 23
+    # Default configuration values
+    DEFAULT_GPIO_MODE = GPIO.BCM
+    DEFAULT_SENSOR_PIN = 23
+    DEFAULT_SOUND_DIR = "/usr/share/sounds/mario/"
+    DEFAULT_TIMER_FILE = "/tmp/mario_timer"
+    DEFAULT_LOG_FILE = "/var/log/motion.log"
+    DEFAULT_COOLDOWN_SECONDS = 1800  # 30 minutes
+    DEFAULT_MAIN_LOOP_SLEEP = 100    # seconds
+    DEFAULT_LOG_LEVEL = "INFO"
+    DEFAULT_LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
+    DEFAULT_LOG_BACKUP_COUNT = 5
     
-    # File Paths
-    SOUND_DIR = "/usr/share/sounds/mario/"
-    TIMER_FILE = "/tmp/mario_timer"
-    LOG_FILE = "/var/log/motion.log"
+    def __init__(self, module_path="motion-detection/mario"):
+        """
+        Initialize configuration from file or defaults.
+        
+        Args:
+            module_path: Module path matching repository structure
+        """
+        self.module_path = module_path
+        self.config_file = f"/etc/luigi/{module_path}/mario.conf"
+        self._load_config()
     
-    # Timing Settings
-    COOLDOWN_SECONDS = 1800  # 30 minutes
-    MAIN_LOOP_SLEEP = 100    # seconds
+    def _load_config(self):
+        """Load configuration from INI file or use defaults."""
+        parser = configparser.ConfigParser()
+        
+        # Set GPIO mode first (not configurable)
+        self.GPIO_MODE = self.DEFAULT_GPIO_MODE
+        
+        if os.path.exists(self.config_file):
+            try:
+                parser.read(self.config_file)
+                
+                # GPIO Settings
+                self.SENSOR_PIN = parser.getint('GPIO', 'SENSOR_PIN', 
+                                                fallback=self.DEFAULT_SENSOR_PIN)
+                
+                # Timing Settings
+                self.COOLDOWN_SECONDS = parser.getint('Timing', 'COOLDOWN_SECONDS',
+                                                      fallback=self.DEFAULT_COOLDOWN_SECONDS)
+                self.MAIN_LOOP_SLEEP = parser.getint('Timing', 'MAIN_LOOP_SLEEP',
+                                                     fallback=self.DEFAULT_MAIN_LOOP_SLEEP)
+                
+                # File Paths
+                self.SOUND_DIR = parser.get('Files', 'SOUND_DIR',
+                                           fallback=self.DEFAULT_SOUND_DIR)
+                self.TIMER_FILE = parser.get('Files', 'TIMER_FILE',
+                                             fallback=self.DEFAULT_TIMER_FILE)
+                self.LOG_FILE = parser.get('Files', 'LOG_FILE',
+                                           fallback=self.DEFAULT_LOG_FILE)
+                
+                # Logging Settings
+                log_level_str = parser.get('Logging', 'LOG_LEVEL',
+                                          fallback=self.DEFAULT_LOG_LEVEL)
+                self.LOG_LEVEL = self._parse_log_level(log_level_str)
+                self.LOG_MAX_BYTES = parser.getint('Logging', 'LOG_MAX_BYTES',
+                                                   fallback=self.DEFAULT_LOG_MAX_BYTES)
+                self.LOG_BACKUP_COUNT = parser.getint('Logging', 'LOG_BACKUP_COUNT',
+                                                      fallback=self.DEFAULT_LOG_BACKUP_COUNT)
+                
+                # Note: Using print here as logging is not yet configured
+                print(f"Configuration loaded from {self.config_file}")
+                
+            except (configparser.Error, ValueError, KeyError) as e:
+                print(f"Warning: Error reading config file: {e}")
+                print("Using default configuration")
+                self._use_defaults()
+        else:
+            print(f"Config file not found: {self.config_file}")
+            print("Using default configuration")
+            self._use_defaults()
     
-    # Logging
-    LOG_LEVEL = logging.INFO
-    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
-    LOG_BACKUP_COUNT = 5
+    def _use_defaults(self):
+        """Set all configuration values to defaults."""
+        self.SENSOR_PIN = self.DEFAULT_SENSOR_PIN
+        self.SOUND_DIR = self.DEFAULT_SOUND_DIR
+        self.TIMER_FILE = self.DEFAULT_TIMER_FILE
+        self.LOG_FILE = self.DEFAULT_LOG_FILE
+        self.COOLDOWN_SECONDS = self.DEFAULT_COOLDOWN_SECONDS
+        self.MAIN_LOOP_SLEEP = self.DEFAULT_MAIN_LOOP_SLEEP
+        self.LOG_LEVEL = self._parse_log_level(self.DEFAULT_LOG_LEVEL)
+        self.LOG_MAX_BYTES = self.DEFAULT_LOG_MAX_BYTES
+        self.LOG_BACKUP_COUNT = self.DEFAULT_LOG_BACKUP_COUNT
+    
+    def _parse_log_level(self, level_str):
+        """
+        Convert log level string to logging constant.
+        
+        Args:
+            level_str: String representation (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+                       or any other type (will be treated as invalid)
+            
+        Returns:
+            logging level constant (defaults to INFO for invalid or non-string values)
+        """
+        # Handle non-string values
+        if not isinstance(level_str, str):
+            return logging.INFO
+        
+        level_map = {
+            'DEBUG': logging.DEBUG,
+            'INFO': logging.INFO,
+            'WARNING': logging.WARNING,
+            'ERROR': logging.ERROR,
+            'CRITICAL': logging.CRITICAL
+        }
+        return level_map.get(level_str.upper(), logging.INFO)
 
 
 # ============================================================================
 # Logging Setup
 # ============================================================================
 
-def setup_logging():
-    """Configure application logging with console and file handlers."""
+def setup_logging(config):
+    """
+    Configure application logging with console and file handlers.
+    
+    Args:
+        config: Config instance with logging settings
+    """
     logger = logging.getLogger()
-    logger.setLevel(Config.LOG_LEVEL)
+    logger.setLevel(config.LOG_LEVEL)
     
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
@@ -112,21 +213,21 @@ def setup_logging():
     
     # File handler with rotation
     try:
-        Path(Config.LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
+        Path(config.LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
         file_handler = RotatingFileHandler(
-            Config.LOG_FILE,
-            maxBytes=Config.LOG_MAX_BYTES,
-            backupCount=Config.LOG_BACKUP_COUNT
+            config.LOG_FILE,
+            maxBytes=config.LOG_MAX_BYTES,
+            backupCount=config.LOG_BACKUP_COUNT
         )
-        file_handler.setLevel(Config.LOG_LEVEL)
+        file_handler.setLevel(config.LOG_LEVEL)
         file_format = logging.Formatter(
             '%(asctime)s - %(levelname)s - %(message)s'
         )
         file_handler.setFormatter(file_format)
         logger.addHandler(file_handler)
-        logging.info(f"Logging to file: {Config.LOG_FILE}")
+        logging.info(f"Logging to file: {config.LOG_FILE}")
     except PermissionError:
-        logging.warning(f"Cannot write to {Config.LOG_FILE}, using console only")
+        logging.warning(f"Cannot write to {config.LOG_FILE}, using console only")
     
     return logger
 
@@ -185,13 +286,20 @@ def safe_write_file(filepath, content):
 class GPIOManager:
     """Manages GPIO initialization and cleanup."""
     
-    def __init__(self):
+    def __init__(self, config):
+        """
+        Initialize GPIO manager.
+        
+        Args:
+            config: Config instance with GPIO settings
+        """
+        self.config = config
         self.initialized = False
     
     def initialize(self):
         """Initialize GPIO mode."""
         try:
-            GPIO.setmode(Config.GPIO_MODE)
+            GPIO.setmode(self.config.GPIO_MODE)
             self.initialized = True
             logging.info("GPIO initialized successfully")
         except RuntimeError as e:
@@ -262,8 +370,15 @@ class PIRSensor:
 class MotionDetectionApp:
     """Main motion detection application."""
     
-    def __init__(self):
-        self.gpio_manager = GPIOManager()
+    def __init__(self, config):
+        """
+        Initialize the application.
+        
+        Args:
+            config: Config instance with application settings
+        """
+        self.config = config
+        self.gpio_manager = GPIOManager(config)
         self.sensor = None
         self.running = False
         self.last_trigger_time = 0
@@ -276,14 +391,14 @@ class MotionDetectionApp:
         self.gpio_manager.initialize()
         
         # Setup sensor
-        self.sensor = PIRSensor(Config.SENSOR_PIN, self.on_motion_detected)
+        self.sensor = PIRSensor(self.config.SENSOR_PIN, self.on_motion_detected)
         self.sensor.setup()
         
         # Validate sound directory at startup
         self._validate_sound_directory()
         
         # Load last trigger time
-        last_time_str = safe_read_file(Config.TIMER_FILE, "0")
+        last_time_str = safe_read_file(self.config.TIMER_FILE, "0")
         try:
             self.last_trigger_time = int(last_time_str)
             logging.info(f"Last trigger: {self.last_trigger_time}")
@@ -295,19 +410,19 @@ class MotionDetectionApp:
     
     def _validate_sound_directory(self):
         """Validate sound directory exists and contains sound files."""
-        if not os.path.isdir(Config.SOUND_DIR):
-            logging.warning(f"Sound directory not found: {Config.SOUND_DIR}")
+        if not os.path.isdir(self.config.SOUND_DIR):
+            logging.warning(f"Sound directory not found: {self.config.SOUND_DIR}")
             return
         
         sound_files = [
-            f for f in os.listdir(Config.SOUND_DIR)
+            f for f in os.listdir(self.config.SOUND_DIR)
             if f.lower().endswith(('.wav', '.mp3'))
         ]
         
         if not sound_files:
-            logging.warning(f"No sound files in {Config.SOUND_DIR}")
+            logging.warning(f"No sound files in {self.config.SOUND_DIR}")
         else:
-            logging.info(f"Found {len(sound_files)} sound file(s) in {Config.SOUND_DIR}")
+            logging.info(f"Found {len(sound_files)} sound file(s) in {self.config.SOUND_DIR}")
     
     def on_motion_detected(self, channel):
         """
@@ -321,8 +436,8 @@ class MotionDetectionApp:
             now = int(time.time())
             time_since_last = now - self.last_trigger_time
             
-            if time_since_last < Config.COOLDOWN_SECONDS:
-                remaining = Config.COOLDOWN_SECONDS - time_since_last
+            if time_since_last < self.config.COOLDOWN_SECONDS:
+                remaining = self.config.COOLDOWN_SECONDS - time_since_last
                 logging.debug(f"Cooldown active ({remaining}s remaining)")
                 return
             
@@ -332,7 +447,7 @@ class MotionDetectionApp:
             
             # Update last trigger time
             self.last_trigger_time = now
-            safe_write_file(Config.TIMER_FILE, now)
+            safe_write_file(self.config.TIMER_FILE, now)
             
         except Exception as e:
             logging.error(f"Error in motion callback: {e}")
@@ -341,22 +456,22 @@ class MotionDetectionApp:
         """Process motion detection event."""
         try:
             sound_files = [
-                f for f in os.listdir(Config.SOUND_DIR)
+                f for f in os.listdir(self.config.SOUND_DIR)
                 if f.lower().endswith(('.wav', '.mp3'))
             ]
             
             if not sound_files:
-                logging.error(f"No sound files available in {Config.SOUND_DIR}")
+                logging.error(f"No sound files available in {self.config.SOUND_DIR}")
                 return
             
             sound_file = random.choice(sound_files)
-            sound_path = os.path.join(Config.SOUND_DIR, sound_file)
+            sound_path = os.path.join(self.config.SOUND_DIR, sound_file)
             
             logging.info(f"Playing sound: {sound_file}")
             self.play_sound(sound_path)
             
         except FileNotFoundError:
-            logging.error(f"Sound directory not found: {Config.SOUND_DIR}")
+            logging.error(f"Sound directory not found: {self.config.SOUND_DIR}")
         except Exception as e:
             logging.error(f"Failed to handle motion: {e}")
     
@@ -375,7 +490,7 @@ class MotionDetectionApp:
             
             # Ensure file is within expected sound directory (prevent path traversal)
             real_path = os.path.realpath(filepath)
-            real_sound_dir = os.path.realpath(Config.SOUND_DIR)
+            real_sound_dir = os.path.realpath(self.config.SOUND_DIR)
             
             # Use os.path.commonpath to properly check directory containment
             try:
@@ -422,7 +537,7 @@ class MotionDetectionApp:
         # Signal handlers (SIGINT, SIGTERM) will trigger graceful shutdown
         try:
             while self.running:
-                time.sleep(Config.MAIN_LOOP_SLEEP)
+                time.sleep(self.config.MAIN_LOOP_SLEEP)
                 
         except KeyboardInterrupt:
             logging.info("Keyboard interrupt received")
@@ -479,8 +594,11 @@ def main():
     """Main entry point for the application."""
     global app_instance
     
-    # Setup logging
-    setup_logging()
+    # Load configuration first (prints to console, logging not yet configured)
+    config = Config(module_path="motion-detection/mario")
+    
+    # Setup logging with config
+    setup_logging(config)
     logging.info("=" * 60)
     logging.info("Mario Motion Detection Application Starting")
     logging.info("=" * 60)
@@ -497,7 +615,7 @@ def main():
     
     # Create and initialize application
     try:
-        app_instance = MotionDetectionApp()
+        app_instance = MotionDetectionApp(config)
         app_instance.initialize()
         
         # Run main loop

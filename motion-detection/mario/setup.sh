@@ -25,10 +25,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_SCRIPT="mario.py"
 SERVICE_FILE="mario.service"
 SOUNDS_ARCHIVE="mario-sounds.tar.gz"
+CONFIG_EXAMPLE="mario.conf.example"
 
 INSTALL_BIN="/usr/local/bin/mario.py"
 INSTALL_SERVICE="/etc/systemd/system/mario.service"
 INSTALL_SOUNDS="/usr/share/sounds/mario"
+INSTALL_CONFIG_DIR="/etc/luigi/motion-detection/mario"
+INSTALL_CONFIG="/etc/luigi/motion-detection/mario/mario.conf"
 LOG_FILE="/var/log/motion.log"
 
 # Logging functions
@@ -75,6 +78,11 @@ check_files() {
     
     if [ ! -f "$SCRIPT_DIR/$SOUNDS_ARCHIVE" ]; then
         log_error "Missing: $SOUNDS_ARCHIVE"
+        missing_files=1
+    fi
+    
+    if [ ! -f "$SCRIPT_DIR/$CONFIG_EXAMPLE" ]; then
+        log_error "Missing: $CONFIG_EXAMPLE"
         missing_files=1
     fi
     
@@ -166,6 +174,39 @@ install_script() {
     log_info "Python script installed to $INSTALL_BIN"
 }
 
+# Install configuration file
+install_config() {
+    log_step "Installing configuration file..."
+    
+    # Create config directory
+    mkdir -p "$INSTALL_CONFIG_DIR" || {
+        log_error "Failed to create config directory"
+        exit 1
+    }
+    
+    # Check if config already exists
+    if [ -f "$INSTALL_CONFIG" ]; then
+        log_warn "Config file already exists at $INSTALL_CONFIG"
+        log_info "Keeping existing configuration"
+        return 0
+    fi
+    
+    # Copy example config as the default config
+    cp "$SCRIPT_DIR/$CONFIG_EXAMPLE" "$INSTALL_CONFIG" || {
+        log_error "Failed to copy configuration file"
+        exit 1
+    }
+    
+    # Set permissions
+    chmod 644 "$INSTALL_CONFIG" || {
+        log_error "Failed to set config permissions"
+        exit 1
+    }
+    
+    log_info "Configuration file installed to $INSTALL_CONFIG"
+    log_info "Edit $INSTALL_CONFIG to customize settings"
+}
+
 # Install systemd service
 install_service() {
     log_step "Installing systemd service..."
@@ -255,6 +296,13 @@ verify_installation() {
         errors=1
     fi
     
+    # Check config file
+    if [ -f "$INSTALL_CONFIG" ]; then
+        log_info "✓ Config file: $INSTALL_CONFIG"
+    else
+        log_warn "✗ Config file not found (will use defaults)"
+    fi
+    
     # Check service status
     if systemctl is-enabled --quiet mario.service; then
         log_info "✓ Service enabled"
@@ -332,6 +380,29 @@ uninstall() {
         log_info "Keeping log file"
     fi
     
+    # Ask about config file
+    read -rp "$(echo -e "${YELLOW}Remove config file $INSTALL_CONFIG? [y/N]${NC} ")" response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        if [ -f "$INSTALL_CONFIG" ]; then
+            log_info "Removing config file..."
+            rm -f "$INSTALL_CONFIG"
+        fi
+        # Remove config directory if empty
+        if [ -d "$INSTALL_CONFIG_DIR" ]; then
+            if rmdir "$INSTALL_CONFIG_DIR" 2>/dev/null; then
+                log_info "Removed empty config directory"
+            fi
+            # Try to remove parent directories if empty (derived from INSTALL_CONFIG_DIR)
+            local parent_dir
+            parent_dir=$(dirname "$INSTALL_CONFIG_DIR")
+            rmdir "$parent_dir" 2>/dev/null || true
+            parent_dir=$(dirname "$parent_dir")
+            rmdir "$parent_dir" 2>/dev/null || true
+        fi
+    else
+        log_info "Keeping config file"
+    fi
+    
     log_info "Uninstall completed"
 }
 
@@ -347,6 +418,7 @@ show_status() {
     [ -f "$INSTALL_BIN" ] && echo "  ✓ Python script: $INSTALL_BIN" || echo "  ✗ Python script not installed"
     [ -f "$INSTALL_SERVICE" ] && echo "  ✓ Service file: $INSTALL_SERVICE" || echo "  ✗ Service file not installed"
     [ -d "$INSTALL_SOUNDS" ] && echo "  ✓ Sound directory: $INSTALL_SOUNDS" || echo "  ✗ Sound directory not found"
+    [ -f "$INSTALL_CONFIG" ] && echo "  ✓ Config file: $INSTALL_CONFIG" || echo "  ✗ Config file not found (using defaults)"
     echo ""
     
     # Check service
@@ -370,6 +442,7 @@ install() {
     install_dependencies
     install_sounds
     install_script
+    install_config
     install_service
     start_service
     
