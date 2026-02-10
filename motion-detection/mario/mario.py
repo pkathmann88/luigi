@@ -482,32 +482,41 @@ class MotionDetectionApp:
         """
         Callback for motion detection events.
         
+        All motion events are logged and published to MQTT/Home Assistant.
+        Sound playback respects cooldown period to prevent spam.
+        
         Args:
             channel: GPIO channel that triggered the event
         """
         try:
-            # Check cooldown period
             now = int(time.time())
             time_since_last = now - self.last_trigger_time
             
+            # Always log motion detection
+            logging.info(f"Motion detected on GPIO{channel}")
+            
+            # Always publish to MQTT (Home Assistant tracks all motion)
+            publish_sensor_value('mario_motion', 'ON', is_binary=True)
+            
+            # Check cooldown for sound playback only
             if time_since_last < self.config.COOLDOWN_SECONDS:
                 remaining = self.config.COOLDOWN_SECONDS - time_since_last
-                logging.debug(f"Cooldown active ({remaining}s remaining)")
+                logging.info(f"Sound cooldown active ({remaining}s remaining), skipping playback")
                 return
             
-            # Process motion event
-            logging.info(f"Motion detected on GPIO{channel}")
-            self.handle_motion()
+            # Play sound (cooldown expired)
+            logging.info("Cooldown expired, playing sound")
+            self.play_sound_for_motion()
             
-            # Update last trigger time
+            # Update last trigger time for sound cooldown
             self.last_trigger_time = now
             safe_write_file(self.config.TIMER_FILE, now)
             
         except Exception as e:
             logging.error(f"Error in motion callback: {e}")
     
-    def handle_motion(self):
-        """Process motion detection event."""
+    def play_sound_for_motion(self):
+        """Play random sound file when motion is detected (after cooldown check)."""
         try:
             sound_files = [
                 f for f in os.listdir(self.config.SOUND_DIR)
@@ -524,13 +533,10 @@ class MotionDetectionApp:
             logging.info(f"Playing sound: {sound_file}")
             self.play_sound(sound_path)
             
-            # Publish motion detection to Home Assistant via MQTT
-            publish_sensor_value('mario_motion', 'ON', is_binary=True)
-            
         except FileNotFoundError:
             logging.error(f"Sound directory not found: {self.config.SOUND_DIR}")
         except Exception as e:
-            logging.error(f"Failed to handle motion: {e}")
+            logging.error(f"Failed to play sound: {e}")
     
     def play_sound(self, filepath):
         """
