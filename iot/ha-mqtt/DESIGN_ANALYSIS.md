@@ -36,10 +36,13 @@ Provide a seamless MQTT bridge between Luigi modules and Home Assistant for auto
 **Key Features:**
 - **MQTT Connection Management:** Maintain persistent connection to Home Assistant mosquitto broker
 - **Home Assistant Discovery:** Automatically register Luigi devices/sensors using MQTT Discovery protocol
-- **Simple Publishing Interface:** Provide easy-to-use mechanism for Luigi modules to publish sensor data
+- **Generic Publishing Interface:** Single interface that any Luigi module can use without modification
+- **Self-Service Registration:** Modules register sensors via drop-in descriptors, no ha-mqtt changes required
+- **Convention-Based Integration:** Standard calling conventions eliminate tight coupling
 - **Configuration Management:** Support flexible broker configuration (host, port, credentials, topics)
 - **Connection Resilience:** Automatic reconnection on network failures
 - **Minimal Dependencies:** Use existing MQTT tools (mosquitto-clients) to minimize custom code
+- **Zero-Touch Integration:** New modules can integrate without modifying ha-mqtt code or configuration
 
 **Use Cases:**
 1. **Motion Detection Integration:** Mario module publishes motion events to Home Assistant for automation triggers
@@ -51,11 +54,13 @@ Provide a seamless MQTT bridge between Luigi modules and Home Assistant for auto
 **Success Criteria:**
 - [x] Establish reliable MQTT connection to Home Assistant broker
 - [x] Support Home Assistant MQTT Discovery for automatic sensor registration
-- [x] Provide simple interface for Luigi modules to publish data (config file + scripts)
+- [x] Provide **generic** interface - any module can publish without ha-mqtt modifications
+- [x] Support **self-service** sensor registration via drop-in descriptors
 - [x] Handle authentication (username/password) for secure broker connection
 - [x] Automatically reconnect on network/broker failures
 - [x] Minimal performance impact on Luigi host
-- [x] Clear documentation with Home Assistant setup examples
+- [x] Clear documentation with integration examples for any sensor type
+- [x] **Zero coupling** - modules know nothing about ha-mqtt internals
 
 ### 1.2 Hardware Component Analysis
 
@@ -199,43 +204,129 @@ This is a pure software integration module with no physical hardware requirement
 iot/ha-mqtt/
 ├── README.md                      # Complete documentation with HA setup
 ├── setup.sh                       # Installation script (install/uninstall/status)
-├── ha-mqtt-bridge.py              # Python MQTT bridge service
-├── ha-mqtt-bridge.service         # systemd service file
+├── ha-mqtt-bridge.py              # Optional: Python MQTT bridge service
+├── ha-mqtt-bridge.service         # Optional: systemd service file
 ├── ha-mqtt.conf.example           # Example configuration
+├── bin/
+│   ├── luigi-publish              # Generic publish script (any sensor)
+│   ├── luigi-discover             # Auto-discovery registration script
+│   └── luigi-mqtt-status          # Connection status check
 ├── lib/
-│   └── ha_discovery.py            # Home Assistant MQTT Discovery helper
+│   ├── mqtt_helpers.sh            # Shell functions for MQTT operations
+│   └── ha_discovery_generator.sh  # Generate discovery payloads from descriptors
 └── examples/
-    ├── publish_motion.sh          # Example: Publish motion event
-    ├── publish_temperature.sh     # Example: Publish temperature reading
-    └── register_sensor.sh         # Example: Register sensor with HA Discovery
+    ├── sensors.d/                 # Example sensor descriptors
+    │   ├── motion.json            # Motion sensor example
+    │   ├── temperature.json       # Temperature sensor example
+    │   └── README.md              # Descriptor format documentation
+    └── integration-guide.md       # How any module can integrate
 ```
 
-**Alternative Lightweight Approach (Using Existing Tools):**
+**Generic Interface Design:**
+
+The module provides a **generic, parameter-driven interface** that any Luigi module can use:
+
+**1. Generic Publishing (`luigi-publish`):**
+```bash
+# Single script handles ALL sensor types
+luigi-publish --sensor <sensor_id> --value <value> [options]
+
+Options:
+  --sensor <id>         Unique sensor identifier (e.g., motion_pir, temp_dht22)
+  --value <val>         Sensor value to publish
+  --unit <unit>         Optional: Unit of measurement (°C, %, lux, etc.)
+  --device-class <cls>  Optional: HA device class (temperature, humidity, motion, etc.)
+  --attributes <json>   Optional: Additional attributes as JSON
+
+Example usage from ANY module:
+  luigi-publish --sensor motion_pir --value ON
+  luigi-publish --sensor temperature_dht22 --value 22.5 --unit "°C"
+  luigi-publish --sensor humidity_dht22 --value 65 --unit "%"
 ```
-iot/ha-mqtt/
-├── README.md                      # Complete documentation with HA setup
-├── setup.sh                       # Installation script
-├── ha-mqtt.conf.example           # Configuration file
-├── ha-mqtt-monitor.sh             # Connection monitoring script
-├── lib/
-│   └── mqtt_helpers.sh            # Shell functions for MQTT operations
-└── examples/
-    ├── publish_motion.sh          # Example: mosquitto_pub wrapper
-    ├── publish_temperature.sh     # Example: sensor data publishing
-    └── discovery/                 # HA Discovery JSON templates
-        ├── motion_sensor.json
-        ├── temperature_sensor.json
-        └── system_monitor.json
+
+**2. Self-Service Registration (Drop-in Descriptors):**
+
+Modules register sensors by placing descriptor files in `/etc/luigi/iot/ha-mqtt/sensors.d/`:
+
+```json
+# /etc/luigi/iot/ha-mqtt/sensors.d/motion_pir.json
+{
+  "sensor_id": "motion_pir",
+  "name": "Motion Sensor",
+  "device_class": "motion",
+  "icon": "mdi:motion-sensor",
+  "value_template": "{{ value }}",
+  "module": "motion-detection/mario"
+}
 ```
+
+The ha-mqtt module automatically discovers and registers all sensors found in `sensors.d/`.
+
+**3. Convention-Based Integration:**
+
+Modules follow simple conventions:
+- Call `luigi-publish` with sensor ID and value
+- Place descriptor in `sensors.d/` during setup.sh install
+- Remove descriptor during setup.sh uninstall
+- No knowledge of MQTT broker, topics, or Home Assistant required
 
 **Architecture Decision:**
-**Primary Approach: Shell Script Wrapper with mosquitto_pub**
+**Primary Approach: Generic Shell Interface with Convention-Based Discovery**
 
-The module will primarily use shell scripts wrapping `mosquitto_pub` and `mosquitto_sub` from the mosquitto-clients package. This approach:
-- **Minimizes custom code** (aligns with user requirement)
-- **Uses battle-tested MQTT tools** (mosquitto-clients is industry standard)
-- **Simplifies maintenance** (no complex Python dependencies)
-- **Provides flexibility** (easy for users to customize scripts)
+The module provides:
+- **Generic publishing:** One script (`luigi-publish`) handles all sensor types
+- **Self-service discovery:** Modules register via JSON descriptors
+- **Zero coupling:** Modules never modify ha-mqtt code or configuration
+- **Extensibility:** New sensor types work automatically without ha-mqtt changes
+
+This approach:
+- **Eliminates tight coupling** between ha-mqtt and sensor modules
+- **Enables zero-touch integration** - new modules just work
+- **Uses battle-tested tools** (mosquitto-clients underneath)
+- **Simplifies maintenance** - ha-mqtt code never changes for new sensors
+- **Provides flexibility** - descriptor format supports any HA sensor type
+
+**Integration Example (How ANY Module Integrates):**
+
+Any Luigi module can integrate with ha-mqtt by following this simple pattern:
+
+**Step 1: Create sensor descriptor (during module design):**
+```json
+# sensors/temperature/temperature_sensor.json
+{
+  "sensor_id": "temperature_dht22",
+  "name": "DHT22 Temperature",
+  "device_class": "temperature",
+  "unit_of_measurement": "°C",
+  "icon": "mdi:thermometer",
+  "state_class": "measurement",
+  "module": "sensors/temperature"
+}
+```
+
+**Step 2: Install descriptor (in module's setup.sh):**
+```bash
+# sensors/temperature/setup.sh install function
+sudo cp temperature_sensor.json /etc/luigi/iot/ha-mqtt/sensors.d/
+```
+
+**Step 3: Publish sensor data (in module's Python/shell code):**
+```bash
+# sensors/temperature/temperature_monitor.py or .sh
+luigi-publish --sensor temperature_dht22 --value 22.5
+```
+
+**That's it!** No ha-mqtt modifications needed. The sensor automatically:
+- Gets discovered by ha-mqtt
+- Registers with Home Assistant via MQTT Discovery
+- Appears in Home Assistant dashboard
+- Receives published values
+
+**Step 4: Uninstall descriptor (in module's setup.sh):**
+```bash
+# sensors/temperature/setup.sh uninstall function
+sudo rm -f /etc/luigi/iot/ha-mqtt/sensors.d/temperature_sensor.json
+```
 
 **Python Component (Optional Enhancement):**
 A lightweight Python bridge service can optionally be provided for:
@@ -243,6 +334,7 @@ A lightweight Python bridge service can optionally be provided for:
 - Automatic reconnection handling
 - Home Assistant state monitoring
 - Advanced features (QoS management, retained messages)
+- Periodic sensor descriptor scanning and auto-registration
 
 **Class Architecture (If Python Service Used):**
 
@@ -257,14 +349,16 @@ A lightweight Python bridge service can optionally be provided for:
 - Library: paho-mqtt (if Python approach)
 
 **HADiscovery Class:**
-- Purpose: Generate Home Assistant MQTT Discovery payloads
-- Key methods: register_sensor(), register_binary_sensor(), register_device(), remove_entity()
+- Purpose: Generate Home Assistant MQTT Discovery payloads from sensor descriptors
+- Key methods: load_descriptors(), register_from_descriptor(), register_sensor(), register_binary_sensor(), register_device(), remove_entity()
 - Supports: sensors, binary_sensors, switches, climate, etc.
+- **Auto-discovers:** Reads JSON descriptors from `/etc/luigi/iot/ha-mqtt/sensors.d/`
 
 **HAMQTTBridge Class:**
 - Purpose: Main application orchestrating MQTT operations
-- Key methods: __init__(), start(), stop(), _handle_signal(), publish_state()
+- Key methods: __init__(), start(), stop(), _handle_signal(), publish_state(), scan_sensors()
 - Main loop type: Event-driven (MQTT callback-based)
+- **Auto-registration:** Periodically scans sensors.d/ and registers new sensors
 
 **Reference:** See `.github/skills/python-development/SKILL.md` (Class Architecture)
 
@@ -322,6 +416,12 @@ RECONNECT_DELAY_MIN=5
 RECONNECT_DELAY_MAX=300
 CONNECTION_TIMEOUT=10
 
+[Discovery]
+# Sensor discovery and registration
+SENSORS_DIR=/etc/luigi/iot/ha-mqtt/sensors.d
+SCAN_INTERVAL=300
+# Scan for new sensor descriptors every 5 minutes
+
 [Logging]
 # Logging configuration
 LOG_FILE=/var/log/ha-mqtt.log
@@ -329,6 +429,20 @@ LOG_LEVEL=INFO
 LOG_MAX_BYTES=10485760
 LOG_BACKUP_COUNT=5
 ```
+
+**Sensor Descriptor Directory:**
+
+The module uses a **drop-in directory** for sensor registration:
+
+```
+/etc/luigi/iot/ha-mqtt/sensors.d/
+├── motion_pir.json          # Mario module descriptor
+├── temp_dht22.json          # Temperature sensor descriptor
+├── humidity_dht22.json      # Humidity sensor descriptor
+└── cpu_monitor.json         # System monitoring descriptor
+```
+
+Each module installs its sensor descriptors during `setup.sh install` and removes them during uninstall. The ha-mqtt module automatically discovers and registers all sensors.
 
 **Configurable Parameters:**
 | Parameter | Section | Type | Default | Description |
@@ -343,6 +457,8 @@ LOG_BACKUP_COUNT=5
 | BASE_TOPIC | Topics | string | homeassistant | Root topic for all messages |
 | DISCOVERY_PREFIX | Topics | string | homeassistant | HA Discovery prefix |
 | DEVICE_NAME | Device | string | Luigi ${HOSTNAME} | Device name in Home Assistant |
+| SENSORS_DIR | Discovery | string | /etc/luigi/iot/ha-mqtt/sensors.d | Sensor descriptor directory |
+| SCAN_INTERVAL | Discovery | int | 300 | Sensor discovery scan interval (seconds) |
 | RECONNECT_DELAY_MIN | Connection | int | 5 | Min reconnection delay (seconds) |
 | LOG_LEVEL | Logging | string | INFO | Logging level |
 
@@ -462,27 +578,38 @@ LOG_BACKUP_COUNT=5
 ### 2.6 Software Architecture Summary
 
 **Architecture Pattern:**
-**Hybrid: Event-driven + Command-line Tools**
+**Generic Interface with Convention-Based Discovery**
 
-The module uses a hybrid architecture:
-1. **Shell Script Wrappers:** Primary interface using mosquitto_pub/mosquitto_sub
-2. **Optional Python Service:** Event-driven MQTT bridge for persistent connections
-3. **Library Functions:** Reusable shell functions for common operations
-4. **Discovery Templates:** JSON templates for Home Assistant MQTT Discovery
+The module uses a fully decoupled architecture:
+1. **Generic Publishing Interface:** Single `luigi-publish` script handles all sensor types
+2. **Convention-Based Discovery:** Sensors registered via drop-in JSON descriptors
+3. **Optional Python Service:** Event-driven MQTT bridge for persistent connections
+4. **Library Functions:** Reusable shell functions for common operations
+5. **Zero Coupling:** Sensor modules never modify ha-mqtt code or configuration
 
 **Key Software Decisions:**
 
-1. **Decision: Prefer mosquitto-clients over custom MQTT implementation**
+1. **Decision: Generic interface - no sensor-specific code**
+   - **Rationale:** Module must not require changes when other modules integrate
+   - **Benefits:** Complete decoupling, zero-touch integration, future-proof
+   - **Implementation:** Parameter-driven `luigi-publish` script, descriptor-based discovery
+
+2. **Decision: Convention-based self-service registration**
+   - **Rationale:** Modules must integrate without modifying ha-mqtt
+   - **Benefits:** Modules install/remove descriptors independently, automatic discovery
+   - **Implementation:** Drop-in directory (`sensors.d/`), periodic scanning, JSON descriptors
+
+3. **Decision: Prefer mosquitto-clients over custom MQTT implementation**
    - **Rationale:** User requested "use pre-existing packages to connect to Home Assistant MQTT broker"
    - **Benefits:** Battle-tested tools, minimal code to maintain, widely understood
    - **Trade-off:** Less control over connection lifecycle vs. custom Python service
 
-2. **Decision: Provide both shell script and optional Python approaches**
+4. **Decision: Support both minimal (shell-only) and full (Python service) deployments**
    - **Rationale:** Shell scripts for simplicity, Python for advanced features
    - **Benefits:** Flexibility for different use cases and user preferences
    - **Usage:** Shell scripts for simple publishing, Python for persistent connections
 
-3. **Decision: Home Assistant MQTT Discovery support**
+5. **Decision: Home Assistant MQTT Discovery support**
    - **Rationale:** Automatic sensor registration eliminates manual Home Assistant configuration
    - **Benefits:** Sensors appear in Home Assistant immediately, proper metadata and units
    - **Implementation:** JSON templates + mosquitto_pub with retained messages
@@ -618,7 +745,9 @@ For shell scripts, cleanup is minimal:
 3. **Create directories:**
    ```bash
    sudo mkdir -p /etc/luigi/iot/ha-mqtt
+   sudo mkdir -p /etc/luigi/iot/ha-mqtt/sensors.d
    sudo mkdir -p /usr/local/bin
+   sudo mkdir -p /usr/local/lib/luigi
    sudo mkdir -p /var/log
    ```
    
@@ -628,27 +757,35 @@ For shell scripts, cleanup is minimal:
    - Set permissions to 600 (owner only)
    - Prompt user to edit broker settings
    
-5. **Deploy library and scripts:**
+5. **Deploy generic interface scripts:**
+   - Copy bin/luigi-publish to /usr/local/bin/
+   - Copy bin/luigi-discover to /usr/local/bin/
+   - Copy bin/luigi-mqtt-status to /usr/local/bin/
    - Copy lib/mqtt_helpers.sh to /usr/local/lib/luigi/
-   - Copy example scripts to /usr/share/luigi/ha-mqtt/examples/
+   - Copy lib/ha_discovery_generator.sh to /usr/local/lib/luigi/
    - Set executable permissions (755)
    
-6. **Deploy Python service (optional):**
+6. **Deploy example descriptors:**
+   - Copy examples/sensors.d/* to /usr/share/luigi/ha-mqtt/examples/sensors.d/
+   - Documentation showing descriptor format
+   
+7. **Deploy Python service (optional):**
    - Copy ha-mqtt-bridge.py to /usr/local/bin/
    - Copy ha-mqtt-bridge.service to /etc/systemd/system/
    - Create luigi user if doesn't exist
    - systemctl daemon-reload
    
-7. **Enable and start service (if Python service):**
+8. **Enable and start service (if Python service):**
    ```bash
    sudo systemctl enable ha-mqtt-bridge.service
    sudo systemctl start ha-mqtt-bridge.service
    ```
    
-8. **Verify installation:**
+9. **Verify installation:**
    - Check service status (if applicable)
-   - Test MQTT connection with test publish
+   - Test MQTT connection with test publish using luigi-publish
    - Verify log file created
+   - Verify sensors.d directory exists
    - Print next steps for user
 
 **Uninstall Function:**
@@ -721,29 +858,39 @@ For shell scripts, cleanup is minimal:
 | File | Source | Destination | Permissions |
 |------|--------|-------------|-------------|
 | ha-mqtt.conf.example | Repo | /etc/luigi/iot/ha-mqtt/ha-mqtt.conf | 600 |
-| ha-mqtt-bridge.py | Repo | /usr/local/bin/ | 755 |
-| ha-mqtt-bridge.service | Repo | /etc/systemd/system/ | 644 |
+| luigi-publish | Repo bin/ | /usr/local/bin/ | 755 |
+| luigi-discover | Repo bin/ | /usr/local/bin/ | 755 |
+| luigi-mqtt-status | Repo bin/ | /usr/local/bin/ | 755 |
 | mqtt_helpers.sh | Repo lib/ | /usr/local/lib/luigi/ | 644 |
-| publish_*.sh examples | Repo examples/ | /usr/share/luigi/ha-mqtt/examples/ | 755 |
-| discovery/*.json | Repo examples/discovery/ | /usr/share/luigi/ha-mqtt/examples/discovery/ | 644 |
+| ha_discovery_generator.sh | Repo lib/ | /usr/local/lib/luigi/ | 644 |
+| ha-mqtt-bridge.py | Repo (optional) | /usr/local/bin/ | 755 |
+| ha-mqtt-bridge.service | Repo (optional) | /etc/systemd/system/ | 644 |
+| sensors.d/*.json examples | Repo examples/ | /usr/share/luigi/ha-mqtt/examples/sensors.d/ | 644 |
 
 **Directory Structure:**
 ```
 /etc/luigi/iot/ha-mqtt/
-  └── ha-mqtt.conf                          # Main configuration (600)
+  ├── ha-mqtt.conf                          # Main configuration (600)
+  └── sensors.d/                            # Sensor descriptors (drop-in directory)
+      └── (modules install descriptors here)
 
 /usr/local/bin/
-  └── ha-mqtt-bridge.py                     # Python service (755)
+  ├── luigi-publish                         # Generic publish interface (755)
+  ├── luigi-discover                        # Discovery registration (755)
+  ├── luigi-mqtt-status                     # Connection status (755)
+  └── ha-mqtt-bridge.py                     # Optional: Python service (755)
 
 /usr/local/lib/luigi/
-  └── mqtt_helpers.sh                       # Shared library (644)
+  ├── mqtt_helpers.sh                       # Shared MQTT library (644)
+  └── ha_discovery_generator.sh             # Discovery payload generator (644)
 
 /usr/share/luigi/ha-mqtt/
-  ├── examples/
-  │   ├── publish_motion.sh                 # Example scripts (755)
-  │   ├── publish_temperature.sh
-  │   └── discovery/
-  │       ├── motion_sensor.json            # Discovery templates (644)
+  └── examples/
+      ├── sensors.d/                        # Example descriptors
+      │   ├── motion.json                   # Motion sensor example (644)
+      │   ├── temperature.json              # Temperature example (644)
+      │   └── README.md                     # Descriptor format docs
+      └── integration-guide.md              # How to integrate any module
   │       └── temperature_sensor.json
 
 /var/log/
@@ -955,19 +1102,23 @@ The module uses a **flexible deployment strategy** that supports both lightweigh
 
 ### Overall Design Approach
 
-The Home Assistant MQTT integration module provides a **lightweight, flexible bridge** between Luigi sensor modules and a centralized Home Assistant instance. The design emphasizes **simplicity and using existing tools** over custom implementations, aligning with the user's requirement to "use pre-existing packages to connect to Home Assistant MQTT broker."
+The Home Assistant MQTT integration module provides a **fully generic, decoupled bridge** between Luigi sensor modules and a centralized Home Assistant instance. The design emphasizes **zero-touch integration** - any Luigi module can integrate without modifying ha-mqtt code or configuration.
 
-The module offers **two deployment models**: a minimal shell-script-only approach for simple use cases, and an optional Python service for persistent connections and advanced features. Both approaches share a common configuration file and support **Home Assistant MQTT Discovery** for automatic sensor registration.
+The module offers a **parameter-driven generic interface** (`luigi-publish`) that handles all sensor types, eliminating the need for sensor-specific code. Modules self-register through **convention-based discovery** using drop-in JSON descriptors in `/etc/luigi/iot/ha-mqtt/sensors.d/`. The ha-mqtt module automatically discovers and registers sensors with Home Assistant using MQTT Discovery protocol.
 
-The architecture is **network-only with no hardware dependencies**, preserving all GPIO pins for sensor modules. Security is prioritized through authentication requirements, TLS support, and strict configuration file permissions. The module is designed to be **easy to use** - other Luigi modules can publish data by simply calling shell scripts with sensor readings, and sensors automatically appear in Home Assistant without manual configuration.
+The architecture is **network-only with no hardware dependencies**, preserving all GPIO pins for sensor modules. Security is prioritized through authentication requirements, TLS support, and strict configuration file permissions. The module is designed to be **completely transparent** - other Luigi modules simply call `luigi-publish` with sensor data, place a descriptor file during installation, and sensors automatically appear in Home Assistant without any manual configuration or ha-mqtt modifications.
+
+**Key Principle:** The ha-mqtt module is **stable and unchanging** - new sensor types are supported automatically through the generic interface, requiring zero changes to ha-mqtt itself.
 
 ### Key Decisions Made
 
 1. **Hardware:** Pure software/network integration - no GPIO or physical hardware required, preserving all pins for sensor modules
 
-2. **Software:** Hybrid shell script + optional Python service architecture, using battle-tested mosquitto-clients tools rather than custom MQTT implementation, with Home Assistant MQTT Discovery support for automatic sensor registration
+2. **Software:** Generic interface with convention-based discovery - `luigi-publish` script accepts parameters for any sensor type, descriptor files enable self-service registration, zero coupling between modules
 
 3. **Service:** Flexible deployment supporting both minimal shell-script-only usage and optional Python service for persistent connections, running as non-root user (luigi) with enhanced security hardening
+
+4. **Integration:** Completely decoupled - modules never modify ha-mqtt, just call generic interface and drop descriptor files
 
 ### Risks Identified
 
@@ -984,17 +1135,17 @@ The architecture is **network-only with no hardware dependencies**, preserving a
 
 ### Open Questions
 
-1. **Should the module include a web UI for configuration and monitoring?**
-   - Consideration: Would improve usability but increases complexity
-   - Recommendation: Start without UI, add in future version if needed
+1. **Descriptor format versioning?**
+   - Consideration: Should descriptors include format version for future compatibility
+   - Recommendation: Include "version": "1.0" in descriptor schema
 
 2. **Should the module support MQTT message queuing for offline scenarios?**
    - Consideration: Useful if network drops, but adds complexity
    - Recommendation: Use QoS 1 for delivery guarantee, consider queuing in v2
 
-3. **Should the module provide Luigi module discovery (auto-detect other modules)?**
-   - Consideration: Could automatically register all Luigi modules with HA
-   - Recommendation: Manual registration initially, auto-discovery in future enhancement
+3. **Should the module provide automatic descriptor validation?**
+   - Consideration: Catch malformed descriptors before they cause issues
+   - Recommendation: Add validation to luigi-discover command
 
 4. **What level of Home Assistant integration should be provided?**
    - Sensors (read-only): Yes, primary use case
@@ -1002,14 +1153,20 @@ The architecture is **network-only with no hardware dependencies**, preserving a
    - Switches (control): Maybe, for future relay modules
    - Recommendation: Start with sensors/binary_sensors, expand as needed
 
+5. **Should descriptors support templating for dynamic values?**
+   - Consideration: Allow descriptors to reference environment variables
+   - Recommendation: Support ${HOSTNAME} and ${MODULE_NAME} expansion
+
 ### Next Steps
 
-1. **Peer Review:** Get design review from team member or community
+1. **Peer Review:** Get design review from team member or community, focusing on generic interface
 2. **Address Feedback:** Incorporate review comments into design
-3. **Prototype Shell Scripts:** Create example publish scripts to validate approach
-4. **Test with Home Assistant:** Verify MQTT Discovery works as designed
-5. **Create IMPLEMENTATION_PLAN.md:** Use this analysis to create detailed implementation plan
-6. **Get Approval:** Final sign-off before implementation begins
+3. **Prototype Generic Interface:** Create `luigi-publish` script to validate parameter-driven approach
+4. **Test Descriptor System:** Create example descriptors and test auto-discovery
+5. **Validate Zero-Touch Integration:** Simulate module integration without ha-mqtt modifications
+6. **Test with Home Assistant:** Verify MQTT Discovery works with dynamically registered sensors
+7. **Create IMPLEMENTATION_PLAN.md:** Use this analysis to create detailed implementation plan
+8. **Get Approval:** Final sign-off before implementation begins
 
 ---
 
