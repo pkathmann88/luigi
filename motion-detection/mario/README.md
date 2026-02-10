@@ -51,9 +51,7 @@ sudo cp mario.py /usr/local/bin/mario.py
 sudo chmod +x /usr/local/bin/mario.py
 ```
 
-### 3. Install System Service
-
-#### Option A: systemd (Recommended for Modern Systems)
+### 3. Install systemd Service
 
 ```bash
 # Install service unit file
@@ -70,19 +68,9 @@ sudo systemctl enable mario.service
 sudo systemctl start mario.service
 ```
 
-#### Option B: init.d (Legacy Compatibility)
-
-```bash
-sudo cp mario /etc/init.d/mario
-sudo chmod +x /etc/init.d/mario
-sudo update-rc.d mario defaults
-```
-
-This registers the motion detection as a system service that can be managed with standard service commands.
-
 ## Usage
 
-### systemd Commands (Recommended)
+### Service Management Commands
 
 ```bash
 # Start the service
@@ -97,8 +85,11 @@ sudo systemctl restart mario.service
 # Check service status
 sudo systemctl status mario.service
 
-# View service logs
+# View service logs (real-time)
 sudo journalctl -u mario.service -f
+
+# View recent logs
+sudo journalctl -u mario.service -n 100
 
 # Enable service on boot
 sudo systemctl enable mario.service
@@ -107,33 +98,9 @@ sudo systemctl enable mario.service
 sudo systemctl disable mario.service
 ```
 
-### init.d Commands (Legacy)
+### Alternative: View Application Logs Directly
 
-```bash
-# Start the service
-sudo /etc/init.d/mario start
-# or
-sudo service mario start
-
-# Stop the service
-sudo /etc/init.d/mario stop
-# or
-sudo service mario stop
-
-# Restart the service
-sudo /etc/init.d/mario restart
-# or
-sudo service mario restart
-
-# Check service status
-sudo /etc/init.d/mario status
-# or
-sudo service mario status
-```
-
-### View Service Logs
-
-The service logs output to `/var/log/motion.log`:
+The service also logs to `/var/log/motion.log`:
 
 ```bash
 # Follow logs in real-time
@@ -141,9 +108,6 @@ tail -f /var/log/motion.log
 
 # View recent logs
 tail -100 /var/log/motion.log
-
-# For systemd, you can also use journalctl
-sudo journalctl -u mario.service -n 100
 ```
 
 ### Manual Execution (Development/Testing)
@@ -169,10 +133,13 @@ sudo python3 /usr/local/bin/mario.py
 
 The application supports multiple shutdown methods:
 
-- **SIGTERM Signal** (Recommended): Used by systemd and modern init systems
+- **systemctl stop** (Recommended): Uses SIGTERM for graceful shutdown
   ```bash
   sudo systemctl stop mario.service
-  # or
+  ```
+  
+- **SIGTERM Signal**: Direct signal to process
+  ```bash
   sudo kill -TERM <pid>
   ```
   
@@ -181,7 +148,7 @@ The application supports multiple shutdown methods:
   # Press Ctrl+C to stop
   ```
 
-- **Stop File** (Legacy): Backwards compatibility with old init.d script
+- **Stop File** (Legacy): Backwards compatibility mechanism
   ```bash
   touch /tmp/stop_mario
   # Application will detect and shut down on next motion event

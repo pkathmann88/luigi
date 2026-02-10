@@ -8,7 +8,6 @@ Type=simple
 # Note: root is required for GPIO access via RPi.GPIO library
 # TODO: Consider using gpio group and udev rules for non-root access
 User=root
-WorkingDirectory=/usr/local/bin
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
