@@ -1,0 +1,57 @@
+# System Optimization Configuration
+# This file configures which optimizations are applied to the Raspberry Pi Zero W
+
+[Services]
+# Services to disable (comma-separated)
+# Common services safe to disable on headless systems:
+# - bluetooth, hciuart: Bluetooth services
+# - ModemManager: Modem management (not needed for most setups)
+# - avahi-daemon: mDNS/Bonjour (only needed for .local domain names)
+# - triggerhappy: Hotkey daemon
+# - console-setup: Console font/keymap setup
+# - alsa-restore: Audio state restoration (if not using audio)
+# - rpc-statd-notify: NFS client service (if not using NFS)
+# - rpi-eeprom-update: EEPROM update service (can be run manually)
+disable_services=bluetooth,hciuart,ModemManager,triggerhappy,console-setup
+
+# Services to mask (prevent from being started)
+# These are automatic update/maintenance timers that can consume resources
+mask_services=apt-daily-upgrade.timer,apt-daily.timer
+
+[Boot]
+# Boot configuration optimizations to apply to /boot/firmware/config.txt
+# Set to yes/no for each option
+
+# Disable unused hardware interfaces to save memory and CPU
+disable_i2c=no
+disable_i2s=yes
+disable_spi=no
+disable_audio=no
+disable_camera=yes
+disable_wifi=no
+disable_bluetooth=no
+
+# GPU memory in MB (16 is minimum for headless, default is 64)
+# Lower values free up more RAM for the system
+gpu_mem=16
+
+[Kernel]
+# Kernel module blacklisting
+# Modules to blacklist (comma-separated, commented out by default)
+# Example modules:
+# - snd_bcm2835: Built-in audio
+# - bcmbt: Bluetooth
+# - brcmfmac, brcmutil: WiFi
+# - uvc, videobuf2: Camera/video
+blacklist_modules=
+
+[Packages]
+# Packages to remove (comma-separated)
+# Be careful with this - only remove packages you're certain are not needed
+# Examples: bluez, avahi-daemon, modemmanager
+remove_packages=
+
+[Logging]
+# Log file for optimization script
+log_file=/var/log/system-optimization.log
+log_level=INFO
