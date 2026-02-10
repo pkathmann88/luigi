@@ -21,6 +21,7 @@ This module optimizes the Raspberry Pi Zero W for better performance and lower r
 
 - **Safe Defaults**: Conservative default settings that work for most headless setups
 - **Highly Configurable**: INI-style config file at `/etc/luigi/system/optimization/optimize.conf`
+- **Idempotent Execution**: Can be run multiple times safely - applies current configuration each time
 - **Dry-Run Mode**: Preview changes before applying them
 - **Comprehensive Logging**: All operations logged to `/var/log/system-optimization.log`
 - **Backup Protection**: Automatically backs up boot config before modifications
@@ -157,6 +158,13 @@ sudo optimize.py
 # Reboot to apply all changes
 sudo reboot
 ```
+
+**The script is fully idempotent** - you can run it multiple times safely:
+- If you change the configuration file, run `optimize.py` again to apply the new settings
+- Services already disabled will be skipped
+- Boot configuration will be updated to match the current config
+- Packages already removed will be skipped
+- Each run applies the current configuration state
 
 ### Command-Line Options
 

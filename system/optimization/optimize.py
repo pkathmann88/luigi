@@ -171,6 +171,33 @@ class SystemOptimizer:
         except Exception:
             return False
     
+    def service_is_enabled(self, service_name):
+        """Check if a service is enabled"""
+        try:
+            result = subprocess.run(
+                ['systemctl', 'is-enabled', service_name],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            # is-enabled returns 0 (enabled) or non-zero (disabled/masked/etc)
+            return result.returncode == 0
+        except Exception:
+            return False
+    
+    def service_is_masked(self, service_name):
+        """Check if a service is masked"""
+        try:
+            result = subprocess.run(
+                ['systemctl', 'is-enabled', service_name],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return 'masked' in result.stdout
+        except Exception:
+            return False
+    
     def disable_services(self):
         """Disable unnecessary systemd services"""
         self.logger.info("=== Disabling Services ===")
@@ -180,6 +207,7 @@ class SystemOptimizer:
         
         success_count = 0
         fail_count = 0
+        skip_count = 0
         
         # Disable services
         for service in disable_list:
@@ -189,6 +217,13 @@ class SystemOptimizer:
             # Check if service exists before trying to disable
             if not self.service_exists(service):
                 self.logger.info(f"Service {service} not found, skipping")
+                skip_count += 1
+                continue
+            
+            # Check if already disabled
+            if not self.service_is_enabled(service):
+                self.logger.info(f"Service {service} already disabled")
+                success_count += 1
                 continue
             
             self.logger.info(f"Disabling service: {service}")
@@ -202,13 +237,19 @@ class SystemOptimizer:
             if not service:
                 continue
             
+            # Check if already masked
+            if self.service_is_masked(service):
+                self.logger.info(f"Service {service} already masked")
+                success_count += 1
+                continue
+            
             self.logger.info(f"Masking service: {service}")
             if self.run_command(['systemctl', 'mask', service], check=False):
                 success_count += 1
             else:
                 fail_count += 1
         
-        self.logger.info(f"Services: {success_count} succeeded, {fail_count} failed")
+        self.logger.info(f"Services: {success_count} succeeded, {fail_count} failed, {skip_count} skipped")
         return fail_count == 0
     
     def optimize_boot_config(self):
@@ -361,6 +402,19 @@ class SystemOptimizer:
             self.logger.error(f"Could not write blacklist file: {e}")
             return False
     
+    def package_installed(self, package_name):
+        """Check if a package is installed"""
+        try:
+            result = subprocess.run(
+                ['dpkg-query', '-W', '-f=${Status}', package_name],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return 'install ok installed' in result.stdout
+        except Exception:
+            return False
+    
     def remove_packages(self):
         """Remove unnecessary packages"""
         self.logger.info("=== Removing Unnecessary Packages ===")
@@ -371,10 +425,22 @@ class SystemOptimizer:
             self.logger.info("No packages configured for removal")
             return True
         
-        self.logger.info(f"Removing packages: {', '.join(packages)}")
+        # Check which packages are actually installed
+        packages_to_remove = []
+        for package in packages:
+            if self.package_installed(package):
+                packages_to_remove.append(package)
+            else:
+                self.logger.info(f"Package {package} not installed, skipping")
+        
+        if not packages_to_remove:
+            self.logger.info("All specified packages are already removed")
+            return True
+        
+        self.logger.info(f"Removing packages: {', '.join(packages_to_remove)}")
         
         # Build apt-get command
-        cmd = ['apt-get', 'remove', '--purge', '-y'] + packages
+        cmd = ['apt-get', 'remove', '--purge', '-y'] + packages_to_remove
         
         if not self.run_command(cmd, check=False):
             self.logger.error("Package removal failed")
