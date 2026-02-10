@@ -29,12 +29,38 @@ Use this skill when:
 ### Core Principles
 
 1. **Safety First** - Hardware connections must be safe for both components and users
-2. **Modularity** - Each module should be self-contained and independently deployable
-3. **Configuration Over Code** - Use config files for settings that users might change
-4. **Graceful Degradation** - Handle errors without crashing or damaging hardware
-5. **Documentation** - Provide clear setup instructions with wiring diagrams
-6. **Testability** - Design for testing without requiring full hardware setup
-7. **Maintainability** - Follow consistent patterns across all modules
+2. **Clear Requirements** - Every module, component, and script must have a clearly documented purpose explaining WHY it exists and HOW it should be used
+3. **Modularity** - Each module should be self-contained and independently deployable
+4. **Configuration Over Code** - Use config files for settings that users might change
+5. **Graceful Degradation** - Handle errors without crashing or damaging hardware
+6. **Documentation** - Provide clear setup instructions with wiring diagrams
+7. **Testability** - Design for testing without requiring full hardware setup
+8. **Maintainability** - Follow consistent patterns across all modules
+
+**Clear Requirements Principle:**
+
+Every design document must answer these questions for each component:
+- **What:** What does this component do?
+- **Why:** Why does it exist? What problem does it solve?
+- **How:** How should it be used? When is it called?
+- **Who:** Who uses it? (users, other modules, system)
+- **Responsibilities:** What are its key responsibilities?
+
+**Example of clear component documentation:**
+```
+Script: luigi-publish
+- What: Universal sensor data publisher
+- Why: Eliminates need for each module to understand MQTT/HA details
+- How: Called with sensor ID and value parameters when publishing data
+- Who: Any Luigi module that generates sensor readings
+- Responsibilities: Validate params, connect to broker, publish with QoS, report status
+```
+
+Without clear purpose documentation, modules become difficult to:
+- Understand (what does this script actually do?)
+- Maintain (why was it designed this way?)
+- Integrate (when should I call this?)
+- Debug (is it working as intended?)
 
 ### Module Types
 

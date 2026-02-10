@@ -31,21 +31,30 @@ Feature Request → DESIGN_ANALYSIS.md (Phases 1-3) → IMPLEMENTATION_PLAN.md (
 [Summarize the feature request and what needs to be built]
 
 **Module Purpose:**
-[One-sentence description]
+[One clear sentence describing what this module does and why it exists]
+
+**Example:** "Provide a generic MQTT bridge enabling any Luigi module to publish sensor data to Home Assistant without understanding MQTT protocols or broker details."
 
 **Key Features:**
-- Feature 1: [Description]
-- Feature 2: [Description]
-- Feature 3: [Description]
+- Feature 1: [Description - include WHY this feature is important]
+- Feature 2: [Description - include HOW it solves a problem]
+- Feature 3: [Description - include WHO will use this]
 
 **Use Cases:**
-1. Use case 1: [Description]
-2. Use case 2: [Description]
+1. Use case 1: [Concrete scenario showing when/how this module is used]
+2. Use case 2: [Include actor (who) and goal (what they achieve)]
 
 **Success Criteria:**
-- [ ] Criterion 1
-- [ ] Criterion 2
-- [ ] Criterion 3
+- [ ] Criterion 1: [Measurable, testable criterion]
+- [ ] Criterion 2: [Include acceptance test]
+- [ ] Criterion 3: [Define "done"]
+
+**Requirements Clarity Checklist:**
+- [ ] Module purpose answers: What, Why, How, Who
+- [ ] Each feature explains its value/rationale
+- [ ] Use cases are concrete and realistic
+- [ ] Success criteria are measurable and testable
+- [ ] Requirements are clear enough for someone unfamiliar to understand
 
 ### 1.2 Hardware Component Analysis
 
@@ -179,24 +188,52 @@ Notes:
     └── ...
 ```
 
+**Component Purpose Documentation:**
+
+For each script, class, or significant component, document:
+- **What:** Clear one-sentence description of what it does
+- **Why:** Rationale - why does this component exist? What problem does it solve?
+- **How:** Usage pattern - when and how is it used?
+- **Who:** Intended users - which modules/users interact with it?
+- **Key Responsibilities:** List 3-5 primary responsibilities
+
+**Example:**
+```
+Script: sensor_monitor.py
+- What: Main application monitoring DHT22 temperature sensor
+- Why: Provides continuous temperature monitoring for home automation
+- How: Runs as systemd service, polls sensor every 5 minutes
+- Who: System (systemd), administrators (journalctl logs)
+- Key Responsibilities:
+  1. Initialize GPIO and DHT22 sensor
+  2. Read temperature/humidity every poll interval
+  3. Publish readings via luigi-publish
+  4. Handle sensor errors gracefully with retry logic
+  5. Respond to SIGTERM for graceful shutdown
+```
+
 **Class Architecture:**
 
 **Config Class:**
 - Purpose: Load and manage configuration
+- Why: Centralize all configurable parameters, provide defaults
 - Key attributes: [List main config parameters]
 - Configuration file: `/etc/luigi/{category}/{module-name}/{module-name}.conf`
 
 **GPIOManager Class:**
 - Purpose: Abstract GPIO operations
+- Why: Isolate GPIO library dependencies, enable mock testing
 - Key methods: initialize(), setup_input(), setup_output(), cleanup()
 
 **[Device]Sensor/Controller Class:**
 - Purpose: Hardware-specific interface
+- Why: Encapsulate device protocol, separate concerns from app logic
 - Key methods: start(), stop(), read()/write()
 - Device type: [Sensor/Actuator/Controller]
 
 **[Module]App Class:**
 - Purpose: Main application logic
+- Why: Orchestrate all components, manage application lifecycle
 - Key methods: __init__(), start(), stop(), _handle_signal()
 - Main loop type: [Event-driven / Polling / State machine]
 

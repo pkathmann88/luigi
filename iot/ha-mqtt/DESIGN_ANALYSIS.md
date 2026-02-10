@@ -222,6 +222,62 @@ iot/ha-mqtt/
     └── integration-guide.md       # How any module can integrate
 ```
 
+**Script Purpose and Rationale:**
+
+Each script serves a specific role in the generic interface architecture:
+
+**1. `luigi-publish` - Universal Sensor Data Publisher**
+- **Purpose:** Provides a single, unified interface for ANY Luigi module to publish sensor data to Home Assistant via MQTT
+- **Why it exists:** Eliminates the need for each module to understand MQTT broker details, Home Assistant topics, or authentication
+- **Key responsibilities:**
+  - Accept sensor ID, value, and optional metadata as parameters
+  - Read MQTT broker configuration from shared config file
+  - Construct proper MQTT topic based on sensor ID
+  - Handle authentication and connection to broker
+  - Publish data with appropriate QoS settings
+  - Return success/failure status for error handling
+- **Used by:** Any Luigi module that generates sensor readings (temperature, motion, CPU usage, etc.)
+- **When called:** Every time a module has new sensor data to publish
+- **Implementation:** Shell script wrapping mosquitto_pub with parameter validation and error handling
+
+**2. `luigi-discover` - Sensor Registration and Discovery**
+- **Purpose:** Register sensors with Home Assistant using MQTT Discovery protocol so they appear automatically in HA
+- **Why it exists:** Automates sensor registration, eliminating manual Home Assistant configuration
+- **Key responsibilities:**
+  - Scan `/etc/luigi/iot/ha-mqtt/sensors.d/` for sensor descriptor JSON files
+  - Generate Home Assistant MQTT Discovery payloads from descriptors
+  - Publish discovery messages to appropriate HA discovery topics
+  - Handle descriptor validation and error reporting
+  - Support re-registration when descriptors change
+- **Used by:** ha-mqtt module (automatic periodic scanning) or manually for troubleshooting
+- **When called:** During ha-mqtt startup, periodically (every SCAN_INTERVAL), or on-demand
+- **Implementation:** Shell script using ha_discovery_generator.sh library to transform descriptors into HA discovery messages
+
+**3. `luigi-mqtt-status` - Connection Health and Diagnostics**
+- **Purpose:** Check MQTT broker connectivity and report connection health for troubleshooting
+- **Why it exists:** Provides simple diagnostic tool for users and scripts to verify MQTT integration is working
+- **Key responsibilities:**
+  - Test connection to MQTT broker using configured credentials
+  - Verify authentication is working
+  - Check network connectivity to broker host
+  - Report detailed error messages for common issues (DNS, auth, network)
+  - Return machine-readable status codes for scripting
+- **Used by:** Administrators troubleshooting issues, setup scripts verifying installation, monitoring systems
+- **When called:** During setup verification, troubleshooting, or periodic health checks
+- **Implementation:** Shell script attempting test publish and reporting results with helpful diagnostics
+
+**Library Scripts:**
+
+**`mqtt_helpers.sh`** - Reusable MQTT Operations
+- **Purpose:** Provide common functions used by all MQTT scripts (config loading, topic construction, error handling)
+- **Why it exists:** Avoid code duplication across luigi-publish, luigi-discover, and other scripts
+- **Key functions:** load_config(), build_topic(), mqtt_publish(), validate_sensor_id()
+
+**`ha_discovery_generator.sh`** - Discovery Payload Generator
+- **Purpose:** Transform sensor descriptor JSON into Home Assistant MQTT Discovery payloads
+- **Why it exists:** Centralize discovery message generation logic, ensure consistent format
+- **Key functions:** generate_sensor_discovery(), generate_binary_sensor_discovery(), validate_descriptor()
+
 **Generic Interface Design:**
 
 The module provides a **generic, parameter-driven interface** that any Luigi module can use:
