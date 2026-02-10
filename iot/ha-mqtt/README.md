@@ -1002,9 +1002,9 @@ luigi-publish --sensor cpu_usage --value "$cpu_usage" \
 ### Contributing
 
 Want to add features? See:
-- `DESIGN_ANALYSIS.md` - Module design specifications
-- `IMPLEMENTATION_PLAN.md` - Development phases
-- `.github/skills/module-design/` - Design guidelines
+- `.github/skills/module-design/` - Design guidelines for Luigi modules
+- `examples/integration-guide.md` - Complete integration walkthrough
+- `tests/README.md` - Testing infrastructure documentation
 
 ---
 
