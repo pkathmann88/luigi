@@ -1,16 +1,24 @@
 # Mario Motion Detection Component
 
-A fun motion detection system that plays random Mario-themed sound effects when motion is detected via a PIR sensor.
+A modern motion detection system that plays random Mario-themed sound effects when motion is detected via a PIR sensor.
 
 ## Contents
 
-- `mario` - init.d service script for system service integration
-- `mario.py` - Python script implementing motion detection and sound playback
-- `mario-sounds.tar.gz` - Archive containing default Mario-themed sound files
+- `setup.sh` - Automated installation script for easy deployment
+- `mario.py` - Refactored Python application with modern architecture
+- `mario.service` - systemd service unit for system integration
+- `mario-sounds.tar.gz` - Archive containing Mario-themed sound files (10 WAV files)
 
 ## Overview
 
-This component uses a PIR (Passive Infrared) motion sensor to detect movement and responds by playing a random sound effect from a collection of audio files. The system includes intelligent cooldown management to prevent excessive triggering.
+This component uses a PIR (Passive Infrared) motion sensor to detect movement and responds by playing a random sound effect from a collection of audio files. The system features:
+
+- **Modern Python Architecture**: Object-oriented design with hardware abstraction
+- **Intelligent Cooldown**: 30-minute cooldown to prevent excessive triggering
+- **Security Hardened**: Command injection prevention, path validation, log sanitization
+- **Structured Logging**: Rotating logs with proper error handling
+- **Graceful Shutdown**: Signal handler-based shutdown (SIGTERM/SIGINT)
+- **Mock GPIO Support**: Can run without hardware for development/testing
 
 ## Hardware Requirements
 
@@ -277,27 +285,62 @@ The system will randomly select from all files in the directory.
 
 ### Service Won't Start
 
-1. Check script permissions:
+1. Check service status and logs:
    ```bash
-   ls -l /usr/bin/luigi
-   ls -l /etc/init.d/mario
+   sudo systemctl status mario.service
+   sudo journalctl -u mario.service -n 50
    ```
 
-2. Verify Python dependencies:
+2. Verify Python script exists and has correct permissions:
    ```bash
-   python -c "import RPi.GPIO"
+   ls -l /usr/local/bin/mario.py
    ```
 
-3. Check for error messages:
+3. Verify Python dependencies:
    ```bash
-   sudo /usr/bin/luigi
+   python3 -c "import RPi.GPIO"
    ```
+
+4. Test script manually:
+   ```bash
+   sudo python3 /usr/local/bin/mario.py
+   ```
+
+## Architecture
+
+The mario module follows modern Python development practices:
+
+### Code Structure
+
+- **Config Class**: Centralized configuration management
+- **GPIOManager**: Hardware abstraction for GPIO operations
+- **PIRSensor**: Sensor-specific interface with event handling
+- **MotionDetectionApp**: Main application class with state management
+- **Signal Handlers**: Graceful shutdown on SIGTERM/SIGINT
+
+### Key Features
+
+**Security Hardening:**
+- `subprocess.run()` with list arguments (no shell injection)
+- Path validation using `os.path.commonpath()`
+- Log sanitization (limited length, no sensitive data)
+- Timeout protection on subprocess calls
+
+**Error Handling:**
+- Try/except blocks on all I/O operations
+- Comprehensive logging with context
+- Graceful degradation on errors
+
+**Logging:**
+- Structured logging with `RotatingFileHandler`
+- 10MB file size limit with 5 backups
+- Dual output: journalctl + /var/log/motion.log
 
 ## Dependencies
 
-- **RPi.GPIO**: Python library for GPIO control
+- **python3-rpi.gpio**: Python 3 library for GPIO control
   ```bash
-  sudo apt-get install python-rpi.gpio
+  sudo apt-get install python3-rpi.gpio
   ```
 
 - **alsa-utils**: Audio playback utilities (includes `aplay`)
@@ -305,18 +348,41 @@ The system will randomly select from all files in the directory.
   sudo apt-get install alsa-utils
   ```
 
+**Note**: The setup script automatically installs these dependencies.
+
 ## Notes
 
 - The script uses BCM GPIO numbering (not physical pin numbers)
 - Motion detection has a 30-minute cooldown to prevent spam
-- The service runs as a background daemon with output logged to `/var/log/motion.log`
-- The service can be stopped gracefully using systemctl or by sending SIGTERM signal
+- The service runs as a systemd daemon with dual logging (journalctl + file)
+- Graceful shutdown via SIGTERM signal (systemctl stop)
+- Python 3.x required (uses modern Python features)
+- Root privileges required for GPIO access
+
+## Technical Details
+
+**Code Metrics:**
+- Lines of Code: ~520 (refactored from original 47 lines)
+- Classes: 4 (Config, GPIOManager, PIRSensor, MotionDetectionApp)
+- Functions: 15+ with comprehensive error handling
+- Security Features: 5+ hardening measures implemented
+
+**Refactoring Improvements:**
+- Object-oriented architecture with hardware abstraction
+- Configuration management via Config class
+- Structured logging with rotation
+- Signal-based shutdown (no polling)
+- Mock GPIO support for testing
+- Comprehensive error handling and validation
+- Security hardening (command injection prevention, path validation)
 
 ## Future Enhancements
 
 Potential improvements:
-- Configurable cooldown period via command-line argument
-- Multiple sound directories for different themes
+- Configuration file support (YAML/JSON)
+- Command-line arguments for runtime configuration
+- Multiple sound directories/themes
 - Web interface for remote control
-- Integration with other home automation systems
-- Motion event logging and statistics
+- Home automation integration (MQTT, Home Assistant)
+- Motion event statistics and reporting
+- Multi-sensor support
