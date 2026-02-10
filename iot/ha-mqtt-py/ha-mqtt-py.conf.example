@@ -1,0 +1,48 @@
+# /etc/luigi/iot/ha-mqtt-py/ha-mqtt-py.conf
+# Home Assistant MQTT Integration Configuration
+
+[Broker]
+# MQTT broker connection settings
+HOST=localhost
+PORT=1883
+
+# TLS: Set to 'yes' to enable TLS encryption
+TLS_ENABLED=no
+# TLS_CA_CERT=/etc/ssl/certs/ca.crt
+# TLS_CERT=/etc/ssl/certs/client.crt
+# TLS_KEY=/etc/ssl/private/client.key
+
+[Authentication]
+# MQTT broker authentication
+# Leave empty for anonymous access
+USERNAME=
+PASSWORD=
+
+[Client]
+# MQTT client configuration
+# {HOSTNAME} will be replaced with actual hostname
+CLIENT_ID=luigi-{HOSTNAME}
+KEEPALIVE=60
+QOS=1
+RECONNECT_DELAY=5
+
+[Topics]
+# MQTT topic structure
+# {HOSTNAME} will be replaced with actual hostname
+TOPIC_PREFIX=homeassistant
+STATE_TOPIC=luigi/{HOSTNAME}
+AVAILABILITY_TOPIC=luigi/{HOSTNAME}/availability
+
+[Discovery]
+# Home Assistant Discovery settings
+# {HOSTNAME} will be replaced with actual hostname
+DEVICE_NAME=Luigi-{HOSTNAME}
+DEVICE_MANUFACTURER=Luigi Project
+DEVICE_MODEL=Raspberry Pi Zero W
+
+[Logging]
+# Logging configuration
+LOG_FILE=/var/log/ha-mqtt-py.log
+LOG_LEVEL=INFO
+LOG_MAX_BYTES=10485760
+LOG_BACKUP_COUNT=5

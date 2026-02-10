@@ -1,0 +1,23 @@
+[Unit]
+Description=Luigi Home Assistant MQTT Integration (Python)
+Documentation=https://github.com/pkathmann88/luigi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /usr/local/bin/ha-mqtt-py.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/ha-mqtt-py.log
+StandardError=append:/var/log/ha-mqtt-py.log
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/log /tmp /etc/luigi
+
+[Install]
+WantedBy=multi-user.target

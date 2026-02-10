@@ -19,6 +19,74 @@ Use this skill when:
 - Planning testing strategies for hardware-dependent code
 - Deploying Python applications to Raspberry Pi
 
+## Implementation Workflow: Sequential Phases
+
+**CRITICAL: Always follow implementation phases sequentially. Complete all tasks in each phase before moving to the next phase.**
+
+When implementing a Luigi module following an IMPLEMENTATION_PLAN.md:
+
+### Phase Execution Rules
+
+1. **Complete Current Phase First**
+   - ✓ Complete ALL tasks in the current phase checklist
+   - ✓ Validate all deliverables (syntax checks, tests, documentation)
+   - ✓ Mark phase as complete with date/sign-off
+   - ✗ DO NOT start next phase until current phase is 100% complete
+
+2. **Phase Dependencies**
+   - Each phase builds on previous phases
+   - Skipping ahead causes incomplete implementations
+   - Going back to fix earlier phases wastes time
+   - Sequential execution ensures quality at each step
+
+3. **Typical Phase Sequence** (from IMPLEMENTATION_PLAN.md)
+   - **Phase 1**: Core Implementation (write code, validate syntax, test in mock mode)
+   - **Phase 2**: Service Integration (systemd service files, configuration examples)
+   - **Phase 3**: Setup Scripts (install/uninstall/status automation)
+   - **Phase 4**: Documentation (README, integration guides, API docs)
+   - **Phase 5**: Testing & Validation (syntax, mock, integration, service tests)
+   - **Phase 6**: Final Verification (design review, security audit, approval)
+
+4. **Phase Completion Checklist**
+   - [ ] All phase tasks completed (check IMPLEMENTATION_PLAN.md)
+   - [ ] All deliverables created and validated
+   - [ ] Syntax validation passed (Python, Shell, etc.)
+   - [ ] Tests pass for this phase
+   - [ ] Changes committed with descriptive message
+   - [ ] Phase marked complete in IMPLEMENTATION_PLAN.md
+   - [ ] Ready to proceed to next phase
+
+### Example: Phase 1 Completion
+
+**Phase 1: Core Implementation**
+
+Tasks:
+- [x] Create module.py with all classes
+- [x] Implement Config class with INI parsing
+- [x] Implement hardware abstraction classes
+- [x] Implement main application class
+- [x] Add signal handlers
+- [x] Add logging setup
+- [x] Validate: `python3 -m py_compile module.py` ✓
+- [x] Test in mock mode: `python3 module.py` ✓
+- [x] Fix any bugs found in mock testing
+- [x] Re-validate syntax after fixes ✓
+- [x] Commit changes
+- [x] Mark Phase 1 complete with date
+
+**Only then proceed to Phase 2.**
+
+### Why Sequential Execution Matters
+
+- **Quality**: Each phase validates previous work
+- **Efficiency**: Prevents rework from discovering issues late
+- **Completeness**: Ensures nothing is skipped
+- **Traceability**: Clear record of what's done at each stage
+- **Review**: Easier to review incremental progress
+- **Debugging**: Issues isolated to specific phase
+
+**Remember**: A well-executed sequential implementation is faster than a rushed parallel attempt that requires extensive debugging.
+
 ## Python Environment for Raspberry Pi
 
 ### Python Version Considerations
