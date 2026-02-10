@@ -1,5 +1,9 @@
 # /etc/luigi/iot/ha-mqtt-py/ha-mqtt-py.conf
 # Home Assistant MQTT Integration Configuration
+#
+# SECURITY: This file should have 600 permissions (readable only by owner)
+# to protect MQTT broker credentials.
+# Set with: chmod 600 /etc/luigi/iot/ha-mqtt-py/ha-mqtt-py.conf
 
 [Broker]
 # MQTT broker connection settings
@@ -46,3 +50,45 @@ LOG_FILE=/var/log/ha-mqtt-py.log
 LOG_LEVEL=INFO
 LOG_MAX_BYTES=10485760
 LOG_BACKUP_COUNT=5
+
+# ═══════════════════════════════════════════════════════════════════
+# Common Configuration Scenarios
+# ═══════════════════════════════════════════════════════════════════
+
+# Example 1: Local Home Assistant (default)
+# - Use when HA and Luigi are on the same network
+# - No authentication required
+# [Broker]
+# HOST=homeassistant.local
+# PORT=1883
+
+# Example 2: Remote Home Assistant with authentication
+# - Use when connecting to remote/cloud HA instance
+# - Requires username and password
+# [Broker]
+# HOST=192.168.1.100
+# PORT=1883
+# [Authentication]
+# USERNAME=luigi
+# PASSWORD=your_secure_password_here
+
+# Example 3: Secure connection with TLS
+# - Use for production/internet-facing deployments
+# - Requires TLS certificates
+# [Broker]
+# HOST=homeassistant.example.com
+# PORT=8883
+# TLS_ENABLED=yes
+# TLS_CA_CERT=/etc/ssl/certs/ca.crt
+# [Authentication]
+# USERNAME=luigi
+# PASSWORD=your_secure_password_here
+
+# Example 4: Multiple Luigi devices
+# - Each device needs unique CLIENT_ID (auto-generated from hostname)
+# - Default {HOSTNAME} substitution handles this automatically
+# [Client]
+# CLIENT_ID=luigi-{HOSTNAME}
+# [Topics]
+# STATE_TOPIC=luigi/{HOSTNAME}
+
