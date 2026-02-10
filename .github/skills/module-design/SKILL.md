@@ -383,6 +383,7 @@ Every Luigi module should follow this structure:
 ```
 category/module-name/
 ├── README.md                    # Complete module documentation
+├── module.json                  # Module metadata and dependencies (optional)
 ├── setup.sh                     # Installation automation (install/uninstall/status)
 ├── module-name.py               # Main Python application
 ├── module-name.service          # systemd service unit file
@@ -398,6 +399,33 @@ category/module-name/
 - Use lowercase with hyphens for directories
 - Use underscores in Python if needed for imports
 - Example: `motion-detection/pir-detector/pir_detector.py`
+
+**Module Metadata (module.json):**
+
+Modules can optionally declare dependencies and metadata using `module.json`:
+
+```json
+{
+  "name": "module-name",
+  "version": "1.0.0",
+  "description": "Brief module description",
+  "category": "category-name",
+  "dependencies": [
+    "iot/ha-mqtt"
+  ],
+  "hardware": {
+    "gpio_pins": [23, 18],
+    "sensors": ["PIR sensor", "DHT22"]
+  }
+}
+```
+
+**When to use module.json:**
+- Your module depends on another module (e.g., sensors that publish via ha-mqtt)
+- You want to ensure dependencies are installed first
+- You want to document hardware requirements in a machine-readable format
+
+See `/MODULE_SCHEMA.md` in the repository root for complete schema documentation.
 
 ### Configuration Design
 
@@ -1074,6 +1102,22 @@ When modules need to interact or share data:
 - **Historical data** - HA records sensor history automatically
 - **Mobile access** - Monitor sensors from HA mobile app
 
+**Declaring ha-mqtt as a dependency:**
+
+If your module integrates with ha-mqtt, declare it in `module.json`:
+
+```json
+{
+  "name": "your-sensor-module",
+  "version": "1.0.0",
+  "description": "Temperature and humidity monitoring",
+  "category": "sensors",
+  "dependencies": ["iot/ha-mqtt"]
+}
+```
+
+This ensures ha-mqtt is installed before your module during system setup, preventing installation failures.
+
 **Integration steps for sensor modules:**
 
 1. **Design phase** (in DESIGN_ANALYSIS.md):
@@ -1081,6 +1125,7 @@ When modules need to interact or share data:
    - Define sensor IDs (e.g., `mario_motion`, `temp_living_room`)
    - Choose device classes (motion, temperature, humidity, etc.)
    - Document sensor descriptor requirements
+   - Add ha-mqtt to dependencies in module.json design
 
 2. **Implementation phase** (in module code):
    ```python
