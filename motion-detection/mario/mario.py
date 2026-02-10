@@ -144,7 +144,7 @@ class Config:
                 # Note: Using print here as logging is not yet configured
                 print(f"Configuration loaded from {self.config_file}")
                 
-            except Exception as e:
+            except (configparser.Error, ValueError, KeyError) as e:
                 print(f"Warning: Error reading config file: {e}")
                 print("Using default configuration")
                 self._use_defaults()
@@ -170,11 +170,15 @@ class Config:
         Convert log level string to logging constant.
         
         Args:
-            level_str: String representation (DEBUG, INFO, WARNING, ERROR)
+            level_str: String representation (DEBUG, INFO, WARNING, ERROR, CRITICAL)
             
         Returns:
-            logging level constant
+            logging level constant (defaults to INFO for invalid values)
         """
+        # Handle non-string values
+        if not isinstance(level_str, str):
+            return logging.INFO
+        
         level_map = {
             'DEBUG': logging.DEBUG,
             'INFO': logging.INFO,
