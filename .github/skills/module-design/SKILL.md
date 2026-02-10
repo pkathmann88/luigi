@@ -189,7 +189,9 @@ IMPLEMENTATION_PLAN.md (Stage 2)
 **When you receive a feature request:**
 
 1. **Start DESIGN_ANALYSIS.md**
+   - Create the future module directory: `{category}/{module-name}/`
    - Copy template from `.github/skills/module-design/DESIGN_ANALYSIS.md`
+   - Place in module directory: `{category}/{module-name}/DESIGN_ANALYSIS.md`
    - Fill in Phases 1-3 (analysis phases)
    - Reference appropriate skills for detailed guidance
    - Complete checklists and get sign-offs
@@ -201,6 +203,7 @@ IMPLEMENTATION_PLAN.md (Stage 2)
 
 3. **Create IMPLEMENTATION_PLAN.md**
    - Copy template from `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
+   - Place in same module directory: `{category}/{module-name}/IMPLEMENTATION_PLAN.md`
    - Summarize design decisions from DESIGN_ANALYSIS
    - Fill in implementation phases (Phases 1-5)
    - Reference the completed DESIGN_ANALYSIS for details
@@ -1145,8 +1148,8 @@ This template captures:
 - To analyze and design the approach
 
 **How to Use:**
-1. Copy `DESIGN_ANALYSIS.md` to project planning directory
-2. Rename (e.g., `temp-sensor-DESIGN_ANALYSIS.md`)
+1. Create the future module directory: `{category}/{module-name}/`
+2. Copy `DESIGN_ANALYSIS.md` to `{category}/{module-name}/DESIGN_ANALYSIS.md`
 3. Fill in all 3 analysis phases
 4. Use referenced skills for detailed guidance
 5. Get peer review and approval
@@ -1169,8 +1172,8 @@ This template contains:
 - As the guide for implementation work
 
 **How to Use:**
-1. Copy `IMPLEMENTATION_PLAN.md` to project directory
-2. Rename (e.g., `temp-sensor-IMPLEMENTATION_PLAN.md`)
+1. Copy `IMPLEMENTATION_PLAN.md` to the module directory: `{category}/{module-name}/`
+2. Place as `{category}/{module-name}/IMPLEMENTATION_PLAN.md`
 3. Summarize key decisions from DESIGN_ANALYSIS.md
 4. Fill in implementation tasks
 5. Execute phases sequentially
