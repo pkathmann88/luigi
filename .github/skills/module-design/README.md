@@ -4,7 +4,7 @@ This is a quick reference guide for using the Luigi Module Design Skill effectiv
 
 ## What is the Module Design Skill?
 
-The module-design skill provides comprehensive guidance for **designing Luigi modules BEFORE implementation**. It ensures hardware safety, proper architecture, and maintainability through a structured design process.
+The module-design skill provides comprehensive guidance for **designing Luigi modules BEFORE implementation**. It ensures hardware safety, proper architecture, and maintainability through a structured **8-phase implementation plan** that leverages all Luigi skills.
 
 ## When to Use This Skill
 
@@ -17,25 +17,25 @@ Use this skill at the **design phase** before writing any code:
 - Planning GPIO pin assignments
 - Architecting software structure
 - Defining configuration options
-- Creating documentation structure
+- Creating an implementation plan
 
 ❌ **Don't use this skill for:**
 - Writing Python code (use `python-development` skill)
 - Implementing hardware connections (use `raspi-zero-w` skill)
 - Writing deployment scripts (use `system-setup` skill)
-- These are implementation tasks, not design tasks
+- These are implementation tasks covered in Phase 7 of the plan
 
 ## Skill Files
 
-The module-design skill includes four files:
+The module-design skill includes five files:
 
 ### 1. SKILL.md (Main Skill)
-**Purpose:** Comprehensive design guidance  
-**Size:** 1,085 lines  
-**Use for:** Understanding design principles, patterns, and best practices
+**Purpose:** Comprehensive design guidance and process overview  
+**Size:** ~1,100 lines  
+**Use for:** Understanding the 8-phase design process and accessing detailed guidance
 
 **Key Sections:**
-- Design philosophy and principles
+- 8-phase design process overview
 - Hardware design guidelines (safety, GPIO, wiring, power)
 - Software architecture design
 - Service integration design
@@ -44,10 +44,32 @@ The module-design skill includes four files:
 - Security considerations
 - Design patterns and examples
 
-### 2. hardware-design-checklist.md
+### 2. IMPLEMENTATION_PLAN.md (Primary Template)
+**Purpose:** Sequential implementation plan template  
+**Size:** ~480 lines  
+**Use for:** Creating your complete module implementation plan
+
+**8 Phases:**
+1. Hardware Design & Safety Verification
+2. Software Architecture Design
+3. Service Integration Design
+4. Setup Script & Deployment
+5. Testing Strategy
+6. Documentation
+7. Implementation
+8. Final Verification
+
+**Each phase includes:**
+- Clear goals and skills to use
+- Task breakdowns with checklists
+- References to relevant skills
+- Verification steps
+- Sign-off sections
+
+### 3. hardware-design-checklist.md
 **Purpose:** Hardware safety and design verification  
 **Size:** 227 lines  
-**Use for:** Verifying electrical safety, GPIO assignments, and wiring
+**Use for:** Phase 1 hardware verification
 
 **Key Sections:**
 - Component selection verification
@@ -57,10 +79,10 @@ The module-design skill includes four files:
 - Pre-power testing checklist
 - Documentation requirements
 
-### 3. design-review-checklist.md
+### 4. design-review-checklist.md
 **Purpose:** Complete design review before implementation  
 **Size:** 389 lines  
-**Use for:** Comprehensive review of all design aspects
+**Use for:** Phase 8 final verification
 
 **Key Sections:**
 - Requirements analysis verification
@@ -72,42 +94,66 @@ The module-design skill includes four files:
 - Documentation review
 - Risk assessment
 
-### 4. module-design-template.md
-**Purpose:** Fillable design document template  
-**Size:** 595 lines  
-**Use for:** Documenting your module design systematically
-
-**Key Sections:**
-- Module information and overview
-- Hardware design (components, wiring, power)
-- Software architecture (classes, config, logging)
-- Service integration
-- Setup script design
-- Testing strategy
-- Documentation plan
-- Security review
-- Timeline and milestones
-- Sign-off section
+### 5. README.md (This File)
+**Purpose:** Quick reference guide  
+**Use for:** Quick overview and workflow guidance
 
 ## Design Process Workflow
 
-Follow this workflow when designing a new module:
+The Luigi module design process creates a sequential **IMPLEMENTATION_PLAN.md**:
 
 ```
-1. Read SKILL.md
-   ↓
-2. Fill out module-design-template.md
-   ↓
-3. Complete hardware-design-checklist.md
-   ↓
-4. Complete design-review-checklist.md
-   ↓
-5. Get peer review
-   ↓
-6. Address feedback
-   ↓
-7. Design approved → Ready for implementation
+Step 1: Copy IMPLEMENTATION_PLAN.md template
+    ↓
+Step 2: Read SKILL.md for design guidance
+    ↓
+Step 3: Fill out Phases 1-6 (Design)
+    ↓
+    Phase 1: Hardware Design (use raspi-zero-w skill)
+    Phase 2: Software Architecture (use python-development skill)
+    Phase 3: Service Integration (use system-setup skill)
+    Phase 4: Setup & Deployment (use system-setup skill)
+    Phase 5: Testing Strategy (use python-development skill)
+    Phase 6: Documentation (use module-design skill)
+    ↓
+Step 4: Get peer review on design
+    ↓
+Step 5: Address feedback and get approval
+    ↓
+Step 6: Execute Phase 7 (Implementation)
+    ↓
+    - Assemble hardware
+    - Write Python code
+    - Create service and setup script
+    - Execute tests
+    - Write documentation
+    ↓
+Step 7: Complete Phase 8 (Final Verification)
+    ↓
+    - Complete design-review-checklist.md
+    - Integration testing
+    - Final approval
+    ↓
+✓ Module Complete
 ```
+
+### Workflow Details
+
+**Design Phases (1-6):** Plan everything before coding
+- Fill in templates and checklists
+- Reference specific skills for detailed guidance
+- Get sign-offs at each phase
+- Output: Complete implementation plan
+
+**Implementation Phase (7):** Execute the plan
+- Follow the design from Phases 1-6
+- Use all skills during implementation
+- Verify against checklists
+
+**Verification Phase (8):** Final review
+- Complete comprehensive design review
+- Integration testing with Luigi system
+- Final approval
 
 ## Key Design Principles
 

@@ -77,43 +77,107 @@ Luigi supports various module types across different categories:
 
 ## Design Process Overview
 
-Follow this structured process when designing a new module:
+The Luigi module design process creates a sequential **IMPLEMENTATION_PLAN.md** that guides you through all phases of module development. This plan leverages all Luigi skills to ensure a complete, safe, and maintainable module.
 
-### Phase 1: Requirements Analysis
-1. Define the module's purpose and key functionality
-2. Identify required hardware components
-3. List software dependencies
-4. Determine user-configurable parameters
-5. Identify integration points with other systems
+### Design Output: IMPLEMENTATION_PLAN.md
 
-### Phase 2: Hardware Design
-1. Select and document all components
-2. Design wiring connections with safety verification
-3. Assign GPIO pins with conflict checking
-4. Plan power requirements
-5. Create wiring diagrams
-6. Document hardware assembly steps
+The design process produces a comprehensive implementation plan with **8 sequential phases**:
 
-### Phase 3: Software Architecture
-1. Design module structure (classes, functions)
-2. Define configuration file format and location
-3. Plan error handling and logging strategy
-4. Design hardware abstraction layers
-5. Plan testing approach (unit, integration, hardware)
+1. **Hardware Design & Safety Verification** - Use `module-design` + `raspi-zero-w` skills
+2. **Software Architecture Design** - Use `module-design` + `python-development` skills  
+3. **Service Integration Design** - Use `module-design` + `system-setup` skills
+4. **Setup Script & Deployment** - Use `system-setup` skill
+5. **Testing Strategy** - Use `python-development` + `raspi-zero-w` skills
+6. **Documentation** - Use `module-design` skill
+7. **Implementation** - Execute the plan with all skills
+8. **Final Verification** - Complete design review
 
-### Phase 4: Deployment Design
-1. Design setup script (install/uninstall/status)
-2. Plan service integration (systemd or init.d)
-3. Define file locations and permissions
-4. Design verification and health checks
-5. Plan update and rollback strategies
+### How to Use the Design Process
 
-### Phase 5: Documentation Design
-1. Plan README structure
-2. Create wiring diagrams
-3. Write configuration documentation
-4. Document troubleshooting procedures
-5. Create usage examples
+1. **Copy the template:** Start with `IMPLEMENTATION_PLAN.md` template
+2. **Fill in each phase:** Work through phases 1-6 to design your module
+3. **Get approval:** Complete checklists and get peer review
+4. **Execute Phase 7:** Implement according to the plan
+5. **Verify Phase 8:** Final review and integration testing
+
+### Sequential Workflow
+
+```
+Phase 1: Hardware Design
+    ↓ (use raspi-zero-w skill for GPIO details)
+Phase 2: Software Architecture
+    ↓ (use python-development skill for code patterns)
+Phase 3: Service Integration
+    ↓ (use system-setup skill for service patterns)
+Phase 4: Setup & Deployment
+    ↓ (use system-setup skill for automation)
+Phase 5: Testing Strategy
+    ↓ (use python-development for mock GPIO)
+Phase 6: Documentation
+    ↓ (use module-design for structure)
+Phase 7: Implementation
+    ↓ (execute the plan, use all skills)
+Phase 8: Final Verification
+    ↓ (design-review-checklist.md)
+✓ Complete Module
+```
+
+### Key Phases Detail
+
+**Phase 1: Hardware Design & Safety Verification**
+- Select components with voltage/current verification
+- Assign GPIO pins following priority system
+- Create wiring diagrams with safety notes
+- Calculate power budget
+- Complete hardware-design-checklist.md
+- **Skills:** `module-design`, `raspi-zero-w`
+
+**Phase 2: Software Architecture Design**
+- Design class structure (Config, GPIOManager, Device, App)
+- Define configuration file (INI format, `/etc/luigi/{category}/{module}/`)
+- Plan error handling and logging strategy
+- Design security hardening measures
+- **Skills:** `module-design`, `python-development`
+
+**Phase 3: Service Integration Design**
+- Design systemd service unit file
+- Plan graceful shutdown (SIGTERM/SIGINT handlers)
+- Configure restart policy and logging
+- **Skills:** `module-design`, `system-setup`
+
+**Phase 4: Setup Script & Deployment**
+- Design setup.sh (install/uninstall/status)
+- Plan file deployment (locations, permissions)
+- Design verification steps
+- **Skills:** `system-setup`
+
+**Phase 5: Testing Strategy**
+- Plan syntax validation (python3 -m py_compile)
+- Design mock GPIO testing approach
+- Plan hardware integration tests
+- Define success criteria
+- **Skills:** `python-development`, `raspi-zero-w`
+
+**Phase 6: Documentation**
+- Plan README structure (14 required sections)
+- Finalize wiring diagrams
+- Document configuration options
+- Create troubleshooting guide
+- **Skills:** `module-design`
+
+**Phase 7: Implementation**
+- Assemble hardware following Phase 1 plan
+- Implement Python code following Phase 2 design
+- Create service and setup script from Phases 3-4
+- Execute testing from Phase 5
+- Write documentation from Phase 6
+- **Skills:** All skills - execute the plan
+
+**Phase 8: Final Verification**
+- Complete design-review-checklist.md
+- Integration testing with Luigi system
+- Peer review and approval
+- **Skills:** `module-design`
 
 ## Hardware Design Guidelines
 
@@ -1021,50 +1085,51 @@ Listen for command → Validate → Execute → Respond with status
 
 ## Design Templates and Tools
 
-### Quick Start Design Template
+### Implementation Plan Template
 
-Use this template to start your module design:
+**Primary Tool:** Use `IMPLEMENTATION_PLAN.md` template for all module designs.
 
-```markdown
-# Module Design: {Module Name}
+The implementation plan is a comprehensive, sequential document that:
+- Guides you through 8 phases from design to completion
+- References specific skills for each phase
+- Includes checklists and verification steps
+- Tracks progress and timeline
+- Documents risks and decisions
 
-## Purpose
-{Brief description of what the module does}
+**Location:** `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
 
-## Hardware
-- Component 1: {Part name/number}
-- Component 2: {Part name/number}
-- Connections: {Summary}
+**How to Use:**
+1. Copy `IMPLEMENTATION_PLAN.md` to your module's planning directory
+2. Rename to match your module (e.g., `temp-sensor-IMPLEMENTATION_PLAN.md`)
+3. Fill in each phase sequentially
+4. Use the referenced skills for detailed guidance
+5. Complete checklists as you progress
+6. Get sign-offs at each phase
+7. Execute Phase 7 (Implementation) following the plan
+8. Complete Phase 8 (Final Verification)
 
-## GPIO Pins
-- GPIO{X} (Pin Y): {Purpose}
-- GPIO{X} (Pin Y): {Purpose}
+### Supporting Tools
 
-## Configuration Options
-- {SETTING_NAME}: {Description} (default: {value})
-- {SETTING_NAME}: {Description} (default: {value})
+**Hardware Design Checklist** (`hardware-design-checklist.md`)
+- Component selection verification
+- GPIO pin assignment checks
+- Safety verification (voltage, current, polarity)
+- Pre-power testing procedures
+- Use during Phase 1 of implementation plan
 
-## Key Design Decisions
-1. {Decision}: {Rationale}
-2. {Decision}: {Rationale}
-
-## Risks and Mitigations
-- Risk: {Description}
-  - Mitigation: {How to handle}
-
-## Testing Strategy
-1. {Test type}: {What to test}
-2. {Test type}: {What to test}
-
-## Open Questions
-- {Question needing resolution}
-```
+**Design Review Checklist** (`design-review-checklist.md`)
+- Complete design review process
+- Requirements through documentation
+- Risk assessment
+- Approval sign-offs
+- Use during Phase 8 of implementation plan
 
 ## Additional Resources
 
 See also:
-- `hardware-design-checklist.md` - Detailed hardware design verification
-- `module-template/` - Boilerplate files for new modules (if available)
+- `IMPLEMENTATION_PLAN.md` - **Main template for module design**
+- `hardware-design-checklist.md` - Hardware safety verification
+- `design-review-checklist.md` - Complete design review
 - `.github/skills/python-development/` - Implementation patterns
 - `.github/skills/raspi-zero-w/` - Hardware and GPIO reference
 - `.github/skills/system-setup/` - Deployment automation patterns
