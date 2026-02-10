@@ -1,0 +1,9 @@
+{
+  "sensor_id": "example_humidity",
+  "name": "Example Humidity Sensor",
+  "device_class": "humidity",
+  "unit_of_measurement": "%",
+  "icon": "mdi:water-percent",
+  "state_class": "measurement",
+  "module": "example-module"
+}
