@@ -11,6 +11,7 @@ User=root
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
+# Dual logging: both journalctl (automatic) and /var/log/motion.log (traditional)
 StandardOutput=append:/var/log/motion.log
 StandardError=append:/var/log/motion.log
 

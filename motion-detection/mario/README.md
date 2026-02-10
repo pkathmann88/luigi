@@ -159,16 +159,26 @@ All shutdown methods trigger a graceful shutdown that:
 Key parameters in `mario.py` (defined in Config class):
 
 ```python
-# GPIO Settings
-SENSOR_PIN = 23                           # GPIO pin for PIR sensor (BCM numbering)
-
-# File Paths
-SOUND_DIR = "/usr/share/sounds/mario/"    # Directory containing sound files
-TIMER_FILE = "/tmp/mario_timer"           # Cooldown tracking file
-LOG_FILE = "/var/log/motion.log"          # Application log file
-
-# Timing
-COOLDOWN_SECONDS = 1800                   # 30 minutes between triggers
+class Config:
+    """Application configuration constants."""
+    
+    # GPIO Settings (BCM numbering)
+    GPIO_MODE = GPIO.BCM
+    SENSOR_PIN = 23
+    
+    # File Paths
+    SOUND_DIR = "/usr/share/sounds/mario/"
+    TIMER_FILE = "/tmp/mario_timer"
+    LOG_FILE = "/var/log/motion.log"
+    
+    # Timing Settings
+    COOLDOWN_SECONDS = 1800  # 30 minutes
+    MAIN_LOOP_SLEEP = 100    # seconds
+    
+    # Logging
+    LOG_LEVEL = logging.INFO
+    LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
+    LOG_BACKUP_COUNT = 5
 ```
 
 Cooldown duration: **1800 seconds (30 minutes)**
