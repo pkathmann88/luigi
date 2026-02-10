@@ -1,0 +1,28 @@
+# Mario Motion Detection Configuration
+# Copy this file to /etc/luigi/motion-detection/mario/mario.conf and customize as needed
+
+[GPIO]
+# GPIO pin for PIR sensor (BCM numbering)
+SENSOR_PIN=23
+
+[Timing]
+# Cooldown period in seconds (30 minutes = 1800)
+COOLDOWN_SECONDS=1800
+# Main loop sleep interval in seconds
+MAIN_LOOP_SLEEP=100
+
+[Files]
+# Sound directory containing WAV/MP3 files
+SOUND_DIR=/usr/share/sounds/mario/
+# Timer file location for tracking last trigger time
+TIMER_FILE=/tmp/mario_timer
+# Log file location
+LOG_FILE=/var/log/motion.log
+
+[Logging]
+# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL=INFO
+# Maximum log file size in bytes (10MB default)
+LOG_MAX_BYTES=10485760
+# Number of backup log files to keep
+LOG_BACKUP_COUNT=5
