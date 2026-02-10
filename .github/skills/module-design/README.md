@@ -4,38 +4,39 @@ This is a quick reference guide for using the Luigi Module Design Skill effectiv
 
 ## What is the Module Design Skill?
 
-The module-design skill provides comprehensive guidance for **designing Luigi modules BEFORE implementation**. It ensures hardware safety, proper architecture, and maintainability through a structured **8-phase implementation plan** that leverages all Luigi skills.
+The module-design skill provides comprehensive guidance for **designing Luigi modules BEFORE implementation**. It ensures hardware safety, proper architecture, and maintainability through a **two-stage workflow**:
+
+1. **Stage 1:** Design Analysis (3 analysis phases)
+2. **Stage 2:** Implementation Plan (5 implementation phases)
 
 ## When to Use This Skill
 
-Use this skill at the **design phase** before writing any code:
+Use this skill when you receive a feature request:
 
 ✅ **Use module-design skill when:**
-- Planning a new Luigi module
-- Selecting hardware components
-- Designing wiring connections
-- Planning GPIO pin assignments
-- Architecting software structure
-- Defining configuration options
-- Creating an implementation plan
+- Receiving a feature request for a new module
+- Analyzing hardware requirements
+- Designing software architecture
+- Planning service integration
+- Creating implementation plans
 
 ❌ **Don't use this skill for:**
 - Writing Python code (use `python-development` skill)
 - Implementing hardware connections (use `raspi-zero-w` skill)
 - Writing deployment scripts (use `system-setup` skill)
-- These are implementation tasks covered in Phase 7 of the plan
+- These are implementation tasks in Stage 2
 
 ## Skill Files
 
-The module-design skill includes five files:
+The module-design skill includes six files:
 
 ### 1. SKILL.md (Main Skill)
-**Purpose:** Comprehensive design guidance and process overview  
-**Size:** ~1,100 lines  
-**Use for:** Understanding the 8-phase design process and accessing detailed guidance
+**Purpose:** Comprehensive design guidance and two-stage process overview  
+**Size:** ~1,200 lines  
+**Use for:** Understanding the complete design workflow
 
 **Key Sections:**
-- 8-phase design process overview
+- Two-stage workflow explanation
 - Hardware design guidelines (safety, GPIO, wiring, power)
 - Software architecture design
 - Service integration design
@@ -44,32 +45,49 @@ The module-design skill includes five files:
 - Security considerations
 - Design patterns and examples
 
-### 2. IMPLEMENTATION_PLAN.md (Primary Template)
-**Purpose:** Sequential implementation plan template  
-**Size:** ~480 lines  
-**Use for:** Creating your complete module implementation plan
+### 2. DESIGN_ANALYSIS.md (Stage 1 Template)
+**Purpose:** Initial analysis template when feature request received  
+**Size:** ~400 lines  
+**Use for:** Analyzing and designing before implementation
 
-**8 Phases:**
-1. Hardware Design & Safety Verification
-2. Software Architecture Design
-3. Service Integration Design
-4. Setup Script & Deployment
-5. Testing Strategy
-6. Documentation
-7. Implementation
-8. Final Verification
+**3 Analysis Phases:**
+1. Requirements & Hardware Analysis
+2. Software Architecture Analysis
+3. Service & Deployment Analysis
 
 **Each phase includes:**
-- Clear goals and skills to use
-- Task breakdowns with checklists
-- References to relevant skills
+- Clear goals and skills to reference
+- Analysis tasks with checklists
+- Design decision documentation
+- Risk identification
+- Sign-off sections
+
+**Use this FIRST when you receive a feature request.**
+
+### 3. IMPLEMENTATION_PLAN.md (Stage 2 Template)
+**Purpose:** Implementation plan created from approved design analysis  
+**Size:** ~520 lines  
+**Use for:** Executing implementation after analysis is approved
+
+**5 Implementation Phases:**
+1. Setup & Deployment Implementation
+2. Testing Strategy Implementation
+3. Documentation Implementation
+4. Core Implementation
+5. Final Verification & Integration
+
+**Each phase includes:**
+- Implementation tasks with checklists
+- References to DESIGN_ANALYSIS decisions
 - Verification steps
 - Sign-off sections
 
-### 3. hardware-design-checklist.md
+**Use this AFTER DESIGN_ANALYSIS.md is approved.**
+
+### 4. hardware-design-checklist.md
 **Purpose:** Hardware safety and design verification  
 **Size:** 227 lines  
-**Use for:** Phase 1 hardware verification
+**Use for:** DESIGN_ANALYSIS Phase 1
 
 **Key Sections:**
 - Component selection verification
@@ -79,10 +97,10 @@ The module-design skill includes five files:
 - Pre-power testing checklist
 - Documentation requirements
 
-### 4. design-review-checklist.md
-**Purpose:** Complete design review before implementation  
+### 5. design-review-checklist.md
+**Purpose:** Complete design review  
 **Size:** 389 lines  
-**Use for:** Phase 8 final verification
+**Use for:** IMPLEMENTATION_PLAN Phase 5
 
 **Key Sections:**
 - Requirements analysis verification
@@ -94,66 +112,80 @@ The module-design skill includes five files:
 - Documentation review
 - Risk assessment
 
-### 5. README.md (This File)
+### 6. README.md (This File)
 **Purpose:** Quick reference guide  
 **Use for:** Quick overview and workflow guidance
 
 ## Design Process Workflow
 
-The Luigi module design process creates a sequential **IMPLEMENTATION_PLAN.md**:
+The Luigi module design process uses a **two-stage workflow**:
 
 ```
-Step 1: Copy IMPLEMENTATION_PLAN.md template
+Feature Request Received
     ↓
-Step 2: Read SKILL.md for design guidance
+STAGE 1: Design Analysis
     ↓
-Step 3: Fill out Phases 1-6 (Design)
+Step 1: Copy DESIGN_ANALYSIS.md template
     ↓
-    Phase 1: Hardware Design (use raspi-zero-w skill)
-    Phase 2: Software Architecture (use python-development skill)
-    Phase 3: Service Integration (use system-setup skill)
-    Phase 4: Setup & Deployment (use system-setup skill)
-    Phase 5: Testing Strategy (use python-development skill)
-    Phase 6: Documentation (use module-design skill)
+Step 2: Complete Analysis Phases 1-3
     ↓
-Step 4: Get peer review on design
+    Phase 1: Requirements & Hardware Analysis
+        ↓ (use module-design + raspi-zero-w skills)
+    Phase 2: Software Architecture Analysis
+        ↓ (use module-design + python-development skills)
+    Phase 3: Service & Deployment Analysis
+        ↓ (use module-design + system-setup skills)
     ↓
-Step 5: Address feedback and get approval
+Step 3: Get peer review on analysis
     ↓
-Step 6: Execute Phase 7 (Implementation)
+Step 4: Address feedback and get approval
     ↓
-    - Assemble hardware
-    - Write Python code
-    - Create service and setup script
-    - Execute tests
-    - Write documentation
+STAGE 2: Implementation
     ↓
-Step 7: Complete Phase 8 (Final Verification)
+Step 5: Create IMPLEMENTATION_PLAN.md from approved analysis
     ↓
-    - Complete design-review-checklist.md
-    - Integration testing
-    - Final approval
+Step 6: Execute Implementation Phases 1-5
+    ↓
+    Phase 1: Setup & Deployment (use system-setup)
+    Phase 2: Testing Strategy (use python-development + raspi-zero-w)
+    Phase 3: Documentation (use module-design)
+    Phase 4: Core Implementation (use all skills)
+    Phase 5: Final Verification (use module-design)
+    ↓
+Step 7: Final approval and production deployment
     ↓
 ✓ Module Complete
 ```
 
-### Workflow Details
+### Two-Stage Workflow Details
 
-**Design Phases (1-6):** Plan everything before coding
-- Fill in templates and checklists
-- Reference specific skills for detailed guidance
-- Get sign-offs at each phase
-- Output: Complete implementation plan
+**STAGE 1: Design Analysis (DESIGN_ANALYSIS.md)**
+- **When:** Upon receiving feature request
+- **Purpose:** Analyze and design before implementation
+- **Output:** Approved design document
+- **Phases:** 3 analysis phases
+  1. Requirements & Hardware Analysis
+  2. Software Architecture Analysis
+  3. Service & Deployment Analysis
 
-**Implementation Phase (7):** Execute the plan
-- Follow the design from Phases 1-6
-- Use all skills during implementation
-- Verify against checklists
+**STAGE 2: Implementation (IMPLEMENTATION_PLAN.md)**
+- **When:** After DESIGN_ANALYSIS.md is approved
+- **Purpose:** Execute the implementation
+- **Input:** Results from DESIGN_ANALYSIS.md
+- **Phases:** 5 implementation phases
+  1. Setup & Deployment Implementation
+  2. Testing Strategy Implementation
+  3. Documentation Implementation
+  4. Core Implementation
+  5. Final Verification & Integration
 
-**Verification Phase (8):** Final review
-- Complete comprehensive design review
-- Integration testing with Luigi system
-- Final approval
+### Why Two Stages?
+
+**Benefits:**
+- **Safety**: Hardware design verified before building
+- **Quality**: Software architecture validated before coding
+- **Efficiency**: Avoid rework by catching issues in analysis
+- **Traceability**: Implementation directly references design decisions
 
 ## Key Design Principles
 

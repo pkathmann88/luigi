@@ -77,107 +77,144 @@ Luigi supports various module types across different categories:
 
 ## Design Process Overview
 
-The Luigi module design process creates a sequential **IMPLEMENTATION_PLAN.md** that guides you through all phases of module development. This plan leverages all Luigi skills to ensure a complete, safe, and maintainable module.
+The Luigi module design process is a **two-stage workflow**:
 
-### Design Output: IMPLEMENTATION_PLAN.md
+1. **Stage 1: Design Analysis** (when feature request received)
+2. **Stage 2: Implementation Plan** (created from approved analysis)
 
-The design process produces a comprehensive implementation plan with **8 sequential phases**:
+### Stage 1: Design Analysis (DESIGN_ANALYSIS.md)
 
-1. **Hardware Design & Safety Verification** - Use `module-design` + `raspi-zero-w` skills
-2. **Software Architecture Design** - Use `module-design` + `python-development` skills  
-3. **Service Integration Design** - Use `module-design` + `system-setup` skills
-4. **Setup Script & Deployment** - Use `system-setup` skill
-5. **Testing Strategy** - Use `python-development` + `raspi-zero-w` skills
-6. **Documentation** - Use `module-design` skill
-7. **Implementation** - Execute the plan with all skills
-8. **Final Verification** - Complete design review
+When a feature request is received, **first** complete a design analysis document with **3 phases**:
 
-### How to Use the Design Process
-
-1. **Copy the template:** Start with `IMPLEMENTATION_PLAN.md` template
-2. **Fill in each phase:** Work through phases 1-6 to design your module
-3. **Get approval:** Complete checklists and get peer review
-4. **Execute Phase 7:** Implement according to the plan
-5. **Verify Phase 8:** Final review and integration testing
-
-### Sequential Workflow
-
-```
-Phase 1: Hardware Design
-    ↓ (use raspi-zero-w skill for GPIO details)
-Phase 2: Software Architecture
-    ↓ (use python-development skill for code patterns)
-Phase 3: Service Integration
-    ↓ (use system-setup skill for service patterns)
-Phase 4: Setup & Deployment
-    ↓ (use system-setup skill for automation)
-Phase 5: Testing Strategy
-    ↓ (use python-development for mock GPIO)
-Phase 6: Documentation
-    ↓ (use module-design for structure)
-Phase 7: Implementation
-    ↓ (execute the plan, use all skills)
-Phase 8: Final Verification
-    ↓ (design-review-checklist.md)
-✓ Complete Module
-```
-
-### Key Phases Detail
-
-**Phase 1: Hardware Design & Safety Verification**
-- Select components with voltage/current verification
+**Phase 1: Requirements & Hardware Analysis**
+- Define requirements and success criteria
+- Select and document hardware components
 - Assign GPIO pins following priority system
-- Create wiring diagrams with safety notes
+- Create wiring diagrams with safety verification
 - Calculate power budget
-- Complete hardware-design-checklist.md
+- Complete safety analysis
 - **Skills:** `module-design`, `raspi-zero-w`
 
-**Phase 2: Software Architecture Design**
-- Design class structure (Config, GPIOManager, Device, App)
-- Define configuration file (INI format, `/etc/luigi/{category}/{module}/`)
+**Phase 2: Software Architecture Analysis**
+- Design module structure and class architecture
+- Define configuration file format and location
 - Plan error handling and logging strategy
 - Design security hardening measures
 - **Skills:** `module-design`, `python-development`
 
-**Phase 3: Service Integration Design**
-- Design systemd service unit file
-- Plan graceful shutdown (SIGTERM/SIGINT handlers)
-- Configure restart policy and logging
+**Phase 3: Service & Deployment Analysis**
+- Design systemd service integration
+- Plan graceful shutdown mechanisms
+- Design setup script strategy
+- Plan file deployment and dependencies
 - **Skills:** `module-design`, `system-setup`
 
-**Phase 4: Setup Script & Deployment**
-- Design setup.sh (install/uninstall/status)
-- Plan file deployment (locations, permissions)
-- Design verification steps
+**Output:** DESIGN_ANALYSIS.md with approved hardware, software, and service designs.
+
+### Stage 2: Implementation Plan (IMPLEMENTATION_PLAN.md)
+
+After DESIGN_ANALYSIS.md is approved, **create** an implementation plan with **5 phases**:
+
+**Phase 1: Setup & Deployment Implementation**
+- Create setup.sh (install/uninstall/status)
+- Create configuration example file
+- Implement file deployment
 - **Skills:** `system-setup`
+- **Based on:** DESIGN_ANALYSIS Phase 3
 
-**Phase 5: Testing Strategy**
-- Plan syntax validation (python3 -m py_compile)
-- Design mock GPIO testing approach
-- Plan hardware integration tests
-- Define success criteria
+**Phase 2: Testing Strategy Implementation**
+- Set up syntax validation
+- Implement mock GPIO testing
+- Define hardware integration tests
 - **Skills:** `python-development`, `raspi-zero-w`
+- **Based on:** DESIGN_ANALYSIS Phases 1 & 2
 
-**Phase 6: Documentation**
-- Plan README structure (14 required sections)
-- Finalize wiring diagrams
-- Document configuration options
-- Create troubleshooting guide
+**Phase 3: Documentation Implementation**
+- Write README.md with all required sections
+- Add inline code documentation
+- Document configuration parameters
 - **Skills:** `module-design`
+- **Based on:** DESIGN_ANALYSIS all phases
 
-**Phase 7: Implementation**
-- Assemble hardware following Phase 1 plan
-- Implement Python code following Phase 2 design
-- Create service and setup script from Phases 3-4
-- Execute testing from Phase 5
-- Write documentation from Phase 6
-- **Skills:** All skills - execute the plan
+**Phase 4: Core Implementation**
+- Assemble hardware per design
+- Implement Python code (Config, GPIOManager, Device, App classes)
+- Create service file
+- Integration testing
+- **Skills:** `python-development`, `raspi-zero-w`, `system-setup`
+- **Based on:** DESIGN_ANALYSIS all phases
 
-**Phase 8: Final Verification**
-- Complete design-review-checklist.md
-- Integration testing with Luigi system
-- Peer review and approval
+**Phase 5: Final Verification & Integration**
+- Complete design review checklist
+- Luigi system integration testing
+- Performance and security verification
+- Final approval
 - **Skills:** `module-design`
+- **Based on:** Complete implementation
+
+### Complete Workflow
+
+```
+Feature Request Received
+    ↓
+DESIGN_ANALYSIS.md (Stage 1)
+    ↓
+    Phase 1: Requirements & Hardware Analysis
+        ↓ (use module-design + raspi-zero-w)
+    Phase 2: Software Architecture Analysis
+        ↓ (use module-design + python-development)
+    Phase 3: Service & Deployment Analysis
+        ↓ (use module-design + system-setup)
+    ↓
+Design Review & Approval
+    ↓
+IMPLEMENTATION_PLAN.md (Stage 2)
+    ↓
+    Phase 1: Setup & Deployment
+        ↓ (use system-setup)
+    Phase 2: Testing Strategy
+        ↓ (use python-development + raspi-zero-w)
+    Phase 3: Documentation
+        ↓ (use module-design)
+    Phase 4: Core Implementation
+        ↓ (use all skills)
+    Phase 5: Final Verification
+        ↓ (use module-design)
+    ↓
+✓ Complete Module
+```
+
+### How to Use the Process
+
+**When you receive a feature request:**
+
+1. **Start DESIGN_ANALYSIS.md**
+   - Copy template from `.github/skills/module-design/DESIGN_ANALYSIS.md`
+   - Fill in Phases 1-3 (analysis phases)
+   - Reference appropriate skills for detailed guidance
+   - Complete checklists and get sign-offs
+
+2. **Get Design Approval**
+   - Peer review the analysis
+   - Address feedback
+   - Get final approval to proceed
+
+3. **Create IMPLEMENTATION_PLAN.md**
+   - Copy template from `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
+   - Summarize design decisions from DESIGN_ANALYSIS
+   - Fill in implementation phases (Phases 1-5)
+   - Reference the completed DESIGN_ANALYSIS for details
+
+4. **Execute Implementation**
+   - Follow the implementation plan
+   - Use referenced skills for guidance
+   - Complete checklists as you progress
+   - Get sign-offs at each phase
+
+5. **Final Verification**
+   - Complete Phase 5 verification
+   - Get final approval
+   - Deploy to production
 
 ## Hardware Design Guidelines
 
@@ -1085,28 +1122,59 @@ Listen for command → Validate → Execute → Respond with status
 
 ## Design Templates and Tools
 
-### Implementation Plan Template
+### Two-Stage Template System
 
-**Primary Tool:** Use `IMPLEMENTATION_PLAN.md` template for all module designs.
+Luigi uses a two-stage template system for module development:
 
-The implementation plan is a comprehensive, sequential document that:
-- Guides you through 8 phases from design to completion
-- References specific skills for each phase
-- Includes checklists and verification steps
-- Tracks progress and timeline
-- Documents risks and decisions
+**Stage 1: DESIGN_ANALYSIS.md** (Analysis phases - done first)
+**Stage 2: IMPLEMENTATION_PLAN.md** (Implementation phases - created from analysis)
 
-**Location:** `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
+### DESIGN_ANALYSIS.md Template
+
+**Purpose:** Initial analysis when feature request is received  
+**Location:** `.github/skills/module-design/DESIGN_ANALYSIS.md`
+
+This template captures:
+- **Phase 1:** Requirements & Hardware Analysis
+- **Phase 2:** Software Architecture Analysis
+- **Phase 3:** Service & Deployment Analysis
+
+**When to Use:**
+- Upon receiving a feature request
+- Before any implementation begins
+- To analyze and design the approach
 
 **How to Use:**
-1. Copy `IMPLEMENTATION_PLAN.md` to your module's planning directory
-2. Rename to match your module (e.g., `temp-sensor-IMPLEMENTATION_PLAN.md`)
-3. Fill in each phase sequentially
-4. Use the referenced skills for detailed guidance
-5. Complete checklists as you progress
-6. Get sign-offs at each phase
-7. Execute Phase 7 (Implementation) following the plan
-8. Complete Phase 8 (Final Verification)
+1. Copy `DESIGN_ANALYSIS.md` to project planning directory
+2. Rename (e.g., `temp-sensor-DESIGN_ANALYSIS.md`)
+3. Fill in all 3 analysis phases
+4. Use referenced skills for detailed guidance
+5. Get peer review and approval
+6. Use results to create IMPLEMENTATION_PLAN.md
+
+### IMPLEMENTATION_PLAN.md Template
+
+**Purpose:** Implementation plan created from approved design analysis  
+**Location:** `.github/skills/module-design/IMPLEMENTATION_PLAN.md`
+
+This template contains:
+- **Phase 1:** Setup & Deployment Implementation
+- **Phase 2:** Testing Strategy Implementation
+- **Phase 3:** Documentation Implementation
+- **Phase 4:** Core Implementation
+- **Phase 5:** Final Verification & Integration
+
+**When to Use:**
+- After DESIGN_ANALYSIS.md is complete and approved
+- As the guide for implementation work
+
+**How to Use:**
+1. Copy `IMPLEMENTATION_PLAN.md` to project directory
+2. Rename (e.g., `temp-sensor-IMPLEMENTATION_PLAN.md`)
+3. Summarize key decisions from DESIGN_ANALYSIS.md
+4. Fill in implementation tasks
+5. Execute phases sequentially
+6. Get sign-offs as you complete each phase
 
 ### Supporting Tools
 
@@ -1115,19 +1183,20 @@ The implementation plan is a comprehensive, sequential document that:
 - GPIO pin assignment checks
 - Safety verification (voltage, current, polarity)
 - Pre-power testing procedures
-- Use during Phase 1 of implementation plan
+- **Use during:** DESIGN_ANALYSIS Phase 1
 
 **Design Review Checklist** (`design-review-checklist.md`)
 - Complete design review process
 - Requirements through documentation
 - Risk assessment
 - Approval sign-offs
-- Use during Phase 8 of implementation plan
+- **Use during:** IMPLEMENTATION_PLAN Phase 5
 
 ## Additional Resources
 
 See also:
-- `IMPLEMENTATION_PLAN.md` - **Main template for module design**
+- `DESIGN_ANALYSIS.md` - **Analysis template (Stage 1 - use first)**
+- `IMPLEMENTATION_PLAN.md` - **Implementation template (Stage 2 - use after analysis)**
 - `hardware-design-checklist.md` - Hardware safety verification
 - `design-review-checklist.md` - Complete design review
 - `.github/skills/python-development/` - Implementation patterns
@@ -1136,14 +1205,25 @@ See also:
 
 ## Summary
 
-Successful Luigi module design requires:
+Successful Luigi module design requires a **two-stage approach**:
 
-1. **Safety First** - Verify all hardware connections before power-on
-2. **Follow Patterns** - Use established Luigi module structure
-3. **Configuration** - Use `/etc/luigi/{category}/{module}/` for configs
-4. **Documentation** - Include complete wiring diagrams and setup instructions
-5. **Security** - Prevent injection, validate inputs, sanitize logs
-6. **Testing** - Design for testing without full hardware
+**Stage 1: Design Analysis (DESIGN_ANALYSIS.md)**
+1. **Safety First** - Analyze hardware and verify electrical safety
+2. **Architecture Design** - Plan software structure and configuration
+3. **Service Planning** - Design deployment and integration
+
+**Stage 2: Implementation (IMPLEMENTATION_PLAN.md)**  
+1. **Follow the Plan** - Execute based on approved analysis
+2. **Test Thoroughly** - Validate at each phase
+3. **Document Completely** - Ensure users can replicate setup
+4. **Verify Integration** - Test with Luigi system
+5. **Get Approval** - Final review before production
+
+By separating analysis from implementation, you ensure that:
+- Hardware safety is verified before building
+- Software architecture is sound before coding
+- Service integration is planned before deployment
+- Implementation follows a proven design
 7. **Integration** - Use systemd services with auto-restart
 8. **Cleanup** - Always cleanup GPIO and resources on exit
 
