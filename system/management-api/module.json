@@ -1,0 +1,21 @@
+{
+  "name": "management-api",
+  "version": "1.0.0",
+  "description": "Secure Node.js API server for Luigi system management and Raspberry Pi control",
+  "category": "system",
+  "dependencies": [],
+  "author": "Luigi Project",
+  "provides": {
+    "endpoints": [
+      "/api/modules",
+      "/api/system",
+      "/api/logs",
+      "/api/config",
+      "/api/monitoring"
+    ]
+  },
+  "requires": {
+    "packages": ["nodejs", "npm", "openssl", "curl"],
+    "node_version": ">=16.0.0"
+  }
+}
