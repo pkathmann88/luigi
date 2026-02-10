@@ -6,6 +6,8 @@
 const logger = require('../utils/logger');
 
 // Whitelist of allowed commands
+// Note: cat, tail, head, grep are restricted to use within pathValidator's allowed directories
+// vcgencmd is Raspberry Pi specific (for temperature monitoring)
 const ALLOWED_COMMANDS = [
   'systemctl',
   'journalctl',
@@ -19,7 +21,8 @@ const ALLOWED_COMMANDS = [
   'grep',
   'reboot',
   'shutdown',
-  'vcgencmd',
+  'vcgencmd',  // Raspberry Pi specific - for CPU temperature
+  'find',      // For log cleanup operations
 ];
 
 // Whitelist of allowed systemctl subcommands

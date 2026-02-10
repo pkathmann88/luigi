@@ -24,15 +24,24 @@ echo ""
 
 # Validate shell scripts
 echo "Validating shell scripts..."
-SHELL_FILES=$(find scripts -name "*.sh" 2>/dev/null) setup.sh
 SHELL_COUNT=0
-for file in $SHELL_FILES; do
-    if [ -f "$file" ]; then
+
+# Check scripts directory
+if [ -d "scripts" ]; then
+    while IFS= read -r -d '' file; do
         echo "  Checking: $file"
         shellcheck "$file" || true
         ((SHELL_COUNT++))
-    fi
-done
+    done < <(find scripts -name "*.sh" -print0 2>/dev/null)
+fi
+
+# Check setup.sh
+if [ -f "setup.sh" ]; then
+    echo "  Checking: setup.sh"
+    shellcheck setup.sh || true
+    ((SHELL_COUNT++))
+fi
+
 echo "✓ $SHELL_COUNT shell scripts checked"
 echo ""
 

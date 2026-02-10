@@ -43,6 +43,8 @@ async function getSystemMetrics() {
 
 /**
  * Get CPU usage percentage
+ * Note: This returns a snapshot based on cumulative CPU time since boot.
+ * For real-time usage, consider sampling twice with an interval.
  */
 async function getCpuUsage() {
   try {
@@ -54,7 +56,8 @@ async function getCpuUsage() {
     const idle = times[3];
     const total = times.reduce((a, b) => a + b, 0);
     
-    // Calculate usage percentage
+    // Calculate usage percentage (cumulative since boot)
+    // Note: This is a snapshot, not current usage rate
     const usage = Math.round(((total - idle) / total) * 100);
     
     return Math.min(100, Math.max(0, usage));
