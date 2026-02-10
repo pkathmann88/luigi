@@ -392,9 +392,12 @@ uninstall() {
             if rmdir "$INSTALL_CONFIG_DIR" 2>/dev/null; then
                 log_info "Removed empty config directory"
             fi
-            # Try to remove parent directories if empty
-            rmdir /etc/luigi/motion-detection 2>/dev/null || true
-            rmdir /etc/luigi 2>/dev/null || true
+            # Try to remove parent directories if empty (derived from INSTALL_CONFIG_DIR)
+            local parent_dir
+            parent_dir=$(dirname "$INSTALL_CONFIG_DIR")
+            rmdir "$parent_dir" 2>/dev/null || true
+            parent_dir=$(dirname "$parent_dir")
+            rmdir "$parent_dir" 2>/dev/null || true
         fi
     else
         log_info "Keeping config file"
