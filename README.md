@@ -72,6 +72,7 @@ Each module follows a standardized structure:
 ```
 category/module-name/
 ├── README.md          # Module documentation
+├── module.json        # Module metadata (optional, for dependencies)
 ├── setup.sh           # Installation script (install/uninstall/status)
 ├── module.py          # Python application
 ├── module.service     # systemd service unit
@@ -80,10 +81,10 @@ category/module-name/
 
 ### Centralized Management
 
-The root `setup.sh` automatically discovers modules in all categories:
+The root `setup.sh` automatically discovers modules in all categories and handles dependency resolution:
 
 ```bash
-# Install all modules
+# Install all modules (automatically resolves dependencies)
 sudo ./setup.sh install
 
 # Install specific module
@@ -95,6 +96,27 @@ sudo ./setup.sh uninstall
 # Check status
 ./setup.sh status
 ```
+
+**Dependency Management:**
+
+Modules can declare dependencies on other modules using an optional `module.json` file. The setup system automatically:
+- Reads module metadata and dependencies
+- Performs topological sort to determine installation order
+- Installs dependencies before dependent modules
+- Detects and reports circular dependencies
+
+Example `module.json`:
+```json
+{
+  "name": "mario",
+  "version": "1.0.0",
+  "description": "Motion detection with sound effects",
+  "category": "motion-detection",
+  "dependencies": ["iot/ha-mqtt"]
+}
+```
+
+See [MODULE_SCHEMA.md](MODULE_SCHEMA.md) for complete schema documentation.
 
 ## Usage
 
@@ -134,15 +156,29 @@ Each module has its own README with detailed usage instructions, configuration o
    - `setup.sh` - Installation script supporting: `install`, `uninstall`, `status`
    - `your-module.py` - Python application
    - `your-module.service` - systemd service unit
+   - `module.json` - (Optional) Module metadata and dependencies
 
-4. **Follow established patterns:**
+4. **Declare dependencies** (if needed):
+   Create `module.json` to declare dependencies on other modules:
+   ```json
+   {
+     "name": "your-module",
+     "version": "1.0.0",
+     "description": "Your module description",
+     "category": "sensors",
+     "dependencies": ["iot/ha-mqtt"]
+   }
+   ```
+   Dependencies will be installed automatically before your module. See [MODULE_SCHEMA.md](MODULE_SCHEMA.md) for details.
+
+5. **Follow established patterns:**
    - Use Config class for constants
    - Implement GPIOManager for hardware abstraction
    - Use signal handlers (SIGTERM/SIGINT) for shutdown
    - Add structured logging with rotation
    - Implement security hardening (see mario module)
 
-5. **Test installation:**
+6. **Test installation:**
 ```bash
 sudo ./setup.sh install category/your-module
 ./setup.sh status category/your-module

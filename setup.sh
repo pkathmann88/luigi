@@ -96,6 +96,118 @@ discover_modules() {
     echo "${modules[@]}"
 }
 
+# Read dependencies from a module's module.json file
+# Returns space-separated list of dependency module paths
+get_module_dependencies() {
+    local module_path="$1"
+    local module_json="$SCRIPT_DIR/$module_path/module.json"
+    
+    # Check if module.json exists
+    if [ ! -f "$module_json" ]; then
+        # No module.json = no dependencies
+        return 0
+    fi
+    
+    # Check if jq is available for JSON parsing
+    if ! command -v jq >/dev/null 2>&1; then
+        log_warn "jq not found, cannot parse module.json for $module_path"
+        log_warn "Install jq to enable dependency management: sudo apt-get install jq"
+        return 0
+    fi
+    
+    # Parse dependencies array from JSON
+    local deps
+    deps=$(jq -r '.dependencies[]? // empty' "$module_json" 2>/dev/null)
+    
+    if [ -n "$deps" ]; then
+        echo "$deps"
+    fi
+}
+
+# Sort modules by dependencies using topological sort
+# Modules with no dependencies come first, then modules that depend on them
+sort_modules_by_dependencies() {
+    local modules=("$@")
+    local sorted=()
+    local visited=()
+    local visiting=()
+    
+    # Helper function for depth-first search
+    visit_module() {
+        local module="$1"
+        
+        # Check for circular dependency
+        for v in "${visiting[@]}"; do
+            if [ "$v" = "$module" ]; then
+                log_error "Circular dependency detected involving: $module"
+                return 1
+            fi
+        done
+        
+        # Check if already visited
+        for v in "${visited[@]}"; do
+            if [ "$v" = "$module" ]; then
+                return 0
+            fi
+        done
+        
+        # Mark as visiting
+        visiting+=("$module")
+        
+        # Visit dependencies first
+        local deps
+        deps=$(get_module_dependencies "$module")
+        
+        if [ -n "$deps" ]; then
+            while IFS= read -r dep; do
+                # Check if dependency exists in modules list
+                local dep_exists=0
+                for m in "${modules[@]}"; do
+                    if [ "$m" = "$dep" ]; then
+                        dep_exists=1
+                        break
+                    fi
+                done
+                
+                if [ $dep_exists -eq 0 ]; then
+                    log_warn "Module $module depends on $dep, but $dep is not found"
+                    log_warn "Continuing installation, but $module may not work correctly"
+                else
+                    # Recursively visit dependency
+                    if ! visit_module "$dep"; then
+                        return 1
+                    fi
+                fi
+            done <<< "$deps"
+        fi
+        
+        # Remove from visiting
+        local new_visiting=()
+        for v in "${visiting[@]}"; do
+            if [ "$v" != "$module" ]; then
+                new_visiting+=("$v")
+            fi
+        done
+        visiting=("${new_visiting[@]}")
+        
+        # Mark as visited and add to sorted list
+        visited+=("$module")
+        sorted+=("$module")
+        
+        return 0
+    }
+    
+    # Visit all modules
+    for module in "${modules[@]}"; do
+        if ! visit_module "$module"; then
+            log_error "Failed to resolve dependencies"
+            return 1
+        fi
+    done
+    
+    echo "${sorted[@]}"
+}
+
 # Execute a command on a specific module
 execute_module_command() {
     local module_path="$1"
@@ -132,9 +244,54 @@ install_modules() {
     local success_count=0
     
     if [ -n "$specific_module" ]; then
-        # Install specific module
-        modules=("$specific_module")
+        # Install specific module with its dependencies
         log_info "Installing specific module: $specific_module"
+        
+        # Collect the module and all its dependencies recursively
+        local modules_with_deps=()
+        local visited_modules=()
+        
+        collect_dependencies() {
+            local mod="$1"
+            
+            # Check if already visited
+            for v in "${visited_modules[@]}"; do
+                if [ "$v" = "$mod" ]; then
+                    return 0
+                fi
+            done
+            
+            visited_modules+=("$mod")
+            
+            # Get dependencies
+            local deps
+            deps=$(get_module_dependencies "$mod")
+            
+            # Recursively collect dependencies first
+            if [ -n "$deps" ]; then
+                while IFS= read -r dep; do
+                    # Verify dependency exists
+                    if [ -f "$SCRIPT_DIR/$dep/setup.sh" ]; then
+                        collect_dependencies "$dep"
+                    else
+                        log_warn "Dependency $dep not found, $mod may not work correctly"
+                    fi
+                done <<< "$deps"
+            fi
+            
+            # Add this module
+            modules_with_deps+=("$mod")
+        }
+        
+        collect_dependencies "$specific_module"
+        modules=("${modules_with_deps[@]}")
+        
+        if [ ${#modules[@]} -gt 1 ]; then
+            log_info "Installing with dependencies (${#modules[@]} module(s) total):"
+            for module in "${modules[@]}"; do
+                echo "  - $module"
+            done
+        fi
     else
         # Discover and install all modules
         read -r -a modules <<< "$(discover_modules)"
@@ -151,6 +308,23 @@ install_modules() {
         fi
         
         log_info "Found ${#modules[@]} module(s) to install"
+        
+        # Sort modules by dependencies
+        log_info "Resolving module dependencies..."
+        local sorted_modules
+        if ! sorted_modules=$(sort_modules_by_dependencies "${modules[@]}"); then
+            log_error "Failed to resolve module dependencies"
+            return 1
+        fi
+        
+        # Update modules array with sorted order
+        read -r -a modules <<< "$sorted_modules"
+        
+        # Log installation order
+        log_info "Installation order (dependencies first):"
+        for module in "${modules[@]}"; do
+            echo "  - $module"
+        done
     fi
     
     echo ""
