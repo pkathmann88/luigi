@@ -141,7 +141,6 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Integrating frontend with backend APIs
 - Optimizing web application performance
 - Ensuring cross-browser compatibility (Chrome, Edge, Firefox - MANDATORY)
-- Implementing accessible (WCAG-compliant) interfaces
 - Setting up modern build tooling and workflows
 
 **Provides:**
@@ -151,7 +150,6 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - State management solutions (Context, Zustand, Redux)
 - API integration (Fetch, React Query, WebSocket)
 - Responsive design patterns (mobile-first, CSS Grid, container queries)
-- Accessibility guidelines (WCAG 2.1 AA, ARIA, keyboard navigation)
 - Performance optimization (code splitting, lazy loading, memoization)
 - Security best practices (XSS prevention, CSP, authentication)
 - Testing strategies (Vitest, Playwright, cross-browser E2E)

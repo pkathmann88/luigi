@@ -1,12 +1,12 @@
 ---
 name: web-frontend-development
-description: Comprehensive guide for modern web-frontend development with state-of-the-art technologies. Covers React, Vue, vanilla JavaScript, TypeScript, responsive design, accessibility, performance optimization, security, and cross-browser support (Chrome, Edge, Firefox). Use when developing web UIs, dashboards, or browser-based interfaces.
+description: Comprehensive guide for modern web-frontend development with state-of-the-art technologies. Covers React, Vue, vanilla JavaScript, TypeScript, responsive design, performance optimization, security, and cross-browser support (Chrome, Edge, Firefox). Use when developing web UIs, dashboards, or browser-based interfaces.
 license: MIT
 ---
 
 # Web-Frontend Development
 
-This skill provides comprehensive guidance for developing **modern web-frontend applications** using state-of-the-art technologies and best practices. Emphasis on cross-browser compatibility (Chrome, Edge, Firefox), accessibility, performance, security, and maintainable code architecture.
+This skill provides comprehensive guidance for developing **modern web-frontend applications** using state-of-the-art technologies and best practices. Emphasis on cross-browser compatibility (Chrome, Edge, Firefox), performance, security, and maintainable code architecture.
 
 ## When to Use This Skill
 
@@ -18,7 +18,6 @@ Use this skill when:
 - Integrating frontend with backend APIs (REST, WebSocket, GraphQL)
 - Optimizing web application performance
 - Ensuring cross-browser compatibility
-- Implementing accessible (WCAG-compliant) interfaces
 - Setting up modern build tooling and workflows
 - Creating component-based architectures
 - Implementing state management solutions
@@ -55,7 +54,6 @@ const supportsServiceWorker = 'serviceWorker' in navigator;
 
 **HTML5**
 - Semantic HTML elements
-- Accessible markup (ARIA attributes)
 - SEO-friendly structure
 - Meta tags for PWAs
 
@@ -270,12 +268,10 @@ interface ButtonProps {
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /** Additional CSS classes */
   className?: string;
-  /** Accessibility label */
-  'aria-label'?: string;
 }
 
 /**
- * Button component with multiple variants and accessibility support.
+ * Button component with multiple variants.
  * 
  * @example
  * ```tsx
@@ -292,7 +288,6 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   onClick,
   className,
-  'aria-label': ariaLabel,
 }) => {
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -319,10 +314,8 @@ export const Button: React.FC<ButtonProps> = ({
       className={buttonClasses}
       onClick={handleClick}
       disabled={disabled || loading}
-      aria-label={ariaLabel}
-      aria-busy={loading}
     >
-      {loading && <span className={styles.spinner} aria-hidden="true" />}
+      {loading && <span className={styles.spinner} />}
       <span className={styles.content}>{children}</span>
     </button>
   );
@@ -336,11 +329,9 @@ export const Button: React.FC<ButtonProps> = ({
   <button
     :class="buttonClasses"
     :disabled="disabled || loading"
-    :aria-label="ariaLabel"
-    :aria-busy="loading"
     @click="handleClick"
   >
-    <span v-if="loading" class="spinner" aria-hidden="true" />
+    <span v-if="loading" class="spinner" />
     <span class="content">
       <slot />
     </span>
@@ -355,7 +346,6 @@ interface Props {
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
-  ariaLabel?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -463,7 +453,6 @@ class CustomButton extends HTMLElement {
       <button
         class="${this.variant} ${this.size}"
         ${this.disabled || this.loading ? 'disabled' : ''}
-        aria-busy="${this.loading}"
       >
         ${this.loading ? '<span class="spinner"></span>' : ''}
         <slot></slot>
@@ -955,193 +944,6 @@ h1 {
 
 h2 {
   font-size: var(--font-size-xl);
-}
-```
-
-## Accessibility (WCAG 2.1 Level AA)
-
-### Semantic HTML
-
-```html
-<!-- ❌ Bad: Non-semantic -->
-<div class="header">
-  <div class="nav">
-    <span onclick="navigate()">Home</span>
-  </div>
-</div>
-
-<!-- ✅ Good: Semantic -->
-<header>
-  <nav aria-label="Main navigation">
-    <a href="/">Home</a>
-  </nav>
-</header>
-```
-
-### ARIA Attributes
-
-```tsx
-// Focus management
-function Modal({ isOpen, onClose, children }: ModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement as HTMLElement;
-      modalRef.current?.focus();
-    } else {
-      previousFocusRef.current?.focus();
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      ref={modalRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-      aria-describedby="modal-description"
-      tabIndex={-1}
-      className="modal-overlay"
-    >
-      <div className="modal-content">
-        <h2 id="modal-title">Modal Title</h2>
-        <div id="modal-description">{children}</div>
-        <button onClick={onClose} aria-label="Close modal">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-```
-
-### Keyboard Navigation
-
-```tsx
-function Dropdown({ options, onSelect }: DropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        setActiveIndex((prev) => 
-          Math.min(prev + 1, options.length - 1)
-        );
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        setActiveIndex((prev) => Math.max(prev - 1, 0));
-        break;
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        onSelect(options[activeIndex]);
-        setIsOpen(false);
-        break;
-      case 'Escape':
-        event.preventDefault();
-        setIsOpen(false);
-        break;
-    }
-  };
-
-  return (
-    <div className="dropdown" onKeyDown={handleKeyDown}>
-      <button
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        Select option
-      </button>
-      {isOpen && (
-        <ul role="listbox" tabIndex={-1}>
-          {options.map((option, index) => (
-            <li
-              key={option.id}
-              role="option"
-              aria-selected={index === activeIndex}
-              onClick={() => onSelect(option)}
-            >
-              {option.label}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-```
-
-### Color Contrast
-
-```css
-/* WCAG AA requires 4.5:1 for normal text, 3:1 for large text */
-
-:root {
-  /* ✅ Good contrast ratios */
-  --color-text: #1a1a1a;        /* 15.3:1 on white */
-  --color-text-muted: #666666;  /* 5.7:1 on white */
-  --color-primary: #0066cc;     /* 4.5:1 on white */
-  --color-background: #ffffff;
-}
-
-/* ❌ Bad: Insufficient contrast */
-.bad-contrast {
-  color: #aaaaaa;  /* Only 2.3:1 on white */
-}
-
-/* ✅ Good: Sufficient contrast */
-.good-contrast {
-  color: #767676;  /* 4.5:1 on white */
-}
-```
-
-### Screen Reader Support
-
-```tsx
-function DataTable({ data }: { data: TableData[] }) {
-  return (
-    <table>
-      <caption>User Data Table</caption>
-      <thead>
-        <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Email</th>
-          <th scope="col">Role</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((row) => (
-          <tr key={row.id}>
-            <th scope="row">{row.name}</th>
-            <td>{row.email}</td>
-            <td>{row.role}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-// Loading states with announcements
-function LoadingContent({ isLoading }: { isLoading: boolean }) {
-  return (
-    <>
-      {isLoading && (
-        <div role="status" aria-live="polite">
-          <span className="sr-only">Loading content...</span>
-          <div className="spinner" aria-hidden="true" />
-        </div>
-      )}
-    </>
-  );
 }
 ```
 
@@ -2227,9 +2029,6 @@ getTTFB(console.log);
 - [ ] All tests pass
 - [ ] Tested in Chrome, Edge, and Firefox
 - [ ] Responsive design works on mobile/tablet/desktop
-- [ ] Accessibility: keyboard navigation works
-- [ ] Accessibility: screen reader friendly
-- [ ] Accessibility: color contrast meets WCAG AA
 - [ ] Performance: no unnecessary re-renders
 - [ ] Performance: images optimized
 - [ ] Security: no XSS vulnerabilities

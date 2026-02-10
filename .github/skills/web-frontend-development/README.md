@@ -14,7 +14,6 @@ The main skill file with comprehensive documentation covering:
 - **State Management** - Context API, Zustand, Redux Toolkit
 - **API Integration** - Fetch, React Query, WebSocket
 - **Responsive Design** - Mobile-first, CSS Grid, Flexbox, container queries
-- **Accessibility (WCAG 2.1 AA)** - Semantic HTML, ARIA, keyboard navigation
 - **Performance Optimization** - Code splitting, lazy loading, memoization
 - **Security Best Practices** - XSS prevention, CSP, authentication, input validation
 - **Testing** - Unit tests (Vitest), integration tests (MSW), E2E tests (Playwright)
@@ -52,7 +51,6 @@ Use this skill when you need to:
 - ✅ Integrate frontend with backend APIs
 - ✅ Optimize web application performance
 - ✅ Ensure cross-browser compatibility (Chrome, Edge, Firefox)
-- ✅ Implement accessible (WCAG-compliant) interfaces
 - ✅ Set up modern build tooling and workflows
 - ✅ Create component-based architectures
 - ✅ Implement state management solutions
@@ -89,15 +87,6 @@ This skill emphasizes modern, production-ready technologies:
 - Polyfills for missing features
 - Progressive enhancement strategies
 - Graceful degradation patterns
-
-### Accessibility First
-
-- WCAG 2.1 Level AA compliance
-- Semantic HTML
-- ARIA attributes
-- Keyboard navigation
-- Screen reader support
-- Color contrast requirements
 
 ### Performance Optimized
 
@@ -223,12 +212,6 @@ This skill works together with other Luigi skills:
 - First Contentful Paint < 1.5s
 - Time to Interactive < 3.5s
 - Bundle size < 200KB (initial)
-
-### Accessibility
-- Keyboard navigation works completely
-- Screen reader friendly
-- Color contrast WCAG AA compliant
-- Focus management in modals/dialogs
 
 ### Security
 - No XSS vulnerabilities
