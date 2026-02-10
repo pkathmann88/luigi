@@ -37,12 +37,12 @@ That's it! Services are now running and will start automatically on boot.
 **Description:** Plays random Mario-themed sound effects when motion is detected via PIR sensor
 
 **Features:**
-- PIR sensor integration (GPIO 23)
-- Random audio playback with cooldown (30 min)
-- Modern OOP architecture (514 lines, 4 classes)
+- PIR sensor integration (default GPIO 23)
+- Random audio playback with configurable cooldown (default 30 min)
+- Modern OOP architecture (Config, GPIOManager, PIRSensor, MotionDetectionApp classes)
 - Rotating logs with structured logging
 - Graceful shutdown via signal handlers
-- Automated setup script (422 lines)
+- Comprehensive automated setup script
 
 **Hardware:** PIR motion sensor, audio output device  
 **Service:** `mario.service` (systemd)
