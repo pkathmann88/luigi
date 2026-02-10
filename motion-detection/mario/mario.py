@@ -279,6 +279,59 @@ def safe_write_file(filepath, content):
         return False
 
 
+def publish_sensor_value(sensor_id, value, is_binary=False, unit=None):
+    """
+    Publish sensor value to Home Assistant via MQTT.
+    
+    Optional integration with ha-mqtt module. Module works standalone
+    if ha-mqtt is not installed.
+    
+    Args:
+        sensor_id: Unique sensor identifier (e.g., 'mario_motion')
+        value: Sensor value (e.g., 'ON', 'OFF', '23.5')
+        is_binary: True for binary sensors (motion, door), False for measurements
+        unit: Unit of measurement for numeric sensors (e.g., '°C', '%', 'lux')
+        
+    Returns:
+        bool: True if published successfully, False otherwise
+    """
+    try:
+        cmd = ['/usr/local/bin/luigi-publish', '--sensor', sensor_id, '--value', str(value)]
+        
+        if is_binary:
+            cmd.append('--binary')
+        
+        if unit:
+            cmd.extend(['--unit', unit])
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=5,
+            check=True
+        )
+        
+        logging.debug(f"Published {sensor_id}={value} to MQTT")
+        return True
+        
+    except subprocess.TimeoutExpired:
+        logging.warning(f"MQTT publish timeout for {sensor_id}")
+        return False
+        
+    except subprocess.CalledProcessError as e:
+        logging.warning(f"MQTT publish failed for {sensor_id}: {e.stderr}")
+        return False
+        
+    except FileNotFoundError:
+        # ha-mqtt not installed - this is OK, module should work standalone
+        logging.debug("ha-mqtt not available, skipping MQTT publish")
+        return False
+        
+    except Exception as e:
+        logging.error(f"Unexpected error publishing to MQTT: {e}")
+        return False
+
+
 # ============================================================================
 # Hardware Abstraction Layer
 # ============================================================================
@@ -469,6 +522,9 @@ class MotionDetectionApp:
             
             logging.info(f"Playing sound: {sound_file}")
             self.play_sound(sound_path)
+            
+            # Publish motion detection to Home Assistant via MQTT
+            publish_sensor_value('mario_motion', 'ON', is_binary=True)
             
         except FileNotFoundError:
             logging.error(f"Sound directory not found: {self.config.SOUND_DIR}")

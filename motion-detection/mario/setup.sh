@@ -26,6 +26,7 @@ PYTHON_SCRIPT="mario.py"
 SERVICE_FILE="mario.service"
 SOUNDS_ARCHIVE="mario-sounds.tar.gz"
 CONFIG_EXAMPLE="mario.conf.example"
+SENSOR_DESCRIPTOR="mario_motion_descriptor.json"
 
 INSTALL_BIN="/usr/local/bin/mario.py"
 INSTALL_SERVICE="/etc/systemd/system/mario.service"
@@ -33,6 +34,10 @@ INSTALL_SOUNDS="/usr/share/sounds/mario"
 INSTALL_CONFIG_DIR="/etc/luigi/motion-detection/mario"
 INSTALL_CONFIG="/etc/luigi/motion-detection/mario/mario.conf"
 LOG_FILE="/var/log/motion.log"
+
+# ha-mqtt integration paths
+HA_MQTT_SENSORS_DIR="/etc/luigi/ha-mqtt/sensors.d"
+HA_MQTT_DESCRIPTOR="$HA_MQTT_SENSORS_DIR/mario_motion.json"
 
 # Logging functions
 log_info() {
@@ -83,6 +88,11 @@ check_files() {
     
     if [ ! -f "$SCRIPT_DIR/$CONFIG_EXAMPLE" ]; then
         log_error "Missing: $CONFIG_EXAMPLE"
+        missing_files=1
+    fi
+    
+    if [ ! -f "$SCRIPT_DIR/$SENSOR_DESCRIPTOR" ]; then
+        log_error "Missing: $SENSOR_DESCRIPTOR"
         missing_files=1
     fi
     
@@ -205,6 +215,50 @@ install_config() {
     
     log_info "Configuration file installed to $INSTALL_CONFIG"
     log_info "Edit $INSTALL_CONFIG to customize settings"
+}
+
+# Deploy ha-mqtt sensor descriptor (optional)
+deploy_ha_mqtt_descriptor() {
+    log_step "Deploying ha-mqtt sensor descriptor..."
+    
+    # Check if ha-mqtt is installed
+    if [ ! -x /usr/local/bin/luigi-publish ]; then
+        log_info "ha-mqtt not installed, skipping MQTT integration"
+        log_info "Motion detection will work standalone without MQTT"
+        return 0
+    fi
+    
+    # Check if sensors.d directory exists
+    if [ ! -d "$HA_MQTT_SENSORS_DIR" ]; then
+        log_warn "ha-mqtt sensors.d directory not found"
+        log_info "Skipping MQTT integration"
+        return 0
+    fi
+    
+    # Copy sensor descriptor
+    log_info "Installing sensor descriptor..."
+    cp "$SCRIPT_DIR/$SENSOR_DESCRIPTOR" "$HA_MQTT_DESCRIPTOR" || {
+        log_error "Failed to copy sensor descriptor"
+        exit 1
+    }
+    
+    # Set permissions
+    chmod 644 "$HA_MQTT_DESCRIPTOR" || {
+        log_error "Failed to set descriptor permissions"
+        exit 1
+    }
+    
+    log_info "Sensor descriptor installed to $HA_MQTT_DESCRIPTOR"
+    
+    # Run luigi-discover to register sensor with Home Assistant
+    log_info "Registering sensor with Home Assistant..."
+    if /usr/local/bin/luigi-discover; then
+        log_info "Sensor registered successfully"
+        log_info "Motion events will be published to Home Assistant via MQTT"
+    else
+        log_warn "Failed to register sensor (MQTT broker may not be configured)"
+        log_info "You can manually run: sudo /usr/local/bin/luigi-discover"
+    fi
 }
 
 # Install systemd service
@@ -358,6 +412,12 @@ uninstall() {
         rm -f "$INSTALL_BIN"
     fi
     
+    # Remove ha-mqtt sensor descriptor
+    if [ -f "$HA_MQTT_DESCRIPTOR" ]; then
+        log_info "Removing ha-mqtt sensor descriptor..."
+        rm -f "$HA_MQTT_DESCRIPTOR"
+    fi
+    
     # Ask about sound files
     read -rp "$(echo -e "${YELLOW}Remove sound files from $INSTALL_SOUNDS? [y/N]${NC} ")" response
     if [[ "$response" =~ ^[Yy]$ ]]; then
@@ -421,6 +481,16 @@ show_status() {
     [ -f "$INSTALL_CONFIG" ] && echo "  ✓ Config file: $INSTALL_CONFIG" || echo "  ✗ Config file not found (using defaults)"
     echo ""
     
+    # Check ha-mqtt integration
+    echo "Home Assistant MQTT Integration:"
+    if [ -x /usr/local/bin/luigi-publish ]; then
+        echo "  ✓ ha-mqtt module installed"
+        [ -f "$HA_MQTT_DESCRIPTOR" ] && echo "  ✓ Sensor descriptor: $HA_MQTT_DESCRIPTOR" || echo "  ✗ Sensor descriptor not installed"
+    else
+        echo "  ✗ ha-mqtt module not installed (motion detection works standalone)"
+    fi
+    echo ""
+    
     # Check service
     echo "Service Status:"
     if systemctl list-unit-files | grep -q "mario.service"; then
@@ -443,6 +513,7 @@ install() {
     install_sounds
     install_script
     install_config
+    deploy_ha_mqtt_descriptor
     install_service
     start_service
     

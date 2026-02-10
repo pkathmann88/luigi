@@ -1,0 +1,7 @@
+{
+  "sensor_id": "mario_motion",
+  "name": "Mario Motion Sensor",
+  "device_class": "motion",
+  "icon": "mdi:motion-sensor",
+  "module": "motion-detection/mario"
+}
