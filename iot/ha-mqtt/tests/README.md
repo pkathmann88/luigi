@@ -356,10 +356,10 @@ When adding new features to ha-mqtt:
 
 ## References
 
-- **IMPLEMENTATION_PLAN.md:** Complete implementation phases
-- **DESIGN_ANALYSIS.md:** Module architecture and design decisions
-- **Phase 1 Checklist:** See IMPLEMENTATION_PLAN.md Phase 1 section
+- **Luigi Module README:** `../README.md` - Main module documentation
+- **Integration Guide:** `../examples/integration-guide.md` - Complete integration walkthrough
 - **Luigi Testing Standards:** `.github/copilot-instructions.md`
+- **Module Design Guidelines:** `.github/skills/module-design/` - Design patterns for Luigi modules
 
 ---
 

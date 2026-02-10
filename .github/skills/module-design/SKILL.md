@@ -1018,27 +1018,108 @@ Before implementing a new module, verify your design:
 
 ### Designing for Integration
 
-When modules need to interact:
+When modules need to interact or share data:
 
-**Option 1: File-Based Communication**
+**Option 1: Home Assistant MQTT Integration (iot/ha-mqtt) - RECOMMENDED**
+- **Use when:** Your module generates sensor data (temperature, motion, door state, etc.)
+- **Benefits:** 
+  - Zero-touch integration via sensor descriptors
+  - No code coupling between modules
+  - Centralized monitoring in Home Assistant
+  - Enables HA automations based on sensor data
+  - Professional IoT integration pattern
+- **How it works:**
+  1. Create JSON descriptor for your sensor
+  2. Install to `/etc/luigi/ha-mqtt/sensors.d/`
+  3. Run `luigi-discover` once for registration
+  4. Call `luigi-publish --sensor {id} --value {value}` from your module
+- **Example:** Motion detector publishes to HA, lights module subscribes to same MQTT topic
+- **Documentation:** See `iot/ha-mqtt/examples/integration-guide.md`
+
+**Option 2: File-Based Communication**
 - Module A writes to `/tmp/module-a-state`
 - Module B reads from `/tmp/module-a-state`
 - Simple but limited
 
-**Option 2: MQTT Messaging**
-- Both modules publish/subscribe to topics
+**Option 3: Direct MQTT Messaging (without ha-mqtt)**
+- Both modules publish/subscribe to topics directly
 - Decoupled, scalable
 - Requires MQTT broker
+- More complex than using ha-mqtt
 
-**Option 3: Shared Library**
+**Option 4: Shared Library**
 - Create `luigi-common` library
 - Shared classes and utilities
 - Located in `/usr/local/lib/python3/dist-packages/luigi_common/`
 
-**Option 4: REST API**
+**Option 5: REST API**
 - One module provides HTTP API
 - Other modules make HTTP requests
 - Good for complex interactions
+
+### When to Use ha-mqtt for Sensor Modules
+
+**Always consider ha-mqtt integration if your module:**
+- Reads sensor data (temperature, humidity, light, distance, etc.)
+- Detects events (motion, door/window state, button presses)
+- Monitors system state (CPU, memory, disk, network)
+- Generates periodic measurements or readings
+
+**Benefits of ha-mqtt integration:**
+- **Professional IoT architecture** - Industry-standard MQTT protocol
+- **Zero coupling** - Your module remains independent, ha-mqtt is optional
+- **Home automation ready** - Instant integration with Home Assistant
+- **Dashboard visualization** - See all sensors in HA dashboards
+- **Automation triggers** - Use sensor data in HA automations
+- **Historical data** - HA records sensor history automatically
+- **Mobile access** - Monitor sensors from HA mobile app
+
+**Integration steps for sensor modules:**
+
+1. **Design phase** (in DESIGN_ANALYSIS.md):
+   - Identify what sensor data your module generates
+   - Define sensor IDs (e.g., `mario_motion`, `temp_living_room`)
+   - Choose device classes (motion, temperature, humidity, etc.)
+   - Document sensor descriptor requirements
+
+2. **Implementation phase** (in module code):
+   ```python
+   import subprocess
+   
+   def publish_sensor_value(sensor_id, value, is_binary=False):
+       """Publish sensor value via ha-mqtt (optional integration)."""
+       try:
+           cmd = ['/usr/local/bin/luigi-publish', '--sensor', sensor_id, '--value', str(value)]
+           if is_binary:
+               cmd.append('--binary')
+           subprocess.run(cmd, check=True, timeout=5)
+       except Exception as e:
+           # Log but don't crash - module should work without MQTT
+           logger.warning(f"Failed to publish to MQTT: {e}")
+   ```
+
+3. **Deployment phase** (in setup.sh):
+   - Install sensor descriptor to `/etc/luigi/ha-mqtt/sensors.d/`
+   - Run `luigi-discover` during installation
+   - Document MQTT integration in module README
+
+4. **Testing phase**:
+   - Test module works without ha-mqtt installed
+   - Test MQTT publishing when ha-mqtt is available
+   - Verify sensor appears in Home Assistant
+
+**Example sensor descriptor:**
+```json
+{
+  "sensor_id": "mario_motion",
+  "name": "Mario Motion Sensor",
+  "module": "motion-detection/mario",
+  "device_class": "motion",
+  "icon": "mdi:motion-sensor"
+}
+```
+
+For complete integration guide, see `iot/ha-mqtt/examples/integration-guide.md`.
 
 ### Module Compatibility
 

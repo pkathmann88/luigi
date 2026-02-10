@@ -36,8 +36,7 @@ The ha-mqtt module provides a **zero-touch MQTT bridge** between Luigi modules a
 ```
 iot/ha-mqtt/
 ├── README.md                    # This file
-├── DESIGN_ANALYSIS.md           # Design specifications
-├── IMPLEMENTATION_PLAN.md       # Implementation phases
+├── setup.sh                     # Installation and deployment
 ├── bin/                         # Command-line scripts
 │   ├── luigi-publish            # Universal sensor publisher
 │   ├── luigi-discover           # Sensor registration tool
@@ -1003,9 +1002,9 @@ luigi-publish --sensor cpu_usage --value "$cpu_usage" \
 ### Contributing
 
 Want to add features? See:
-- `DESIGN_ANALYSIS.md` - Module design specifications
-- `IMPLEMENTATION_PLAN.md` - Development phases
-- `.github/skills/module-design/` - Design guidelines
+- `.github/skills/module-design/` - Design guidelines for Luigi modules
+- `examples/integration-guide.md` - Complete integration walkthrough
+- `tests/README.md` - Testing infrastructure documentation
 
 ---
 

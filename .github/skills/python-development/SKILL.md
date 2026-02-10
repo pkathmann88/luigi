@@ -866,6 +866,119 @@ if result.returncode != 0:
     logging.error(f"Audio playback failed: {result.stderr}")
 ```
 
+### MQTT Integration via ha-mqtt Module
+
+**When your module generates sensor data**, integrate with Home Assistant using the ha-mqtt module:
+
+```python
+import subprocess
+import logging
+
+def publish_sensor_value(sensor_id, value, is_binary=False, unit=None):
+    """
+    Publish sensor value to Home Assistant via MQTT.
+    
+    Args:
+        sensor_id: Unique sensor identifier (e.g., 'mario_motion')
+        value: Sensor value (e.g., 'ON', '23.5', 'OPEN')
+        is_binary: True for binary sensors (motion, door), False for measurements
+        unit: Unit of measurement for numeric sensors (e.g., '°C', '%', 'lux')
+    
+    Returns:
+        bool: True if published successfully, False otherwise
+    """
+    try:
+        cmd = ['/usr/local/bin/luigi-publish', '--sensor', sensor_id, '--value', str(value)]
+        
+        if is_binary:
+            cmd.append('--binary')
+        
+        if unit:
+            cmd.extend(['--unit', unit])
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=5,
+            check=True
+        )
+        
+        logging.debug(f"Published {sensor_id}={value} to MQTT")
+        return True
+        
+    except subprocess.TimeoutExpired:
+        logging.warning(f"MQTT publish timeout for {sensor_id}")
+        return False
+        
+    except subprocess.CalledProcessError as e:
+        logging.warning(f"MQTT publish failed for {sensor_id}: {e.stderr}")
+        return False
+        
+    except FileNotFoundError:
+        # ha-mqtt not installed - this is OK, module should work standalone
+        logging.debug("ha-mqtt not available, skipping MQTT publish")
+        return False
+        
+    except Exception as e:
+        logging.error(f"Unexpected error publishing to MQTT: {e}")
+        return False
+
+
+# Usage examples:
+
+# Binary sensor (motion, door, button)
+publish_sensor_value('mario_motion', 'ON', is_binary=True)
+publish_sensor_value('front_door', 'OPEN', is_binary=True)
+
+# Measurement sensor (temperature, humidity, light)
+publish_sensor_value('living_room_temp', 23.5, unit='°C')
+publish_sensor_value('outdoor_humidity', 65, unit='%')
+publish_sensor_value('light_level', 450, unit='lux')
+```
+
+**Important design principles:**
+
+1. **Optional integration** - Module must work without ha-mqtt installed
+2. **Graceful degradation** - Log warnings but don't crash on MQTT failures
+3. **Timeout protection** - Use 5-second timeout on subprocess calls
+4. **Error handling** - Catch specific exceptions and provide useful logging
+5. **Non-blocking** - Don't let MQTT failures block main functionality
+
+**Integration steps:**
+
+1. **Create sensor descriptor** during module design:
+   ```json
+   {
+     "sensor_id": "mario_motion",
+     "name": "Mario Motion Sensor",
+     "module": "motion-detection/mario",
+     "device_class": "motion",
+     "icon": "mdi:motion-sensor"
+   }
+   ```
+
+2. **Install descriptor** in setup.sh:
+   ```bash
+   install_sensor_descriptor() {
+       descriptor_dir="/etc/luigi/ha-mqtt/sensors.d"
+       if [ -d "$descriptor_dir" ]; then
+           cp sensor_descriptor.json "$descriptor_dir/mario_motion.json"
+           chmod 644 "$descriptor_dir/mario_motion.json"
+           
+           # Register sensor with Home Assistant
+           /usr/local/bin/luigi-discover
+       fi
+   }
+   ```
+
+3. **Call publish function** from your application code when sensor data changes
+
+4. **Test both modes**:
+   - Test module works without ha-mqtt
+   - Test MQTT publishing when ha-mqtt is available
+
+For complete integration guide, see `iot/ha-mqtt/examples/integration-guide.md`.
+
 ## Security Considerations
 
 ### Input Validation

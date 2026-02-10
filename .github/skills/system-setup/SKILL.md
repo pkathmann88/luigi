@@ -1014,6 +1014,193 @@ echo "Audio Test:"
 aplay --version > /dev/null && echo "Audio system OK" || echo "Audio system error"
 ```
 
+## Home Assistant MQTT Integration
+
+### Deploying Sensor Modules with ha-mqtt Integration
+
+When deploying sensor modules that should integrate with Home Assistant via MQTT, include sensor descriptor installation in the deployment script:
+
+```bash
+#!/bin/bash
+# deploy_motion_sensor.sh - Deploy motion sensor with HA integration
+# Usage: sudo ./deploy_motion_sensor.sh
+
+set -e
+
+MODULE_NAME="mario"
+SENSOR_ID="mario_motion"
+
+# ... (standard deployment steps for Python script, service, etc.)
+
+# Install sensor descriptor for ha-mqtt integration (if ha-mqtt is installed)
+deploy_ha_mqtt_descriptor() {
+    local descriptor_dir="/etc/luigi/ha-mqtt/sensors.d"
+    
+    if [ ! -d "$descriptor_dir" ]; then
+        log_info "ha-mqtt not installed, skipping sensor registration"
+        return 0
+    fi
+    
+    log_info "Installing sensor descriptor for Home Assistant..."
+    
+    # Create sensor descriptor JSON
+    cat > "$descriptor_dir/${SENSOR_ID}.json" <<EOF
+{
+  "sensor_id": "${SENSOR_ID}",
+  "name": "Mario Motion Sensor",
+  "module": "motion-detection/mario",
+  "device_class": "motion",
+  "icon": "mdi:motion-sensor"
+}
+EOF
+    
+    chmod 644 "$descriptor_dir/${SENSOR_ID}.json"
+    
+    # Register sensor with Home Assistant (if luigi-discover is available)
+    if [ -x "/usr/local/bin/luigi-discover" ]; then
+        log_info "Registering sensor with Home Assistant..."
+        /usr/local/bin/luigi-discover || log_warn "Sensor registration failed (MQTT broker may not be configured)"
+    fi
+    
+    log_info "Sensor descriptor installed: ${SENSOR_ID}"
+}
+
+# Deploy descriptor (optional, graceful if ha-mqtt not installed)
+deploy_ha_mqtt_descriptor
+
+log_info "Deployment complete!"
+log_info "Module will publish sensor data to MQTT if ha-mqtt is configured"
+```
+
+### Multi-Sensor Module Deployment
+
+For modules with multiple sensors:
+
+```bash
+deploy_sensor_descriptors() {
+    local descriptor_dir="/etc/luigi/ha-mqtt/sensors.d"
+    
+    if [ ! -d "$descriptor_dir" ]; then
+        return 0
+    fi
+    
+    # Temperature sensor descriptor
+    cat > "$descriptor_dir/dht22_temperature.json" <<EOF
+{
+  "sensor_id": "dht22_temperature",
+  "name": "Living Room Temperature",
+  "module": "sensors/dht22",
+  "device_class": "temperature",
+  "unit_of_measurement": "°C",
+  "state_class": "measurement"
+}
+EOF
+    
+    # Humidity sensor descriptor
+    cat > "$descriptor_dir/dht22_humidity.json" <<EOF
+{
+  "sensor_id": "dht22_humidity",
+  "name": "Living Room Humidity",
+  "module": "sensors/dht22",
+  "device_class": "humidity",
+  "unit_of_measurement": "%",
+  "state_class": "measurement"
+}
+EOF
+    
+    chmod 644 "$descriptor_dir"/*.json
+    
+    if [ -x "/usr/local/bin/luigi-discover" ]; then
+        /usr/local/bin/luigi-discover
+    fi
+}
+```
+
+### ha-mqtt Dependencies
+
+When creating deployment scripts for modules that use ha-mqtt:
+
+```bash
+install_ha_mqtt_dependencies() {
+    log_info "Checking ha-mqtt dependencies..."
+    
+    # Check if mosquitto-clients is installed (required for MQTT publishing)
+    if ! command -v mosquitto_pub > /dev/null; then
+        log_info "Installing mosquitto-clients for MQTT support..."
+        apt-get install -y mosquitto-clients
+    fi
+    
+    # Check if jq is installed (required for JSON processing)
+    if ! command -v jq > /dev/null; then
+        log_info "Installing jq for JSON processing..."
+        apt-get install -y jq
+    fi
+}
+
+# Call during dependency installation phase (only if ha-mqtt integration desired)
+install_ha_mqtt_dependencies
+```
+
+### Testing ha-mqtt Integration
+
+Add verification steps for MQTT integration:
+
+```bash
+verify_ha_mqtt_integration() {
+    log_info "Verifying ha-mqtt integration..."
+    
+    # Check if descriptor was installed
+    if [ -f "/etc/luigi/ha-mqtt/sensors.d/${SENSOR_ID}.json" ]; then
+        log_info "✓ Sensor descriptor installed"
+    else
+        log_warn "Sensor descriptor not found (ha-mqtt may not be installed)"
+        return 0
+    fi
+    
+    # Check if sensor can be published
+    if command -v luigi-publish > /dev/null; then
+        log_info "Testing MQTT publish..."
+        if /usr/local/bin/luigi-publish --sensor "${SENSOR_ID}" --value "ON" --binary 2>/dev/null; then
+            log_info "✓ MQTT publish successful"
+        else
+            log_warn "MQTT publish failed (broker may not be configured)"
+        fi
+    fi
+}
+```
+
+### Uninstall with ha-mqtt Cleanup
+
+Include sensor descriptor removal in uninstall scripts:
+
+```bash
+uninstall_ha_mqtt_integration() {
+    local descriptor_dir="/etc/luigi/ha-mqtt/sensors.d"
+    
+    if [ -f "$descriptor_dir/${SENSOR_ID}.json" ]; then
+        log_info "Removing sensor descriptor..."
+        rm -f "$descriptor_dir/${SENSOR_ID}.json"
+        
+        # Optionally remove sensor from Home Assistant
+        # (would require MQTT retain message removal - advanced)
+        log_warn "Note: Sensor may still appear in Home Assistant until manually removed"
+    fi
+}
+
+# Call during uninstall
+uninstall_ha_mqtt_integration
+```
+
+### Key Principles for ha-mqtt Integration
+
+1. **Optional integration** - Module must work without ha-mqtt installed
+2. **Graceful checking** - Test for ha-mqtt directories before accessing
+3. **Non-blocking** - MQTT failures should not prevent module deployment
+4. **Clear feedback** - Log whether ha-mqtt integration succeeded or was skipped
+5. **Clean uninstall** - Remove sensor descriptors when uninstalling module
+
+For complete ha-mqtt integration guide, see `iot/ha-mqtt/examples/integration-guide.md`.
+
 ## Best Practices for Script Generation
 
 When generating deployment scripts, agents should:
