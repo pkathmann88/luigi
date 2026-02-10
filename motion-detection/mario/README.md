@@ -21,6 +21,7 @@ This component uses a PIR (Passive Infrared) motion sensor to detect movement an
 - **Structured Logging**: Rotating logs with proper error handling
 - **Graceful Shutdown**: Signal handler-based shutdown (SIGTERM/SIGINT)
 - **Mock GPIO Support**: Can run without hardware for development/testing
+- **Home Assistant Integration**: Optional MQTT integration for motion event publishing
 
 ## Hardware Requirements
 
@@ -289,6 +290,117 @@ To use your own sound files:
 
 The system will randomly select from all files in the directory.
 
+## Home Assistant Integration
+
+The mario module integrates with Home Assistant through the **ha-mqtt module**, allowing motion detection events to be published via MQTT and displayed in Home Assistant dashboards.
+
+### Features
+
+- **Zero-Coupling Design**: Motion detection works standalone; MQTT integration is optional
+- **Automatic Discovery**: Sensor automatically appears in Home Assistant
+- **Binary Sensor**: Motion events published as ON state to Home Assistant
+- **Graceful Degradation**: Module continues working if MQTT is unavailable
+
+### Prerequisites
+
+1. **Install ha-mqtt module** (if not already installed):
+   ```bash
+   cd iot/ha-mqtt
+   sudo ./setup.sh install
+   ```
+
+2. **Configure MQTT broker** in `/etc/luigi/ha-mqtt/ha-mqtt.conf`:
+   - Set broker hostname, port, credentials
+   - Ensure MQTT broker (e.g., Mosquitto) is accessible
+
+3. **Verify ha-mqtt installation**:
+   ```bash
+   /usr/local/bin/luigi-mqtt-status
+   ```
+
+### Installation
+
+The mario setup script automatically handles MQTT integration:
+
+```bash
+# Install mario with MQTT integration
+cd motion-detection/mario
+sudo ./setup.sh install
+```
+
+**What happens during installation:**
+1. Checks if ha-mqtt is installed
+2. If present, deploys sensor descriptor to `/etc/luigi/ha-mqtt/sensors.d/mario_motion.json`
+3. Runs `luigi-discover` to register sensor with Home Assistant
+4. Motion events are now published to MQTT automatically
+
+### Manual Integration
+
+If ha-mqtt was installed after mario, you can manually integrate:
+
+```bash
+# Copy sensor descriptor
+sudo cp mario_motion_descriptor.json /etc/luigi/ha-mqtt/sensors.d/mario_motion.json
+
+# Register with Home Assistant
+sudo /usr/local/bin/luigi-discover
+
+# Restart mario service
+sudo systemctl restart mario.service
+```
+
+### Home Assistant Configuration
+
+After installation, the sensor appears in Home Assistant:
+
+**Entity ID**: `binary_sensor.mario_motion`
+
+**View in Dashboard**:
+```yaml
+type: entities
+entities:
+  - entity: binary_sensor.mario_motion
+    name: Mario Motion Detector
+```
+
+**Create Automation**:
+```yaml
+automation:
+  - alias: "Mario Motion Alert"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.mario_motion
+        to: 'on'
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "Motion detected by Mario sensor!"
+```
+
+### Troubleshooting MQTT
+
+**Check MQTT integration status**:
+```bash
+./setup.sh status
+```
+
+**Test MQTT connection**:
+```bash
+/usr/local/bin/luigi-mqtt-status
+```
+
+**View MQTT logs in mario.log**:
+```bash
+tail -f /var/log/motion.log | grep MQTT
+```
+
+**Common issues:**
+- **"ha-mqtt not available"**: Normal if ha-mqtt not installed; motion detection still works
+- **"MQTT publish timeout"**: Check MQTT broker connectivity and credentials
+- **"MQTT publish failed"**: Verify ha-mqtt configuration in `/etc/luigi/ha-mqtt/ha-mqtt.conf`
+
+For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/ha-mqtt/README.md`.
+
 ## Troubleshooting
 
 ### No Sound Output
@@ -380,7 +492,12 @@ The mario module follows modern Python development practices:
   sudo apt-get install alsa-utils
   ```
 
-**Note**: The setup script automatically installs these dependencies.
+**Optional:**
+- **ha-mqtt module**: For Home Assistant integration via MQTT
+  - Install separately from `iot/ha-mqtt/` directory
+  - Motion detection works standalone without ha-mqtt
+
+**Note**: The setup script automatically installs the required dependencies.
 
 ## Notes
 
@@ -414,6 +531,5 @@ Potential improvements:
 - Command-line arguments for runtime configuration
 - Multiple sound directories/themes
 - Web interface for remote control
-- Home automation integration (MQTT, Home Assistant)
 - Motion event statistics and reporting
 - Multi-sensor support
