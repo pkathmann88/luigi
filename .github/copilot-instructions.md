@@ -138,13 +138,24 @@ luigi/
 │           └── system-reference.md  # System commands reference
 ├── .gitignore                       # Python, IDE, and OS exclusions
 ├── README.md                        # Main project documentation
-└── motion-detection/                # Motion detection components
-    ├── README.md                    # Component overview
-    └── mario/                       # Mario-themed motion detector
-        ├── README.md                # Component-specific docs
-        ├── mario                    # POSIX shell init.d service script
-        ├── mario.py                 # Main Python motion detection script
-        └── mario-sounds.tar.gz      # Audio files (10 WAV files, ~1.3MB)
+├── motion-detection/                # Motion detection components
+│   ├── README.md                    # Component overview
+│   └── mario/                       # Mario-themed motion detector
+│       ├── README.md                # Component-specific docs
+│       ├── mario                    # POSIX shell init.d service script
+│       ├── mario.py                 # Main Python motion detection script
+│       └── mario-sounds.tar.gz      # Audio files (10 WAV files, ~1.3MB)
+├── iot/                             # IoT integration modules
+│   └── ha-mqtt/                     # Home Assistant MQTT integration
+│       ├── README.md                # User documentation
+│       ├── setup.sh                 # Installation script
+│       ├── bin/                     # Command-line tools
+│       ├── lib/                     # Shared libraries
+│       ├── config/                  # Configuration templates
+│       ├── examples/                # Integration examples
+│       └── tests/                   # Test infrastructure
+└── system/                          # System-level modules
+    └── optimization/                # System optimization
 ```
 
 **Key Files:**
@@ -170,22 +181,48 @@ This command checks syntax without execution. **Exit code 0 = success, no output
 
 ```bash
 shellcheck motion-detection/mario/mario
+shellcheck iot/ha-mqtt/bin/luigi-publish
+shellcheck iot/ha-mqtt/bin/luigi-discover
+shellcheck iot/ha-mqtt/bin/luigi-mqtt-status
 ```
 
 **Exit code 0 = success, no output expected.** Shellcheck is available in the environment.
+
+**ha-mqtt Testing:**
+The ha-mqtt module includes comprehensive test infrastructure:
+```bash
+# Run all tests (syntax, functional, integration)
+iot/ha-mqtt/tests/run-all-tests.sh
+
+# Run specific test layers
+iot/ha-mqtt/tests/syntax/validate-all.sh      # Syntax validation only
+iot/ha-mqtt/tests/functional/run-functional-tests.sh  # Functional tests
+iot/ha-mqtt/tests/integration/run-integration-tests.sh  # Integration tests with Docker
+```
 
 ### No Traditional Build Process
 
 **Important:** This project has NO build, compile, or package steps. Changes to Python or shell scripts are immediately usable after syntax validation.
 
-### No Automated Tests
+### Testing Infrastructure
 
-**Critical:** There are currently NO test files, NO test framework (pytest, unittest), and NO CI/CD pipelines. Do NOT attempt to run tests like `pytest` or `python -m unittest` - they will fail.
+**Motion Detection Modules:** No automated tests - validation is syntax-only.
 
-**When adding tests in the future:**
-- Follow Python best practices (use pytest or unittest)
-- Place tests in a `tests/` directory or use `test_*.py` naming
+**ha-mqtt Module:** Comprehensive 4-layer test infrastructure:
+- Layer 1: Syntax validation (shellcheck)
+- Layer 2: Functional tests (without MQTT broker)
+- Layer 3: Integration tests (Docker-based with real MQTT broker)
+- Layer 4: E2E scenario documentation
+
+See `iot/ha-mqtt/tests/README.md` for complete testing documentation.
+
+**When adding tests to other modules:**
+- Follow shell script patterns (see ha-mqtt/tests/ as reference)
+- Use shellcheck for syntax validation
+- Create functional tests that work without hardware when possible
+- Place tests in a `tests/` directory within the module
 - Document test execution commands clearly
+- Consider Docker-based integration tests for complex scenarios
 
 ### No CI/CD Workflows
 
@@ -225,15 +262,21 @@ shellcheck motion-detection/mario/mario
 ### Dependencies
 
 **Runtime Dependencies (on Raspberry Pi):**
-- `python-rpi.gpio` - GPIO control library
+- `python-rpi.gpio` or `python3-rpi.gpio` - GPIO control library
 - `alsa-utils` - Audio playback (`aplay` command)
+- `mosquitto-clients` - MQTT client tools (required for ha-mqtt module)
+- `jq` - JSON processing (required for ha-mqtt module)
 
-**Installation command:**
+**Installation commands:**
 ```bash
-sudo apt-get update && sudo apt-get install python-rpi.gpio alsa-utils
+# Core dependencies
+sudo apt-get update && sudo apt-get install python3-rpi.gpio alsa-utils
+
+# ha-mqtt dependencies
+sudo apt-get install mosquitto-clients jq
 ```
 
-**Note:** RPi.GPIO does NOT work in standard Linux environments without Raspberry Pi hardware. Do not attempt to run mario.py outside of a Raspberry Pi or emulated environment.
+**Note:** RPi.GPIO does NOT work in standard Linux environments without Raspberry Pi hardware. Do not attempt to run modules outside of a Raspberry Pi or emulated environment.
 
 ### Code Style
 
@@ -261,6 +304,79 @@ The project is designed for extensibility. When adding new modules (whether for 
    - Configuration via constants or config files
 5. **Update parent READMEs** to reference new component
 6. **Consider modularity:** Make components independent when possible, shared libraries when needed
+7. **Consider IoT integration:** For sensor modules, integrate with Home Assistant via ha-mqtt (see below)
+
+### Integrating Modules with Home Assistant (ha-mqtt)
+
+**When to use iot/ha-mqtt:**
+- Your module generates sensor data (temperature, humidity, motion, door state, etc.)
+- You want to view sensor data in Home Assistant dashboards
+- You want to create automations based on sensor readings
+- You want centralized monitoring of multiple Luigi sensors
+
+**Zero-Coupling Integration Pattern:**
+
+The ha-mqtt module provides a generic interface that allows **any Luigi module to publish sensor data** without modifying ha-mqtt code. Integration is a 4-step process:
+
+1. **Create a sensor descriptor** - JSON file describing your sensor:
+   ```json
+   {
+     "sensor_id": "mario_motion",
+     "name": "Mario Motion Sensor",
+     "module": "motion-detection/mario",
+     "device_class": "motion",
+     "icon": "mdi:motion-sensor"
+   }
+   ```
+
+2. **Install descriptor** to `/etc/luigi/ha-mqtt/sensors.d/mario_motion.json`
+
+3. **Run discovery once** to register sensor in Home Assistant:
+   ```bash
+   sudo /usr/local/bin/luigi-discover
+   ```
+
+4. **Publish sensor values** from your module code:
+   ```bash
+   /usr/local/bin/luigi-publish --sensor mario_motion --value ON --binary
+   ```
+
+**Key Benefits:**
+- **Zero modifications to ha-mqtt** - No code changes needed in the ha-mqtt module
+- **Self-registration** - Sensors automatically appear in Home Assistant
+- **Generic interface** - Single `luigi-publish` command works for all sensor types
+- **Module independence** - ha-mqtt is optional; modules work standalone
+
+**Implementation Guidelines:**
+- Call `luigi-publish` from your module's Python code using `subprocess.run()`
+- Use `--binary` flag for ON/OFF sensors (motion, door, button)
+- Omit `--binary` for measurement sensors (temperature, humidity, light)
+- Include `--unit` for measurement sensors (e.g., `--unit "°C"`)
+- Handle MQTT connection failures gracefully (log but don't crash)
+
+**Documentation References:**
+- **Full integration guide:** `iot/ha-mqtt/examples/integration-guide.md`
+- **Sensor descriptor format:** `iot/ha-mqtt/examples/sensors.d/README.md`
+- **Command reference:** `iot/ha-mqtt/README.md`
+- **Testing:** `iot/ha-mqtt/tests/` contains comprehensive test infrastructure
+
+**Example Integration (Motion Detection):**
+```python
+import subprocess
+
+def publish_motion_detected():
+    """Publish motion event to Home Assistant via MQTT."""
+    try:
+        subprocess.run([
+            '/usr/local/bin/luigi-publish',
+            '--sensor', 'mario_motion',
+            '--value', 'ON',
+            '--binary'
+        ], check=True, timeout=5)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        # Log but don't crash - module should work without MQTT
+        logger.warning(f"Failed to publish MQTT: {e}")
+```
 
 ### File Organization
 
