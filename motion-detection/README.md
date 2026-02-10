@@ -13,17 +13,7 @@ A motion detection system that plays random Mario-themed sound effects when moti
 
 **Location**: `motion-detection/mario/`
 
-**Features**:
-- PIR motion sensor integration (GPIO 23)
-- Random sound playback from a collection of audio files
-- 30-minute cooldown period between triggers
-- System service integration (init.d)
-- Graceful start/stop controls
-
-**Use Cases**:
-- Fun notification system for room entry
-- Interactive home automation
-- Educational project for learning GPIO and sensor integration
+See [motion-detection/mario/README.md](mario/README.md) for complete documentation including features, installation, configuration, and troubleshooting.
 
 ## Hardware Requirements
 
