@@ -105,13 +105,38 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Development workflow (local development → deployment)
 - Complete example application demonstrating best practices
 
+### Node.js Backend Development Skill
+
+**Location:** `.github/skills/nodejs-backend-development/`
+
+**Use when:**
+- Developing Node.js backend APIs for Raspberry Pi Zero W
+- Creating REST/HTTP services that interact with hardware
+- Building IoT backend services with GPIO control exposed via API
+- Implementing secure web APIs for sensor data and hardware control
+- Deploying Node.js servers on local networks
+- Integrating Express.js with hardware interactions
+
+**Provides:**
+- Node.js environment setup for Raspberry Pi Zero W
+- HTTP Basic Authentication implementation (simple, secure for local networks)
+- Express.js REST API patterns with GPIO integration
+- Hardware abstraction layer for Node.js
+- Input validation and rate limiting
+- HTTPS/TLS configuration for secure communication
+- Network security (firewall, IP filtering)
+- GPIO safety and pin validation
+- Performance optimization for resource-constrained devices
+- Complete example backend application
+
 **Note:** These skills complement each other across the development lifecycle:
 - The `module-design` skill guides you through the **design phase** before implementation
 - The `raspi-zero-w` skill provides **hardware details** for wiring and GPIO during design and implementation
-- The `python-development` skill shows **code patterns** for implementing the designed module
+- The `python-development` skill shows **code patterns** for implementing modules in Python
+- The `nodejs-backend-development` skill shows **how to create backend APIs** for hardware control
 - The `system-setup` skill helps create **deployment automation** for the finished module
 
-Together they provide complete guidance for the entire lifecycle: design → implement → deploy any type of Luigi module (motion detection, sensors, automation, etc.).
+Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, etc.).
 
 ## Repository Structure
 
@@ -129,6 +154,11 @@ luigi/
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── python-patterns.md   # Advanced patterns
 │       │   └── example_application.py  # Complete example
+│       ├── nodejs-backend-development/ # Node.js backend API development
+│       │   ├── SKILL.md             # Main skill file
+│       │   ├── nodejs-patterns.md   # Advanced patterns
+│       │   ├── nodejs-backend-example.js # Complete example
+│       │   └── package-example.json # Example dependencies
 │       ├── raspi-zero-w/            # Raspberry Pi hardware guidance
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── gpio-pinout.md       # GPIO reference
