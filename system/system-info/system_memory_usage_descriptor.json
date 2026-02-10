@@ -1,0 +1,8 @@
+{
+  "sensor_id": "system_memory_usage",
+  "name": "Memory Usage",
+  "unit_of_measurement": "%",
+  "icon": "mdi:memory",
+  "state_class": "measurement",
+  "module": "system/system-info"
+}

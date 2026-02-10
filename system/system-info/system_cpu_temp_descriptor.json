@@ -1,0 +1,9 @@
+{
+  "sensor_id": "system_cpu_temp",
+  "name": "CPU Temperature",
+  "device_class": "temperature",
+  "unit_of_measurement": "°C",
+  "icon": "mdi:chip",
+  "state_class": "measurement",
+  "module": "system/system-info"
+}

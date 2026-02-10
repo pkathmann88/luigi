@@ -1,0 +1,8 @@
+{
+  "sensor_id": "system_cpu_usage",
+  "name": "CPU Usage",
+  "unit_of_measurement": "%",
+  "icon": "mdi:cpu-64-bit",
+  "state_class": "measurement",
+  "module": "system/system-info"
+}
