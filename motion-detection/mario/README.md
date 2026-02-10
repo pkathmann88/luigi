@@ -47,11 +47,30 @@ The sound directory should contain `.wav` or compatible audio files that will be
 ### 2. Install Python Script
 
 ```bash
-sudo cp mario.py /usr/bin/luigi
-sudo chmod +x /usr/bin/luigi
+sudo cp mario.py /usr/local/bin/mario.py
+sudo chmod +x /usr/local/bin/mario.py
 ```
 
 ### 3. Install System Service
+
+#### Option A: systemd (Recommended for Modern Systems)
+
+```bash
+# Install service unit file
+sudo cp mario.service /etc/systemd/system/mario.service
+sudo chmod 644 /etc/systemd/system/mario.service
+
+# Reload systemd configuration
+sudo systemctl daemon-reload
+
+# Enable service to start on boot
+sudo systemctl enable mario.service
+
+# Start the service
+sudo systemctl start mario.service
+```
+
+#### Option B: init.d (Legacy Compatibility)
 
 ```bash
 sudo cp mario /etc/init.d/mario
@@ -59,40 +78,82 @@ sudo chmod +x /etc/init.d/mario
 sudo update-rc.d mario defaults
 ```
 
-This registers the motion detection as a system service that can be managed with standard init.d commands.
+This registers the motion detection as a system service that can be managed with standard service commands.
 
 ## Usage
 
-### Start the Service
+### systemd Commands (Recommended)
 
 ```bash
+# Start the service
+sudo systemctl start mario.service
+
+# Stop the service
+sudo systemctl stop mario.service
+
+# Restart the service
+sudo systemctl restart mario.service
+
+# Check service status
+sudo systemctl status mario.service
+
+# View service logs
+sudo journalctl -u mario.service -f
+
+# Enable service on boot
+sudo systemctl enable mario.service
+
+# Disable service on boot
+sudo systemctl disable mario.service
+```
+
+### init.d Commands (Legacy)
+
+```bash
+# Start the service
 sudo /etc/init.d/mario start
-```
-
-or
-
-```bash
+# or
 sudo service mario start
-```
 
-### Stop the Service
-
-```bash
+# Stop the service
 sudo /etc/init.d/mario stop
-```
-
-or
-
-```bash
+# or
 sudo service mario stop
+
+# Restart the service
+sudo /etc/init.d/mario restart
+# or
+sudo service mario restart
+
+# Check service status
+sudo /etc/init.d/mario status
+# or
+sudo service mario status
 ```
 
-### Check Service Status
+### View Service Logs
 
 The service logs output to `/var/log/motion.log`:
 
 ```bash
+# Follow logs in real-time
 tail -f /var/log/motion.log
+
+# View recent logs
+tail -100 /var/log/motion.log
+
+# For systemd, you can also use journalctl
+sudo journalctl -u mario.service -n 100
+```
+
+### Manual Execution (Development/Testing)
+
+```bash
+# Run directly (requires root for GPIO access)
+sudo python3 /usr/local/bin/mario.py
+
+# Stop with Ctrl+C (SIGINT)
+# The application will shut down gracefully
 ```
 
 ## How It Works
@@ -102,24 +163,70 @@ tail -f /var/log/motion.log
 3. **Cooldown Check**: The system checks if 30 minutes (1800 seconds) have passed since the last trigger
 4. **Sound Playback**: If the cooldown has expired, a random sound file is selected and played using `aplay`
 5. **Timer Update**: The current timestamp is saved to track the cooldown period
-6. **Stop Mechanism**: The service can be stopped by creating `/tmp/stop_mario` file
+6. **Graceful Shutdown**: The service responds to SIGTERM/SIGINT signals for clean shutdown
+
+### Shutdown Mechanisms
+
+The application supports multiple shutdown methods:
+
+- **SIGTERM Signal** (Recommended): Used by systemd and modern init systems
+  ```bash
+  sudo systemctl stop mario.service
+  # or
+  sudo kill -TERM <pid>
+  ```
+  
+- **SIGINT Signal** (Interactive): Ctrl+C when running manually
+  ```bash
+  # Press Ctrl+C to stop
+  ```
+
+- **Stop File** (Legacy): Backwards compatibility with old init.d script
+  ```bash
+  touch /tmp/stop_mario
+  # Application will detect and shut down on next motion event
+  ```
+
+All methods trigger a graceful shutdown that:
+- Stops motion monitoring
+- Cleans up GPIO resources
+- Closes log files properly
+- Removes temporary files
 
 ## Configuration
 
-Key parameters in `mario.py`:
+Key parameters in `mario.py` (defined in Config class):
 
 ```python
-SENSOR_PIN = 23                           # GPIO pin for PIR sensor
+# GPIO Settings
+SENSOR_PIN = 23                           # GPIO pin for PIR sensor (BCM numbering)
+
+# File Paths
 SOUND_DIR = "/usr/share/sounds/mario/"    # Directory containing sound files
-STOP_FILE = "/tmp/stop_mario"             # Stop signal file
+STOP_FILE = "/tmp/stop_mario"             # Stop signal file (legacy)
 TIMER_FILE = "/tmp/mario_timer"           # Cooldown tracking file
+LOG_FILE = "/var/log/motion.log"          # Application log file
+
+# Timing
+COOLDOWN_SECONDS = 1800                   # 30 minutes between triggers
 ```
 
 Cooldown duration: **1800 seconds (30 minutes)**
 
-To modify the cooldown period, edit line 36 in `mario.py`:
+To modify the cooldown period, edit the Config class in `mario.py`:
 ```python
-shouldCheck = (now - ts) >= 1800  # Change 1800 to desired seconds
+class Config:
+    # Timing Settings
+    COOLDOWN_SECONDS = 1800  # Change to desired seconds (e.g., 900 = 15 minutes)
+```
+
+After changing configuration, restart the service:
+```bash
+# systemd
+sudo systemctl restart mario.service
+
+# init.d
+sudo service mario restart
 ```
 
 ## Adding Custom Sounds

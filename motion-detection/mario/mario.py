@@ -11,7 +11,12 @@ Features:
 - 30-minute cooldown between triggers
 - Graceful shutdown handling
 - Structured logging with rotation
-- File-based stop signal mechanism
+- File-based stop signal mechanism (legacy compatibility)
+
+Shutdown Methods:
+- **SIGTERM signal** (recommended): Graceful shutdown via signal handler
+- **SIGINT signal** (Ctrl+C): Interactive shutdown
+- **Stop file** (/tmp/stop_mario): Legacy method for backwards compatibility
 
 Hardware Requirements:
 - Raspberry Pi Zero W (or compatible)
@@ -336,11 +341,16 @@ class MotionDetectionApp:
         
         Args:
             channel: GPIO channel that triggered the event
+        
+        Note:
+            The stop file check is maintained for backwards compatibility
+            with the old init.d script. Modern service managers should use
+            SIGTERM signal (handled by signal_handler) for graceful shutdown.
         """
         try:
-            # Check for stop signal
+            # Check for stop signal file (backwards compatibility)
             if check_stop_signal():
-                logging.info("Stop signal detected, shutting down...")
+                logging.info("Stop signal file detected, shutting down...")
                 self.stop()
                 return
             
@@ -446,13 +456,9 @@ class MotionDetectionApp:
         self.sensor.start_monitoring()
         
         # Main loop - sleep and let events handle everything
+        # Signal handlers (SIGINT, SIGTERM) will trigger graceful shutdown
         try:
             while self.running:
-                # Check for stop signal periodically
-                if check_stop_signal():
-                    logging.info("Stop signal detected")
-                    break
-                
                 time.sleep(Config.MAIN_LOOP_SLEEP)
                 
         except KeyboardInterrupt:

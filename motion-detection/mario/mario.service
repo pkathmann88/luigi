@@ -1,0 +1,26 @@
+[Unit]
+Description=Mario Motion Detection Service
+Documentation=https://github.com/pkathmann88/luigi
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/motion.log
+StandardError=append:/var/log/motion.log
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+# Graceful shutdown
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
