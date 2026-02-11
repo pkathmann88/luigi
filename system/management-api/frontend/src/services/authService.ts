@@ -33,11 +33,18 @@ class AuthService {
    * via an authentication endpoint. The current implementation hardcodes
    * credentials in the client, making them visible to anyone with browser access.
    * 
+   * IMPORTANT: These credentials MUST match the backend credentials in:
+   *   /.env.example (template file)
+   *   /etc/luigi/system/management-api/.env (deployed config)
+   * If you change credentials here, you must also update the .env file and vice versa.
+   * 
    * TODO: Implement proper server-side authentication endpoint
    */
   private loadStaticCredentials() {
     // SECURITY WARNING: These credentials are hardcoded and visible to anyone
     // In production, validate credentials server-side via an /auth endpoint
+    // 
+    // SYNC WITH: /.env.example and /etc/luigi/system/management-api/.env
     this.staticCredentials.set('admin', 'changeme123');
   }
 
