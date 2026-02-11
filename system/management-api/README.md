@@ -578,15 +578,19 @@ Security:
 
 **Cause:** This occurs on Raspberry Pi Zero W (ARMv6 architecture) when using build tools with native binaries compiled for newer ARM architectures.
 
-**Solution:** The frontend build configuration has been optimized for ARMv6 compatibility:
-- Vite uses Terser (pure JavaScript) instead of esbuild for minification
-- Build process avoids native binaries that don't support ARMv6
+**Solution:** The frontend build configuration automatically detects ARMv6 and uses appropriate tools:
+- **ARMv6 (Pi Zero W):** Uses Terser (pure JavaScript) for minification - slower but compatible
+- **Other architectures:** Uses esbuild (native binaries) for minification - faster
+
+The detection is automatic. No manual configuration needed.
 
 **Note:** If you still encounter this issue, verify you're using the latest version of the frontend configuration (`vite.config.ts` and `package.json`).
 
 ### Frontend Build Takes Long Time
 
-**Expected:** Frontend build on Raspberry Pi Zero W can take 5-15 minutes due to limited CPU resources. This is normal. The build uses pure JavaScript tools for ARMv6 compatibility, which are slower than native alternatives but work reliably on all ARM architectures.
+**Expected:** Frontend build on Raspberry Pi Zero W can take 5-15 minutes due to limited CPU resources. This is normal. The build automatically uses pure JavaScript tools (Terser) on ARMv6 for compatibility, which are slower than native alternatives.
+
+On more modern systems (ARMv7, ARMv8, x86_64), the build uses faster esbuild and completes in 1-3 minutes.
 
 ## Dependencies
 
