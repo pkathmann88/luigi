@@ -10,6 +10,10 @@ Type=simple
 # Note: root is required for GPIO access via RPi.GPIO library
 # TODO: Consider using gpio group and udev rules for non-root access
 User=root
+# Wait 2 seconds before starting to ensure GPIO subsystem is ready
+# This delay is a conservative tradeoff: long enough to handle most timing
+# issues on I2C-enabled systems, but short enough to not significantly impact
+# boot time. Combined with retry logic in mario.py for robustness.
 ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure

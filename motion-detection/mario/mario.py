@@ -358,11 +358,15 @@ class GPIOManager:
         delayed. This method retries GPIO setup to handle race conditions.
         
         Args:
-            max_retries: Maximum number of initialization attempts
-            retry_delay: Delay in seconds between retries
+            max_retries: Maximum number of initialization attempts (default: 3)
+            retry_delay: Delay in seconds between retries (default: 2)
             
         Raises:
             RuntimeError: If GPIO initialization fails after all retries
+            
+        Note:
+            This method is backward compatible - default parameters are used
+            if called without arguments (e.g., `initialize()`).
         """
         last_error = None
         
