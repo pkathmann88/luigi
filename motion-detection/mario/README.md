@@ -505,9 +505,12 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
      Example configuration for card 0, device 0:
      ```
      pcm.!default {
-         type hw
-         card 0
-         device 0
+         type plug
+         slave.pcm {
+             type hw
+             card 0
+             device 0
+         }
      }
      
      ctl.!default {
@@ -515,8 +518,49 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
          card 0
      }
      ```
+     
+     **Note:** The `type plug` is important for automatic format conversion.
 
-3. **Test audio playback:**
+3. **Audio format incompatibility: "Sample format non available"**
+   
+   Error message:
+   ```
+   aplay: set_params:1387: Sample format non available
+   Available formats:
+   - S32_LE
+   ```
+   
+   This occurs when the audio device (like the Adafruit Sound Bonnet) only supports 32-bit format but the WAV files are 16-bit.
+   
+   **Solution:**
+   - Ensure `/etc/asound.conf` uses `type plug` instead of `type hw` for automatic format conversion
+   - The setup script now automatically creates the correct configuration
+   - If you have an old configuration, reconfigure: `sudo ./setup.sh install` and choose 'y' to reconfigure audio
+   
+   **Manual fix:**
+   ```bash
+   # Edit /etc/asound.conf
+   sudo nano /etc/asound.conf
+   
+   # Change this:
+   # pcm.!default {
+   #     type hw
+   #     card 0
+   #     device 0
+   # }
+   
+   # To this (note the 'plug' type and nested structure):
+   # pcm.!default {
+   #     type plug
+   #     slave.pcm {
+   #         type hw
+   #         card 0
+   #         device 0
+   #     }
+   # }
+   ```
+
+4. **Test audio playback:**
    ```bash
    # Test with a sound file
    aplay /usr/share/sounds/mario/callingmario1.wav
