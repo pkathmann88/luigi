@@ -38,8 +38,9 @@ export default defineConfig({
       },
     },
   },
-  // Disable esbuild optimizer for ARMv6 compatibility
-  // This ensures the build works on Raspberry Pi Zero W (ARMv6 architecture)
+  // Set esbuild target for dependency optimization
+  // Note: This is used during dev server startup, not the production build
+  // The production build uses Terser (see minify: 'terser' above) for ARMv6 compatibility
   optimizeDeps: {
     esbuildOptions: {
       target: 'es2015',
