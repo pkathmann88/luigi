@@ -387,7 +387,7 @@ The ha-mqtt module provides a generic interface that allows **any Luigi module t
    }
    ```
 
-2. **Install descriptor** to `/etc/luigi/ha-mqtt/sensors.d/mario_motion.json`
+2. **Install descriptor** to `/etc/luigi/iot/ha-mqtt/sensors.d/mario_motion.json`
 
 3. **Run discovery once** to register sensor in Home Assistant:
    ```bash

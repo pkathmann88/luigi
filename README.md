@@ -26,9 +26,17 @@ sudo ./setup.sh install
 
 # Check installation status
 ./setup.sh status
+
+# Uninstall modules (keeps configs)
+sudo ./setup.sh uninstall
+
+# Complete removal (purge everything)
+sudo ./setup.sh purge
 ```
 
 That's it! Services are now running and will start automatically on boot.
+
+**For complete uninstallation instructions, see [UNINSTALL_GUIDE.md](UNINSTALL_GUIDE.md)**
 
 ## Current Modules
 

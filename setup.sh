@@ -71,6 +71,73 @@ check_root() {
     fi
 }
 
+# Check and install required dependencies for setup script
+check_and_install_dependencies() {
+    local missing_deps=()
+    local install_needed=0
+    
+    log_step "Checking setup script dependencies..."
+    
+    # Check for jq (required for module dependency management)
+    if ! command -v jq >/dev/null 2>&1; then
+        log_warn "jq is not installed (required for module dependency management)"
+        missing_deps+=("jq")
+        install_needed=1
+    else
+        log_info "✓ jq is installed"
+    fi
+    
+    # If dependencies are missing, offer to install them
+    if [ $install_needed -eq 1 ]; then
+        echo ""
+        log_warn "Missing dependencies: ${missing_deps[*]}"
+        echo ""
+        echo "These dependencies are required for proper module installation."
+        echo "Without them, module dependencies cannot be resolved and modules"
+        echo "may be installed in the wrong order."
+        echo ""
+        
+        # Auto-install if running as root, otherwise provide instructions
+        if [ "$EUID" -eq 0 ]; then
+            echo "Installing missing dependencies..."
+            echo ""
+            
+            # Update apt cache
+            log_step "Updating package cache..."
+            if ! apt-get update -qq; then
+                log_error "Failed to update package cache"
+                return 1
+            fi
+            
+            # Install missing packages
+            for dep in "${missing_deps[@]}"; do
+                log_step "Installing $dep..."
+                if apt-get install -y -qq "$dep"; then
+                    log_info "✓ $dep installed successfully"
+                else
+                    log_error "Failed to install $dep"
+                    return 1
+                fi
+            done
+            
+            echo ""
+            log_info "All dependencies installed successfully"
+            echo ""
+        else
+            echo "Please install the missing dependencies manually:"
+            echo "  sudo apt-get update"
+            echo "  sudo apt-get install ${missing_deps[*]}"
+            echo ""
+            return 1
+        fi
+    else
+        log_info "✓ All required dependencies are installed"
+        echo ""
+    fi
+    
+    return 0
+}
+
 # Discover all module setup scripts
 discover_modules() {
     local modules=()
@@ -110,8 +177,9 @@ get_module_dependencies() {
     
     # Check if jq is available for JSON parsing
     if ! command -v jq >/dev/null 2>&1; then
-        log_warn "jq not found, cannot parse module.json for $module_path"
-        log_warn "Install jq to enable dependency management: sudo apt-get install jq"
+        # Redirect warnings to stderr to avoid capture by command substitution
+        log_warn "jq not found, cannot parse module.json for $module_path" >&2
+        log_warn "Install jq to enable dependency management: sudo apt-get install jq" >&2
         return 0
     fi
     
@@ -243,6 +311,13 @@ install_modules() {
     local failed_modules=()
     local success_count=0
     
+    # Check and install required dependencies first
+    if ! check_and_install_dependencies; then
+        log_error "Failed to install required dependencies"
+        log_error "Cannot proceed with module installation"
+        return 1
+    fi
+    
     if [ -n "$specific_module" ]; then
         # Install specific module with its dependencies
         log_info "Installing specific module: $specific_module"
@@ -356,6 +431,7 @@ install_modules() {
 # Uninstall all modules or a specific module
 uninstall_modules() {
     local specific_module="$1"
+    local purge_mode="$2"
     local modules
     local failed_modules=()
     local success_count=0
@@ -376,7 +452,25 @@ uninstall_modules() {
         log_info "Found ${#modules[@]} module(s) to uninstall"
     fi
     
+    # Show purge warning if enabled
+    if [ "$purge_mode" = "purge" ]; then
+        echo ""
+        log_warn "PURGE MODE ENABLED"
+        log_warn "This will remove ALL Luigi files, configurations, and installed packages"
+        log_warn "Your system will be restored to its pre-Luigi state"
+        echo ""
+        read -p "Are you absolutely sure? Type 'yes' to continue: " -r
+        echo ""
+        if [ "$REPLY" != "yes" ]; then
+            log_info "Purge cancelled"
+            return 0
+        fi
+    fi
+    
     echo ""
+    
+    # Export purge mode for module scripts
+    export LUIGI_PURGE_MODE="$purge_mode"
     
     # Execute uninstall command for each module
     for module in "${modules[@]}"; do
@@ -386,6 +480,23 @@ uninstall_modules() {
             failed_modules+=("$module")
         fi
     done
+    
+    # Remove setup script dependencies if purging everything
+    if [ "$purge_mode" = "purge" ] && [ -z "$specific_module" ]; then
+        echo ""
+        log_step "Removing setup script dependencies..."
+        
+        # Remove jq if it was installed
+        if command -v jq >/dev/null 2>&1; then
+            log_info "Removing jq..."
+            if apt-get remove -y jq >/dev/null 2>&1; then
+                apt-get autoremove -y >/dev/null 2>&1
+                log_info "✓ jq removed"
+            else
+                log_warn "Failed to remove jq (may not have been installed by Luigi)"
+            fi
+        fi
+    fi
     
     # Summary
     log_header "Uninstallation Summary"
@@ -397,6 +508,10 @@ uninstall_modules() {
             echo "  - $module"
         done
         return 1
+    fi
+    
+    if [ "$purge_mode" = "purge" ]; then
+        log_info "System has been restored to pre-Luigi state"
     fi
     
     echo ""
@@ -438,11 +553,12 @@ show_status() {
 
 # Show usage information
 show_usage() {
-    echo "Usage: $0 [install|uninstall|status] [module]"
+    echo "Usage: $0 [install|uninstall|purge|status] [module]"
     echo ""
     echo "Commands:"
     echo "  install   - Install all modules or a specific module (default)"
-    echo "  uninstall - Remove all modules or a specific module"
+    echo "  uninstall - Remove all modules or a specific module (keeps configs)"
+    echo "  purge     - Remove all modules AND installed packages (complete cleanup)"
     echo "  status    - Show installation status of all modules or a specific module"
     echo ""
     echo "Arguments:"
@@ -452,7 +568,8 @@ show_usage() {
     echo "  sudo $0 install                         # Install all modules"
     echo "  sudo $0 install motion-detection/mario  # Install specific module"
     echo "  sudo $0 status                          # Show status of all modules"
-    echo "  sudo $0 uninstall                       # Uninstall all modules"
+    echo "  sudo $0 uninstall                       # Uninstall all modules (keep configs)"
+    echo "  sudo $0 purge                           # Complete removal (packages + configs)"
     echo ""
     echo "Supported categories:"
     for category in "${CATEGORIES[@]}"; do
@@ -473,7 +590,11 @@ main() {
             ;;
         uninstall)
             check_root "$@"
-            uninstall_modules "$module"
+            uninstall_modules "$module" ""
+            ;;
+        purge)
+            check_root "$@"
+            uninstall_modules "$module" "purge"
             ;;
         status)
             show_status "$module"

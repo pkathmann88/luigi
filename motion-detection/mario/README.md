@@ -373,7 +373,7 @@ sudo ./setup.sh install
 
 **What happens during installation:**
 1. Checks if ha-mqtt is installed
-2. If present, deploys sensor descriptor to `/etc/luigi/ha-mqtt/sensors.d/mario_motion.json`
+2. If present, deploys sensor descriptor to `/etc/luigi/iot/ha-mqtt/sensors.d/mario_motion.json`
 3. Runs `luigi-discover` to register sensor with Home Assistant
 4. Motion events are now published to MQTT automatically
 
@@ -383,7 +383,7 @@ If ha-mqtt was installed after mario, you can manually integrate:
 
 ```bash
 # Copy sensor descriptor
-sudo cp mario_motion_descriptor.json /etc/luigi/ha-mqtt/sensors.d/mario_motion.json
+sudo cp mario_motion_descriptor.json /etc/luigi/iot/ha-mqtt/sensors.d/mario_motion.json
 
 # Register with Home Assistant
 sudo /usr/local/bin/luigi-discover
