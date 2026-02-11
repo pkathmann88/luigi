@@ -174,9 +174,9 @@ install_sounds() {
         exit 1
     }
     
-    # Extract sound files
+    # Extract sound files (strip leading 'luigi/' directory from archive)
     log_info "Extracting sound files to $INSTALL_SOUNDS..."
-    tar -xzf "$SCRIPT_DIR/$SOUNDS_ARCHIVE" -C "$INSTALL_SOUNDS" || {
+    tar -xzf "$SCRIPT_DIR/$SOUNDS_ARCHIVE" -C "$INSTALL_SOUNDS" --strip-components=1 || {
         log_error "Failed to extract sound files"
         exit 1
     }

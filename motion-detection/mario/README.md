@@ -103,8 +103,10 @@ sudo apt-get install python3-rpi-lgpio
 
 ```bash
 sudo mkdir -p /usr/share/sounds/mario
-sudo tar -xzf mario-sounds.tar.gz -C /usr/share/sounds/mario/
+sudo tar -xzf mario-sounds.tar.gz -C /usr/share/sounds/mario/ --strip-components=1
 ```
+
+The `--strip-components=1` flag removes the leading `luigi/` directory from the archive, placing sound files directly in `/usr/share/sounds/mario/`.
 
 The sound directory should contain `.wav` or compatible audio files that will be randomly selected during playback.
 
