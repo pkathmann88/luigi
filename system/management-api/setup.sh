@@ -140,11 +140,53 @@ install() {
         log_info "Copying pre-built artifacts from repository..."
     fi
     
-    # Copy all files including hidden files (like .env.example)
-    # Using rsync or tar to preserve everything, or cp with proper flags
-    shopt -s dotglob  # Enable copying of hidden files
-    cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
-    shopt -u dotglob  # Disable to restore default behavior
+    # Copy only production-necessary files (not development files)
+    log_info "Copying production files..."
+    
+    # Core application files
+    cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
+    cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
+    cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
+    cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
+    cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
+    
+    # Copy directories
+    cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
+    
+    # Copy pre-built backend dependencies if they exist
+    if [ "$has_prebuilt_backend" = true ]; then
+        log_info "Copying pre-built node_modules..."
+        cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
+    fi
+    
+    # Handle frontend - copy only necessary files
+    if [ -d "$SCRIPT_DIR/frontend" ]; then
+        mkdir -p "$APP_DIR/frontend"
+        
+        if [ "$has_prebuilt_frontend" = true ]; then
+            # Copy only built frontend assets
+            log_info "Copying pre-built frontend dist..."
+            cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
+            # Copy package.json for reference
+            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
+        else
+            # Copy frontend source for building
+            log_info "Copying frontend source files..."
+            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/"
+            cp "$SCRIPT_DIR/frontend/package-lock.json" "$APP_DIR/frontend/" 2>/dev/null || true
+            cp "$SCRIPT_DIR/frontend/index.html" "$APP_DIR/frontend/"
+            cp "$SCRIPT_DIR/frontend/vite.config.ts" "$APP_DIR/frontend/" 2>/dev/null || true
+            cp "$SCRIPT_DIR/frontend/tsconfig.json" "$APP_DIR/frontend/" 2>/dev/null || true
+            cp "$SCRIPT_DIR/frontend/tsconfig.node.json" "$APP_DIR/frontend/" 2>/dev/null || true
+            cp "$SCRIPT_DIR/frontend/eslint.config.js" "$APP_DIR/frontend/" 2>/dev/null || true
+            
+            # Copy frontend source directories
+            [ -d "$SCRIPT_DIR/frontend/src" ] && cp -r "$SCRIPT_DIR/frontend/src" "$APP_DIR/frontend/"
+            [ -d "$SCRIPT_DIR/frontend/public" ] && cp -r "$SCRIPT_DIR/frontend/public" "$APP_DIR/frontend/"
+        fi
+    fi
     
     # Set ownership
     chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
