@@ -55,6 +55,8 @@ npm run build
 
 The production files will be in the `dist/` directory.
 
+**Note for Raspberry Pi Zero W:** The build process is optimized for ARMv6 compatibility using Terser instead of esbuild. This may take 5-15 minutes on Raspberry Pi Zero W due to limited CPU resources, which is normal and expected.
+
 ### Type Checking
 
 ```bash

@@ -570,6 +570,24 @@ Security:
   - pathValidator: traversal prevention
 ```
 
+## Troubleshooting
+
+### "Illegal instruction" Error During Frontend Build
+
+**Problem:** Installation fails with "Illegal instruction" error during `npm run build` in the frontend step.
+
+**Cause:** This occurs on Raspberry Pi Zero W (ARMv6 architecture) when using build tools with native binaries compiled for newer ARM architectures.
+
+**Solution:** The frontend build configuration has been optimized for ARMv6 compatibility:
+- Vite uses Terser (pure JavaScript) instead of esbuild for minification
+- Build process avoids native binaries that don't support ARMv6
+
+**Note:** If you still encounter this issue, verify you're using the latest version of the frontend configuration (`vite.config.ts` and `package.json`).
+
+### Frontend Build Takes Long Time
+
+**Expected:** Frontend build on Raspberry Pi Zero W can take 5-15 minutes due to limited CPU resources. This is normal. The build uses pure JavaScript tools for ARMv6 compatibility, which are slower than native alternatives but work reliably on all ARM architectures.
+
 ## Dependencies
 
 ### Runtime
