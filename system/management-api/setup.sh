@@ -6,10 +6,23 @@ set -euo pipefail
 
 # Constants
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Source shared setup helpers
+# shellcheck source=../../util/setup-helpers.sh
+if [ -f "$REPO_ROOT/util/setup-helpers.sh" ]; then
+    source "$REPO_ROOT/util/setup-helpers.sh"
+else
+    echo "Error: Cannot find setup-helpers.sh"
+    echo "Expected location: $REPO_ROOT/util/setup-helpers.sh"
+    exit 1
+fi
+
 readonly MODULE_NAME="management-api"
 readonly MODULE_CATEGORY="system"
 
-# Color output functions (defined early for user detection)
+# Note: Keeping custom logging format for this script's specific needs
+# These override the helper functions but maintain compatibility
 log_info() { echo -e "\033[0;32m[INFO]\033[0m $1"; }
 log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 log_warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
@@ -43,22 +56,9 @@ readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
 readonly LOG_DIR="/var/log"
 readonly AUDIT_LOG_DIR="/var/log/luigi"
 
-# Check root privileges
-require_root() {
-    if [ "$EUID" -ne 0 ]; then
-        log_error "This script must be run as root (use sudo)"
-        exit 1
-    fi
-}
-
-# Check if command exists
-command_exists() {
-    command -v "$1" &> /dev/null
-}
-
 # Install function
 install() {
-    require_root
+    check_root
     log_info "Installing ${MODULE_NAME}..."
     
     # 1. Check prerequisites
@@ -258,7 +258,7 @@ install() {
 
 # Uninstall function
 uninstall() {
-    require_root
+    check_root
     log_info "Uninstalling ${MODULE_NAME}..."
     
     # Check if purge mode is enabled
