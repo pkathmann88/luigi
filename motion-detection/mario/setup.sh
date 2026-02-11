@@ -198,28 +198,23 @@ install_sounds() {
 
 # Configure audio device for aplay
 configure_audio() {
+    # Check if audio is already configured
+    if [ -f /etc/asound.conf ]; then
+        log_info "Audio configuration already exists at /etc/asound.conf"
+        log_info "Skipping audio configuration (configured by root setup.sh)"
+        return 0
+    fi
+    
     log_step "Configuring audio device for aplay..."
+    log_warn "Audio should be configured during root setup.sh installation"
+    log_warn "You can reconfigure audio by running: sudo $SCRIPT_DIR/../../setup.sh install"
+    echo ""
     
     # Check if aplay is available
     if ! command -v aplay >/dev/null 2>&1; then
         log_warn "aplay command not found - audio playback will not work"
         log_warn "Install alsa-utils package: sudo apt-get install alsa-utils"
         return 0
-    fi
-    
-    # Check if asound.conf already exists
-    if [ -f /etc/asound.conf ]; then
-        log_info "Audio configuration already exists at /etc/asound.conf"
-        log_warn "Current audio configuration:"
-        head -10 /etc/asound.conf
-        echo ""
-        log_warn "Do you want to reconfigure audio? (y/N): "
-        read -r -p "" -n 1 REPLY
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_info "Skipping audio configuration"
-            return 0
-        fi
     fi
     
     # Detect available audio devices
@@ -820,7 +815,7 @@ install() {
     check_files
     install_dependencies
     install_sounds
-    configure_audio
+    configure_audio  # Will skip if already configured by root setup.sh
     install_script
     install_reset_script
     install_config
