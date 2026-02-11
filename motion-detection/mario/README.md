@@ -149,14 +149,17 @@ sudo systemctl disable mario.service
 
 ### Alternative: View Application Logs Directly
 
-The service also logs to `/var/log/motion.log`:
+The service logs to `/var/log/luigi/mario.log`:
 
 ```bash
 # Follow logs in real-time
-tail -f /var/log/motion.log
+tail -f /var/log/luigi/mario.log
 
 # View recent logs
-tail -100 /var/log/motion.log
+tail -100 /var/log/luigi/mario.log
+
+# View all logs
+cat /var/log/luigi/mario.log
 ```
 
 ### Manual Execution (Development/Testing)
@@ -269,7 +272,7 @@ SOUND_DIR=/usr/share/sounds/mario/
 # Timer file location for tracking last trigger time
 TIMER_FILE=/tmp/mario_timer
 # Log file location
-LOG_FILE=/var/log/motion.log
+LOG_FILE=/var/log/luigi/mario.log
 
 [Logging]
 # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -288,7 +291,7 @@ If the configuration file does not exist, the application will use default value
 - **GPIO Pin**: 23 (BCM)
 - **Sound Cooldown**: 1800 seconds (30 minutes - applies only to sound playback)
 - **Sound Directory**: `/usr/share/sounds/mario/`
-- **Log File**: `/var/log/motion.log`
+- **Log File**: `/var/log/luigi/mario.log`
 - **Log Level**: INFO
 
 ### Modifying Configuration
@@ -434,7 +437,7 @@ automation:
 
 **View MQTT logs in mario.log**:
 ```bash
-tail -f /var/log/motion.log | grep MQTT
+tail -f /var/log/luigi/mario.log | grep MQTT
 ```
 
 **Common issues:**
@@ -468,7 +471,7 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
 1. Verify PIR sensor wiring
 2. Check GPIO pin assignment matches configuration
 3. Test PIR sensor sensitivity adjustment (potentiometers on sensor)
-4. Review logs: `tail -f /var/log/motion.log`
+4. Review logs: `tail -f /var/log/luigi/mario.log`
 
 ### Service Won't Start
 
@@ -547,7 +550,7 @@ The mario module follows modern Python development practices:
 **Logging:**
 - Structured logging with `RotatingFileHandler`
 - 10MB file size limit with 5 backups
-- Dual output: journalctl + /var/log/motion.log
+- Dual output: journalctl + /var/log/luigi/mario.log
 
 ## Dependencies
 

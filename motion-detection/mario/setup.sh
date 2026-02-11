@@ -35,7 +35,7 @@ INSTALL_SOUNDS="/usr/share/sounds/mario"
 INSTALL_CONFIG_DIR="/etc/luigi/motion-detection/mario"
 INSTALL_CONFIG="/etc/luigi/motion-detection/mario/mario.conf"
 INSTALL_RESET_SCRIPT="/usr/local/bin/mario-reset-cooldown"
-LOG_FILE="/var/log/motion.log"
+LOG_FILE="/var/log/luigi/mario.log"
 
 # ha-mqtt integration paths
 HA_MQTT_SENSORS_DIR="/etc/luigi/iot/ha-mqtt/sensors.d"
