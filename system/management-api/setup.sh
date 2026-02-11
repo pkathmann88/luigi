@@ -140,7 +140,11 @@ install() {
         log_info "Copying pre-built artifacts from repository..."
     fi
     
+    # Copy all files including hidden files (like .env.example)
+    # Using rsync or tar to preserve everything, or cp with proper flags
+    shopt -s dotglob  # Enable copying of hidden files
     cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
+    shopt -u dotglob  # Disable to restore default behavior
     
     # Set ownership
     chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
