@@ -5,8 +5,9 @@ node_modules
 dist
 build
 
-# Environment files
+# Environment files (keep .env template, ignore others)
 .env.local
+.env.production
 .env.production.local
 
 # IDE
