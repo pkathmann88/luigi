@@ -172,7 +172,7 @@ Default credentials:
 **Important:** 
 
 1. **Change the default password** in `/etc/luigi/system/management-api/.env` after installation
-2. **Credential Synchronization**: The frontend has hardcoded credentials that must match the backend `.env` file. If you change the backend password, you must also update `frontend/src/services/authService.ts` (line 41) and rebuild:
+2. **Credential Synchronization**: The frontend has hardcoded credentials that must match the backend `.env` file. If you change the backend password, you must also update `frontend/src/services/authService.ts` (line 48) and rebuild:
    ```bash
    sudo ./setup.sh build
    sudo systemctl restart management-api
