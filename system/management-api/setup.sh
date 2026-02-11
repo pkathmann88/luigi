@@ -119,25 +119,48 @@ install() {
     mkdir -p "$AUDIT_LOG_DIR"
     mkdir -p "$CERTS_DIR"
     
+    # 2.5. Build frontend in source if not already built
+    # This ensures we always have a built frontend before copying
+    if [ -d "$SCRIPT_DIR/frontend" ]; then
+        if [ ! -d "$SCRIPT_DIR/frontend/dist" ] || [ -z "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
+            log_info "Frontend not pre-built, building in source directory..."
+            (
+                cd "$SCRIPT_DIR/frontend" || exit 1
+                
+                # Install frontend dependencies
+                log_info "Installing frontend dependencies..."
+                sudo -u "$INSTALL_USER" npm install --no-audit
+                
+                # Run type check
+                log_info "Running TypeScript type check..."
+                sudo -u "$INSTALL_USER" npm run type-check
+                
+                # Build production bundle
+                log_info "Building production bundle..."
+                sudo -u "$INSTALL_USER" npm run build
+            )
+            
+            # Verify dist directory exists
+            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+                log_info "Frontend build successful ✓"
+            else
+                log_error "Frontend build failed - dist directory not found"
+                exit 1
+            fi
+        else
+            log_info "✓ Frontend already built in source"
+        fi
+    fi
+    
     # 3. Copy application files
     log_info "Copying application files..."
     
-    # Check for pre-built artifacts in source
-    local has_prebuilt_frontend=false
+    # Check for pre-built backend dependencies in source
     local has_prebuilt_backend=false
-    
-    if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
-        has_prebuilt_frontend=true
-        log_info "✓ Detected pre-built frontend in source"
-    fi
     
     if [ -d "$SCRIPT_DIR/node_modules" ] && [ -n "$(ls -A "$SCRIPT_DIR/node_modules" 2>/dev/null)" ]; then
         has_prebuilt_backend=true
         log_info "✓ Detected pre-built backend dependencies in source"
-    fi
-    
-    if [ "$has_prebuilt_frontend" = true ] || [ "$has_prebuilt_backend" = true ]; then
-        log_info "Copying pre-built artifacts from repository..."
     fi
     
     # Copy only production-necessary files (not development files)
@@ -165,26 +188,16 @@ install() {
     if [ -d "$SCRIPT_DIR/frontend" ]; then
         mkdir -p "$APP_DIR/frontend"
         
-        if [ "$has_prebuilt_frontend" = true ]; then
-            # Copy only built frontend assets
-            log_info "Copying pre-built frontend dist..."
+        # Always copy only built frontend assets (source is never copied)
+        # Frontend is built in source before this point
+        log_info "Copying built frontend dist..."
+        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
             cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
             # Copy package.json for reference
             cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
         else
-            # Copy frontend source for building
-            log_info "Copying frontend source files..."
-            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/"
-            cp "$SCRIPT_DIR/frontend/package-lock.json" "$APP_DIR/frontend/" 2>/dev/null || true
-            cp "$SCRIPT_DIR/frontend/index.html" "$APP_DIR/frontend/"
-            cp "$SCRIPT_DIR/frontend/vite.config.ts" "$APP_DIR/frontend/" 2>/dev/null || true
-            cp "$SCRIPT_DIR/frontend/tsconfig.json" "$APP_DIR/frontend/" 2>/dev/null || true
-            cp "$SCRIPT_DIR/frontend/tsconfig.node.json" "$APP_DIR/frontend/" 2>/dev/null || true
-            cp "$SCRIPT_DIR/frontend/eslint.config.js" "$APP_DIR/frontend/" 2>/dev/null || true
-            
-            # Copy frontend source directories
-            [ -d "$SCRIPT_DIR/frontend/src" ] && cp -r "$SCRIPT_DIR/frontend/src" "$APP_DIR/frontend/"
-            [ -d "$SCRIPT_DIR/frontend/public" ] && cp -r "$SCRIPT_DIR/frontend/public" "$APP_DIR/frontend/"
+            log_error "Frontend dist directory not found - frontend should have been built"
+            exit 1
         fi
     fi
     
@@ -203,58 +216,6 @@ install() {
         # Run npm audit
         log_info "Running security audit..."
         sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
-    fi
-    
-    # 4.5. Build frontend (skip if pre-built)
-    log_info "Checking web frontend..."
-    if [ -d "$APP_DIR/frontend" ]; then
-        # Check if frontend is already built (from pre-built source or copied)
-        local should_build=true
-        if [ -d "$APP_DIR/frontend/dist" ] && [ -n "$(ls -A "$APP_DIR/frontend/dist" 2>/dev/null)" ]; then
-            if [ "$has_prebuilt_frontend" = true ]; then
-                log_info "Using pre-built frontend (skipping build) ✓"
-                should_build=false
-            else
-                log_info "Frontend build already exists in $APP_DIR/frontend/dist"
-                read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
-                echo
-                if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
-                    log_info "Skipping frontend rebuild (using existing build)"
-                    should_build=false
-                else
-                    log_info "Proceeding with frontend rebuild..."
-                fi
-            fi
-        fi
-        
-        if [ "$should_build" = true ]; then
-            log_info "Building web frontend..."
-            (
-                cd "$APP_DIR/frontend" || exit 1
-                
-                # Install frontend dependencies
-                log_info "Installing frontend dependencies..."
-                sudo -u "$INSTALL_USER" npm install --no-audit
-                
-                # Run type check
-                log_info "Running TypeScript type check..."
-                sudo -u "$INSTALL_USER" npm run type-check
-                
-                # Build production bundle
-                log_info "Building production bundle..."
-                sudo -u "$INSTALL_USER" npm run build
-            )
-            
-            # Verify dist directory exists
-            if [ -d "$APP_DIR/frontend/dist" ]; then
-                log_info "Frontend build successful ✓"
-            else
-                log_error "Frontend build failed - dist directory not found"
-                exit 1
-            fi
-        fi
-    else
-        log_warn "Frontend directory not found, skipping frontend build"
     fi
     
     # 5. Deploy configuration
