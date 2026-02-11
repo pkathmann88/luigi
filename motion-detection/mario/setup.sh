@@ -127,7 +127,7 @@ install_dependencies() {
     else
         # Fallback to hardcoded packages if module.json or jq not available
         log_warn "module.json or jq not found, using fallback package list"
-        packages=("python3-rpi.gpio" "alsa-utils")
+        packages=("python3-rpi-lgpio" "alsa-utils")
     fi
     
     # Check if packages are needed
@@ -581,7 +581,7 @@ uninstall() {
     if [ "$purge_mode" != "purge" ]; then
         echo ""
         # Read packages from module.json for display
-        local package_list="python3-rpi.gpio, alsa-utils"
+        local package_list="python3-rpi-lgpio, alsa-utils"
         if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
             local packages_json
             packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
@@ -603,7 +603,7 @@ uninstall() {
             done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
         else
             # Fallback to hardcoded packages
-            packages=("python3-rpi.gpio" "alsa-utils")
+            packages=("python3-rpi-lgpio" "alsa-utils")
         fi
         
         for pkg in "${packages[@]}"; do

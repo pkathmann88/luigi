@@ -57,7 +57,7 @@ sudo ./setup.sh install
 ```
 
 This will automatically:
-- Install dependencies (python3-rpi.gpio, alsa-utils)
+- Install dependencies (python3-rpi-lgpio, alsa-utils)
 - Extract and install sound files
 - Install the Python application
 - Install and enable the systemd service
@@ -81,7 +81,22 @@ If you prefer to install manually, follow these steps:
 
 ```bash
 sudo apt-get update
-sudo apt-get install python3-rpi.gpio alsa-utils
+sudo apt-get install python3-rpi-lgpio alsa-utils
+```
+
+**CRITICAL: Use python3-rpi-lgpio, NOT python3-rpi-lgpio or pip-installed RPi.GPIO**
+
+On Raspberry Pi models with newer kernels (6.6+), including:
+- Raspberry Pi 4
+- Raspberry Pi 5  
+- Raspberry Pi Zero 2W
+
+You **must** use `python3-rpi-lgpio` from apt. The older `RPi.GPIO` library (especially from pip) causes "Failed to add edge detection" errors with newer kernels.
+
+**If you previously installed RPi.GPIO via pip, remove it:**
+```bash
+sudo pip3 uninstall RPi.GPIO
+sudo apt-get install python3-rpi-lgpio
 ```
 
 ### 2. Extract Sound Files
@@ -483,29 +498,48 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
 
 2. **Common Issue: "Failed to add edge detection" error**
    
-   This error occurs when trying to add GPIO event detection on a pin that already has event detection registered (from a previous run or another process).
+   This error occurs on Raspberry Pi models with newer kernels (6.6+), particularly:
+   - Raspberry Pi 4
+   - Raspberry Pi 5
+   - Raspberry Pi Zero 2W
    
    **Symptoms:**
    - Error message: "RuntimeError: Failed to add edge detection"
-   - GPIO initializes successfully, but monitoring fails to start
-   - Typically happens after restarting the service or running the script multiple times
+   - In dmesg logs: "export_store: invalid GPIO X"
+   - GPIO initializes but event detection fails
+   
+   **Root Cause:**
+   This is a **library incompatibility issue**. The older `RPi.GPIO` library (especially when installed via pip) is incompatible with newer Raspberry Pi kernels (6.6+).
    
    **Solution:**
-   The mario module automatically handles this by:
-   - Setting `GPIO.setwarnings(False)` to suppress pin reuse warnings
-   - Removing any existing event detection before adding new detection
+   Use `python3-rpi-lgpio` from apt instead of `RPi.GPIO`:
    
-   If the issue persists, manually clean up GPIO state:
    ```bash
-   # Stop the service
-   sudo systemctl stop mario.service
+   # Remove any pip-installed RPi.GPIO
+   sudo pip3 uninstall RPi.GPIO -y
    
-   # Verify no other process is using GPIO23
-   sudo lsof | grep -i gpio || echo "No GPIO processes found"
+   # Remove old python3-rpi-lgpio if installed
+   sudo apt-get remove python3-rpi-lgpio -y
+   sudo apt-get autoremove -y
+   
+   # Install the correct library
+   sudo apt-get update
+   sudo apt-get install python3-rpi-lgpio -y
    
    # Restart the service
-   sudo systemctl start mario.service
+   sudo systemctl restart mario.service
    ```
+   
+   **Verification:**
+   Check which GPIO library is installed:
+   ```bash
+   dpkg -l | grep -i rpi
+   ```
+   
+   You should see `python3-rpi-lgpio`, NOT `python3-rpi-lgpio`.
+   
+   **Why this works:**
+   `python3-rpi-lgpio` is a compatibility shim that uses the newer `lgpio` library, which works correctly with kernel 6.6+. It provides the same `RPi.GPIO` API but uses the modern GPIO interface internally.
 
 3. Verify Python script exists and has correct permissions:
    ```bash
@@ -554,9 +588,9 @@ The mario module follows modern Python development practices:
 
 ## Dependencies
 
-- **python3-rpi.gpio**: Python 3 library for GPIO control
+- **python3-rpi-lgpio**: Python 3 library for GPIO control
   ```bash
-  sudo apt-get install python3-rpi.gpio
+  sudo apt-get install python3-rpi-lgpio
   ```
 
 - **alsa-utils**: Audio playback utilities (includes `aplay`)

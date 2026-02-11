@@ -7,7 +7,7 @@
     "iot/ha-mqtt"
   ],
   "apt_packages": [
-    "python3-rpi.gpio",
+    "python3-rpi-lgpio",
     "alsa-utils"
   ],
   "author": "Luigi Project",
