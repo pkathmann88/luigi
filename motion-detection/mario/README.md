@@ -503,9 +503,10 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
    
    ```bash
    # Verify service dependencies are correct
-   sudo systemctl cat mario.service | grep -A 3 "\[Unit\]"
+   sudo systemctl cat mario.service | grep -A 3 "Unit"
    
-   # Should show: After=network.target sysinit.target systemd-modules-load.service
+   # Expected output should include:
+   # After=network.target sysinit.target systemd-modules-load.service
    ```
    
    If needed, reinstall the service:

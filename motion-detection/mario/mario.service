@@ -14,6 +14,8 @@ ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
+# Limit restart attempts to prevent infinite loops (5 retries in 60 seconds)
+# Helps handle transient GPIO initialization issues without service thrashing
 StartLimitBurst=5
 StartLimitIntervalSec=60
 # Dual logging: both journalctl (automatic) and /var/log/motion.log (traditional)
