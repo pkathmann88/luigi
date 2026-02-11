@@ -44,6 +44,32 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Security design considerations
 - Design review checklists and templates
 
+### Shell Scripting Skill
+
+**Location:** `.github/skills/shell-scripting/`
+
+**Use when:**
+- Creating or modifying shell scripts (setup.sh, installation scripts, utilities)
+- Writing command-line tools for Luigi modules
+- Debugging shell script issues
+- Implementing service management scripts
+- Creating test scripts for shell validation
+- Working with bash patterns, arrays, or JSON parsing
+
+**Provides:**
+- Luigi shell scripting standards and templates
+- Standard logging functions and color output patterns
+- Argument parsing and command-line interface patterns
+- Package management with module.json integration
+- Service management with systemd
+- Configuration file handling (INI-style config parsing)
+- File operations with error handling
+- User input and prompt patterns
+- Security considerations (input validation, credential handling)
+- Advanced patterns (JSON with jq, arrays, string manipulation)
+- Testing patterns and shellcheck validation
+- Complete example setup script demonstrating best practices
+
 ### System Setup Skill
 
 **Location:** `.github/skills/system-setup/`
@@ -158,13 +184,14 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 
 **Note:** These skills complement each other across the development lifecycle:
 - The `module-design` skill guides you through the **design phase** before implementation
+- The `shell-scripting` skill provides **shell scripting standards** for setup scripts, CLI tools, and automation
 - The `raspi-zero-w` skill provides **hardware details** for wiring and GPIO during design and implementation
 - The `python-development` skill shows **code patterns** for implementing modules in Python
 - The `nodejs-backend-development` skill shows **how to create backend APIs** for hardware control
 - The `web-frontend-development` skill shows **how to build modern web UIs** that interact with backend APIs
 - The `system-setup` skill helps create **deployment automation** for the finished module
 
-Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
+Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend + shell scripts) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
 
 ## Repository Structure
 
@@ -178,6 +205,10 @@ luigi/
 │       │   ├── hardware-design-checklist.md  # Hardware verification checklist
 │       │   ├── design-review-checklist.md    # Complete design review
 │       │   └── module-design-template.md     # Module design template
+│       ├── shell-scripting/         # Shell scripting standards and patterns
+│       │   ├── SKILL.md             # Main skill file
+│       │   ├── shell-scripting-patterns.md   # Advanced patterns
+│       │   └── example-setup.sh     # Complete example
 │       ├── python-development/      # Python development patterns
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── python-patterns.md   # Advanced patterns
@@ -191,9 +222,12 @@ luigi/
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── gpio-pinout.md       # GPIO reference
 │       │   └── wiring-diagram.md    # Hardware wiring
-│       └── system-setup/            # System setup and configuration
+│       ├── system-setup/            # System setup and configuration
+│       │   ├── SKILL.md             # Main skill file
+│       │   └── system-reference.md  # System commands reference
+│       └── web-frontend-development/ # Modern web UI development
 │           ├── SKILL.md             # Main skill file
-│           └── system-reference.md  # System commands reference
+│           └── ...                  # Additional resources
 ├── .gitignore                       # Python, IDE, and OS exclusions
 ├── README.md                        # Main project documentation
 ├── motion-detection/                # Motion detection components
