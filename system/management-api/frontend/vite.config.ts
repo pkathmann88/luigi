@@ -22,8 +22,9 @@ const isARMv6 = (() => {
     }
     return isV6
   } catch (error) {
-    // If we can't determine CPU model, log the error and assume ARMv6 to be safe on 'arm' architecture
-    console.warn('[Vite] Unable to detect CPU model, defaulting to Terser for ARM compatibility:', error)
+    // If we can't determine CPU model, default to Terser (safest option for 'arm' architecture)
+    // Terser is pure JavaScript and works on all ARM variants, including ARMv6
+    console.warn('[Vite] Unable to detect CPU model, defaulting to Terser for maximum ARM compatibility:', error)
     return true
   }
 })()

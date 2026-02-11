@@ -142,7 +142,7 @@ install() {
         local should_build=true
         if [ -d "$APP_DIR/frontend/dist" ] && [ -n "$(ls -A "$APP_DIR/frontend/dist" 2>/dev/null)" ]; then
             log_info "Frontend build already exists in $APP_DIR/frontend/dist"
-            read -p "Do you want to rebuild the frontend? (y/N): " -r rebuild_choice
+            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
             echo
             if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
                 log_info "Skipping frontend rebuild (using existing build)"
