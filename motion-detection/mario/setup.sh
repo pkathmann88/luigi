@@ -296,16 +296,18 @@ deploy_ha_mqtt_descriptor() {
     
     # Copy sensor descriptor
     log_info "Installing sensor descriptor..."
-    cp "$SCRIPT_DIR/$SENSOR_DESCRIPTOR" "$HA_MQTT_DESCRIPTOR" || {
-        log_error "Failed to copy sensor descriptor"
-        exit 1
-    }
+    if ! cp "$SCRIPT_DIR/$SENSOR_DESCRIPTOR" "$HA_MQTT_DESCRIPTOR" 2>/dev/null; then
+        log_warn "Failed to copy sensor descriptor"
+        log_info "MQTT integration skipped - motion detection will work standalone"
+        return 0
+    fi
     
     # Set permissions
-    chmod 644 "$HA_MQTT_DESCRIPTOR" || {
-        log_error "Failed to set descriptor permissions"
-        exit 1
-    }
+    if ! chmod 644 "$HA_MQTT_DESCRIPTOR" 2>/dev/null; then
+        log_warn "Failed to set descriptor permissions"
+        log_info "MQTT integration skipped - motion detection will work standalone"
+        return 0
+    fi
     
     log_info "Sensor descriptor installed to $HA_MQTT_DESCRIPTOR"
     
@@ -514,8 +516,10 @@ uninstall() {
     
     # Handle sound files
     if [ "$purge_mode" != "purge" ]; then
-        read -rp "$(echo -e "${YELLOW}Remove sound files from $INSTALL_SOUNDS? [y/N]${NC} ")" response
-        remove_sounds=$response
+        log_warn "Sound files exist in $INSTALL_SOUNDS"
+        read -p "Remove sound files? (y/N): " -n 1 -r
+        echo
+        remove_sounds=$REPLY
     fi
     
     if [[ "$remove_sounds" =~ ^[Yy]$ ]]; then
@@ -529,8 +533,10 @@ uninstall() {
     
     # Handle log file
     if [ "$purge_mode" != "purge" ]; then
-        read -rp "$(echo -e "${YELLOW}Remove log file $LOG_FILE? [y/N]${NC} ")" response
-        remove_log=$response
+        log_warn "Log file: $LOG_FILE"
+        read -p "Remove log file? (y/N): " -n 1 -r
+        echo
+        remove_log=$REPLY
     fi
     
     if [[ "$remove_log" =~ ^[Yy]$ ]]; then
@@ -544,8 +550,10 @@ uninstall() {
     
     # Handle config file
     if [ "$purge_mode" != "purge" ]; then
-        read -rp "$(echo -e "${YELLOW}Remove config file $INSTALL_CONFIG? [y/N]${NC} ")" response
-        remove_config=$response
+        log_warn "Configuration file: $INSTALL_CONFIG"
+        read -p "Remove configuration? (y/N): " -n 1 -r
+        echo
+        remove_config=$REPLY
     fi
     
     if [[ "$remove_config" =~ ^[Yy]$ ]]; then
@@ -571,6 +579,7 @@ uninstall() {
     
     # Remove packages if in purge mode or requested
     if [ "$purge_mode" != "purge" ]; then
+        echo ""
         # Read packages from module.json for display
         local package_list="python3-rpi.gpio, alsa-utils"
         if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
@@ -578,8 +587,9 @@ uninstall() {
             packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
             [ -n "$packages_json" ] && package_list="$packages_json"
         fi
-        read -rp "$(echo -e "${YELLOW}Remove installed packages ($package_list)? [y/N]${NC} ")" response
-        remove_packages=$response
+        read -p "Remove installed packages ($package_list)? (y/N): " -n 1 -r
+        echo
+        remove_packages=$REPLY
     fi
     
     if [[ "$remove_packages" =~ ^[Yy]$ ]]; then
