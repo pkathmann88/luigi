@@ -8,19 +8,37 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly MODULE_NAME="management-api"
 readonly MODULE_CATEGORY="system"
-readonly APP_DIR="/home/pi/luigi/system/management-api"
-readonly CONFIG_DIR="/etc/luigi/system/management-api"
-readonly SERVICE_NAME="management-api.service"
-readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
-readonly CERTS_DIR="/home/pi/certs"
-readonly LOG_DIR="/var/log"
-readonly AUDIT_LOG_DIR="/var/log/luigi"
 
-# Color output functions
+# Color output functions (defined early for user detection)
 log_info() { echo -e "\033[0;32m[INFO]\033[0m $1"; }
 log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 log_warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
 log_debug() { echo -e "\033[0;34m[DEBUG]\033[0m $1"; }
+
+# Detect the user who invoked sudo (fallback to current user if not using sudo)
+INSTALL_USER="${SUDO_USER:-$(whoami)}"
+if [ "$INSTALL_USER" = "root" ]; then
+    # If running directly as root (not via sudo), try to use 'pi' if it exists
+    if id -u pi >/dev/null 2>&1; then
+        INSTALL_USER="pi"
+    else
+        log_error "Cannot determine non-root user. Run with sudo or as a specific user."
+        exit 1
+    fi
+fi
+readonly INSTALL_USER
+
+# Get user's home directory
+INSTALL_USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
+readonly INSTALL_USER_HOME
+
+readonly APP_DIR="${INSTALL_USER_HOME}/luigi/system/management-api"
+readonly CONFIG_DIR="/etc/luigi/system/management-api"
+readonly SERVICE_NAME="management-api.service"
+readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
+readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
+readonly LOG_DIR="/var/log"
+readonly AUDIT_LOG_DIR="/var/log/luigi"
 
 # Check root privileges
 require_root() {
@@ -99,16 +117,16 @@ install() {
     cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
     
     # Set ownership
-    chown -R pi:pi "$APP_DIR"
+    chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
     
     # 4. Install Node.js dependencies
     log_info "Installing Node.js dependencies..."
     cd "$APP_DIR"
-    sudo -u pi npm install --production --no-audit
+    sudo -u "$INSTALL_USER" npm install --production --no-audit
     
     # Run npm audit
     log_info "Running security audit..."
-    sudo -u pi npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
+    sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
     
     # 4.5. Build frontend
     log_info "Building web frontend..."
@@ -118,15 +136,15 @@ install() {
             
             # Install frontend dependencies
             log_info "Installing frontend dependencies..."
-            sudo -u pi npm install --no-audit
+            sudo -u "$INSTALL_USER" npm install --no-audit
             
             # Run type check
             log_info "Running TypeScript type check..."
-            sudo -u pi npm run type-check
+            sudo -u "$INSTALL_USER" npm run type-check
             
             # Build production bundle
             log_info "Building production bundle..."
-            sudo -u pi npm run build
+            sudo -u "$INSTALL_USER" npm run build
         )
         
         # Verify dist directory exists
@@ -145,7 +163,7 @@ install() {
     if [ ! -f "$CONFIG_DIR/.env" ]; then
         cp "$APP_DIR/.env.example" "$CONFIG_DIR/.env"
         chmod 600 "$CONFIG_DIR/.env"
-        chown pi:pi "$CONFIG_DIR/.env"
+        chown "${INSTALL_USER}:${INSTALL_USER}" "$CONFIG_DIR/.env"
         
         log_warn "Configuration file created: $CONFIG_DIR/.env"
         log_warn "IMPORTANT: You must edit this file and set a secure password!"
@@ -172,7 +190,13 @@ install() {
     
     # 7. Deploy systemd service
     log_info "Installing systemd service..."
-    cp "$APP_DIR/management-api.service" "$SERVICE_FILE"
+    
+    # Generate service file with correct user and paths
+    sed -e "s|User=pi|User=${INSTALL_USER}|g" \
+        -e "s|Group=pi|Group=${INSTALL_USER}|g" \
+        -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
+        "$APP_DIR/management-api.service" > "$SERVICE_FILE"
+    
     chmod 644 "$SERVICE_FILE"
     systemctl daemon-reload
     
