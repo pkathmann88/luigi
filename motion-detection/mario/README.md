@@ -59,9 +59,19 @@ sudo ./setup.sh install
 This will automatically:
 - Install dependencies (python3-rpi-lgpio, alsa-utils)
 - Extract and install sound files
+- **Configure audio device for aplay** (interactive selection)
 - Install the Python application
 - Install and enable the systemd service
 - Start the service
+
+**Audio Configuration:**
+During installation, the setup script will:
+1. Detect all available audio devices (using `aplay -l`)
+2. Prompt you to select the audio device to use
+3. Create `/etc/asound.conf` with your selection
+4. Test audio playback to verify configuration
+
+If you have only one audio device, it will be selected automatically.
 
 ### Other Setup Commands
 
@@ -468,17 +478,57 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
 
 ### No Sound Output
 
-1. Test audio system:
+1. **Check audio configuration:**
    ```bash
-   speaker-test -t wav -c 2
-   ```
-
-2. Check audio device:
-   ```bash
+   # List available audio devices
    aplay -l
+   
+   # Check current configuration
+   cat /etc/asound.conf
    ```
 
-3. Adjust volume:
+2. **Common audio error: "audio open error: Unknown error 524"**
+   
+   This error occurs when aplay cannot access the configured audio device.
+   
+   **Solution:**
+   - Reconfigure audio during setup: `sudo ./setup.sh install` (choose 'y' to reconfigure)
+   - Or manually create `/etc/asound.conf`:
+     ```bash
+     # Find your audio device
+     aplay -l
+     
+     # Create /etc/asound.conf with your card and device numbers
+     sudo nano /etc/asound.conf
+     ```
+     
+     Example configuration for card 0, device 0:
+     ```
+     pcm.!default {
+         type hw
+         card 0
+         device 0
+     }
+     
+     ctl.!default {
+         type hw
+         card 0
+     }
+     ```
+
+3. **Test audio playback:**
+   ```bash
+   # Test with a sound file
+   aplay /usr/share/sounds/mario/callingmario1.wav
+   
+   # Test with speaker test
+   speaker-test -t wav -c 2
+   
+   # If audio works, restart the mario service
+   sudo systemctl restart mario.service
+   ```
+
+4. **Adjust volume:**
    ```bash
    alsamixer
    ```
