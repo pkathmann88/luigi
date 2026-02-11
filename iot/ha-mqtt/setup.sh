@@ -94,7 +94,7 @@ install_packages() {
         done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
     else
         # Fallback to hardcoded packages if module.json not available
-        # Note: jq is a required package, so we need it to parse module.json
+        # Note: jq is required to parse module.json, so it must be in the list
         print_warning "module.json not found or jq not available, using fallback package list"
         packages=("mosquitto-clients" "jq")
     fi

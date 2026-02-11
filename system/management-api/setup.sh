@@ -61,7 +61,7 @@ install() {
     # Check which packages need installation
     local to_install=()
     for pkg in "${packages[@]}"; do
-        if ! command_exists "$pkg" && ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+        if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
             to_install+=("$pkg")
         fi
     done

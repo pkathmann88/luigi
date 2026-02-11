@@ -572,7 +572,7 @@ uninstall() {
     # Remove packages if in purge mode or requested
     if [ "$purge_mode" != "purge" ]; then
         # Read packages from module.json for display
-        local package_list="apt packages"
+        local package_list="python3-rpi.gpio, alsa-utils"
         if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
             local packages_json
             packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)

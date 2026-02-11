@@ -519,7 +519,7 @@ install_modules() {
     # Collect and install all apt packages in batch before module installation
     log_step "Collecting apt package requirements from all modules..."
     local all_packages
-    read -r -a all_packages <<< "$(collect_all_apt_packages "${modules[@]}")"
+    mapfile -t all_packages < <(collect_all_apt_packages "${modules[@]}" | tr ' ' '\n')
     
     if ! install_apt_packages "${all_packages[@]}"; then
         log_error "Failed to install required apt packages"
