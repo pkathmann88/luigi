@@ -2,9 +2,47 @@
 
 This document covers advanced shell scripting patterns used in the Luigi repository, including JSON parsing, array operations, library sourcing, and testing frameworks.
 
+## Shared Helper Library
+
+**IMPORTANT:** All Luigi module setup scripts use the shared helper library at `util/setup-helpers.sh`.
+
+### Using the Helper
+
+Always source the helper at the beginning of your setup script:
+
+```bash
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Source shared setup helpers
+if [ -f "$REPO_ROOT/util/setup-helpers.sh" ]; then
+    source "$REPO_ROOT/util/setup-helpers.sh"
+fi
+```
+
+**Helper provides 25 functions** including:
+- Logging: log_info, log_warn, log_error, log_step, log_header, log_debug, log_success
+- Package management: read_apt_packages, should_skip_packages, is_purge_mode
+- File operations, service management, validation, and more
+
+**See:** `util/README.md` for complete documentation.
+
 ## JSON Parsing with jq
 
-### Reading JSON Arrays
+### Reading JSON Arrays (Using Helper Function)
+
+**The helper provides `read_apt_packages()` for this common pattern:**
+```bash
+# Use helper function (recommended)
+packages=($(read_apt_packages "$SCRIPT_DIR/module.json"))
+
+# Manual approach (only if helper unavailable)
+```
+
+### Reading JSON Arrays (Manual Pattern)
 
 **Parse apt_packages from module.json:**
 ```bash

@@ -58,6 +58,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 
 **Provides:**
 - Luigi shell scripting standards and templates
+- **Shared setup helper library** (`util/setup-helpers.sh`) with common functions
 - Standard logging functions and color output patterns
 - Argument parsing and command-line interface patterns
 - Package management with module.json integration
@@ -69,6 +70,8 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Advanced patterns (JSON with jq, arrays, string manipulation)
 - Testing patterns and shellcheck validation
 - Complete example setup script demonstrating best practices
+
+**Important:** All module setup scripts MUST source `util/setup-helpers.sh` to use shared logging, package management, and utility functions.
 
 ### System Setup Skill
 

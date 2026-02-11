@@ -21,9 +21,51 @@ Use this skill when:
 
 ## Luigi Shell Scripting Standards
 
+### Important: Shared Setup Helper Library
+
+**All Luigi module setup scripts MUST use the shared helper library:**
+
+Luigi provides a shared helper library at `util/setup-helpers.sh` containing common functions used by all setup scripts. This eliminates code duplication and ensures consistency.
+
+**Usage Pattern:**
+```bash
+#!/bin/bash
+set -e  # Exit on error
+
+# Script directory and repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"  # Adjust path as needed
+
+# Source shared setup helpers
+# shellcheck source=../../util/setup-helpers.sh
+if [ -f "$REPO_ROOT/util/setup-helpers.sh" ]; then
+    source "$REPO_ROOT/util/setup-helpers.sh"
+else
+    echo "Error: Cannot find setup-helpers.sh"
+    echo "Expected location: $REPO_ROOT/util/setup-helpers.sh"
+    exit 1
+fi
+
+# Your setup script code continues here...
+# Use helper functions: log_info, log_warn, log_error, etc.
+```
+
+**Helper provides:**
+- Color definitions: RED, GREEN, YELLOW, BLUE, CYAN, NC
+- Logging functions: log_info, log_warn, log_error, log_step, log_header, log_debug, log_success
+- Permission checking: check_root
+- Package management: read_apt_packages, should_skip_packages, is_purge_mode
+- Command availability: command_exists, check_required_commands
+- File operations: check_file_exists, check_dir_exists, create_directory, remove_file, remove_directory
+- User input: prompt_yes_no
+- Service management: service_is_active, service_is_enabled, stop_service, disable_service
+- Validation: validate_required_files
+
+**See:** `util/README.md` for complete function reference and examples.
+
 ### Script Structure Template
 
-All Luigi shell scripts should follow this standard structure:
+For scripts that DON'T use the helper (rare, non-setup scripts):
 
 ```bash
 #!/bin/bash
