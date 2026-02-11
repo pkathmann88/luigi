@@ -186,7 +186,7 @@ install() {
     
     # 2.5. Build frontend in source if not already built
     # This ensures we always have a built frontend before copying
-    build_frontend_in_source "false"  # Don't prompt in install, auto-build if needed
+    build_frontend_in_source "true"  # Prompt user before rebuilding
     
     # 3. Copy application files
     log_info "Copying application files..."
