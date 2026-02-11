@@ -37,6 +37,9 @@ class ApiService {
       // Handle authentication errors
       if (response.status === 401) {
         authService.logout();
+        // NOTE: Using window.location for navigation causes full page reload
+        // This is intentional for authentication failures to ensure clean state
+        // In a more sophisticated implementation, use React Router context
         window.location.href = '/login';
         throw new Error('Authentication failed');
       }

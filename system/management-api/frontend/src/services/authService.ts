@@ -5,6 +5,17 @@ const CREDENTIALS_STORAGE_KEY = 'luigi_credentials';
 /**
  * Authentication Service
  * Handles login/logout and credential validation against static credentials file
+ * 
+ * SECURITY WARNINGS:
+ * - This is a SIMPLE authentication system for local network use ONLY
+ * - Credentials are stored in localStorage (vulnerable to XSS attacks)
+ * - Credentials are hardcoded in client code (visible to anyone)
+ * - In production, use proper authentication:
+ *   - Server-side session management
+ *   - httpOnly cookies
+ *   - OAuth/OIDC providers
+ *   - JWT tokens with refresh mechanism
+ * - Always use HTTPS to protect credentials in transit
  */
 class AuthService {
   private credentials: Credentials | null = null;
@@ -17,18 +28,24 @@ class AuthService {
 
   /**
    * Load static credentials from credentials.txt
-   * In a real deployment, this would be loaded server-side
-   * For demo purposes, we embed them here
+   * 
+   * WARNING: In production, this should be loaded server-side and validated
+   * via an authentication endpoint. The current implementation hardcodes
+   * credentials in the client, making them visible to anyone with browser access.
+   * 
+   * TODO: Implement proper server-side authentication endpoint
    */
   private loadStaticCredentials() {
-    // In production, these would be loaded from the credentials.txt file
-    // via a backend endpoint that validates and returns authorized users
-    // For this demo, we hardcode the default credentials
+    // SECURITY WARNING: These credentials are hardcoded and visible to anyone
+    // In production, validate credentials server-side via an /auth endpoint
     this.staticCredentials.set('admin', 'changeme123');
   }
 
   /**
    * Load stored credentials from localStorage
+   * 
+   * WARNING: localStorage is vulnerable to XSS attacks. In production,
+   * use httpOnly cookies or proper session management instead.
    */
   private loadStoredCredentials() {
     try {

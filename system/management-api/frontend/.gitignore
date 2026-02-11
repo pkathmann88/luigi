@@ -5,6 +5,9 @@ node_modules
 dist
 build
 
+# Credentials (keep example, ignore actual)
+credentials.txt
+
 # Environment files (keep .env template, ignore others)
 .env.local
 .env.production

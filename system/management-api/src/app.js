@@ -24,6 +24,9 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security headers with Helmet
+// NOTE: 'unsafe-inline' for scriptSrc is required for Vite's dev mode HMR
+// In production, Vite generates external scripts, but we keep this for compatibility
+// Consider implementing nonce-based CSP in production for better security
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {

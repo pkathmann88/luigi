@@ -73,11 +73,50 @@ npm run lint
 
 Static credentials are stored in `credentials.txt` file:
 
+**Setup:**
+```bash
+# Copy the example file
+cp credentials.txt.example credentials.txt
+
+# Edit with your password
+nano credentials.txt
+
+# Set proper permissions
+chmod 600 credentials.txt
+```
+
+**Format:**
 ```
 admin:changeme123
 ```
 
-**Important:** Change the default password before deploying to production!
+### Security Warnings
+
+⚠️ **Important Security Considerations:**
+
+1. **Simple Authentication**: This is a BASIC authentication system designed for local network use only
+2. **Plaintext Storage**: Credentials are stored in plaintext and hardcoded in the client
+3. **localStorage**: Credentials stored in browser localStorage (vulnerable to XSS)
+4. **Client-Side**: Validation happens client-side (visible to anyone with browser access)
+
+**For Production Deployments:**
+- Use proper server-side authentication (OAuth, OIDC, JWT)
+- Implement httpOnly cookies instead of localStorage
+- Use environment variables or secrets management
+- Enable additional security layers (VPN, reverse proxy)
+- Regular security audits
+
+**This authentication is suitable for:**
+- Home/personal lab environments
+- Local network deployments
+- Quick prototyping and development
+- Trusted user scenarios
+
+**Not suitable for:**
+- Public internet exposure
+- Multi-tenant systems
+- High-security environments
+- Untrusted user access
 
 ## Configuration
 
