@@ -81,6 +81,12 @@ check_prerequisites() {
 
 # Function to install packages
 install_packages() {
+    # Check if --skip-packages flag is set
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        print_info "Skipping package installation (managed centrally)"
+        return 0
+    fi
+    
     print_info "Installing required packages..."
     
     # Read packages from module.json
@@ -391,17 +397,20 @@ uninstall_module() {
         echo ""
         remove_config=$REPLY
         
-        # Read packages from module.json for display
-        local package_list="mosquitto-clients, jq"
-        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
-            local packages_json
-            packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
-            [ -n "$packages_json" ] && package_list="$packages_json"
+        # Only ask about packages if not skipping
+        if [ "${SKIP_PACKAGES:-}" != "1" ]; then
+            # Read packages from module.json for display
+            local package_list="mosquitto-clients, jq"
+            if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+                local packages_json
+                packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
+                [ -n "$packages_json" ] && package_list="$packages_json"
+            fi
+            
+            read -p "Remove installed packages ($package_list)? [y/N] " -n 1 -r
+            echo ""
+            remove_packages=$REPLY
         fi
-        
-        read -p "Remove installed packages ($package_list)? [y/N] " -n 1 -r
-        echo ""
-        remove_packages=$REPLY
     fi
     
     echo ""
@@ -443,7 +452,9 @@ uninstall_module() {
     fi
     
     # Remove packages if requested
-    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        print_info "Skipping package removal (managed centrally)"
+    elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         echo ""
         print_info "Removing packages..."
         
@@ -567,7 +578,24 @@ show_status() {
 
 # Main function
 main() {
-    case "${1:-}" in
+    # Parse command and flags
+    local action="${1:-}"
+    shift || true
+    
+    # Parse flags
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --skip-packages)
+                export SKIP_PACKAGES=1
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    case "$action" in
         install)
             install_module
             ;;
@@ -581,7 +609,7 @@ main() {
             echo "Luigi ha-mqtt setup.sh version $VERSION"
             ;;
         --help|-h|*)
-            echo "Usage: sudo ./setup.sh [command]"
+            echo "Usage: sudo ./setup.sh [command] [--skip-packages]"
             echo ""
             echo "Commands:"
             echo "  install     Install the ha-mqtt module"
@@ -589,6 +617,9 @@ main() {
             echo "  status      Show installation status"
             echo "  --version   Show version information"
             echo "  --help      Show this help message"
+            echo ""
+            echo "Options:"
+            echo "  --skip-packages  Skip apt package installation/removal (for centralized management)"
             echo ""
             echo "Examples:"
             echo "  sudo ./setup.sh install"
