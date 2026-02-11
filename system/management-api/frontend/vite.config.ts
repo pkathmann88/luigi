@@ -13,12 +13,17 @@ const isARMv6 = (() => {
   // Check CPU model for ARMv6 indication (e.g., BCM2835 on Pi Zero W)
   try {
     const cpus = os.cpus()
-    const cpuModel = cpus[0]?.model || ''
+    const cpuModel = (cpus[0]?.model || '').toLowerCase()
     // BCM2835 is the chip on Raspberry Pi Zero W (ARMv6)
-    // Also check for explicit ARMv6 in model string
-    return cpuModel.includes('BCM2835') || cpuModel.includes('ARMv6')
-  } catch {
-    // If we can't determine, assume ARMv6 to be safe on 'arm' architecture
+    // Also check for explicit ARMv6 in model string (case-insensitive)
+    const isV6 = cpuModel.includes('bcm2835') || cpuModel.includes('armv6')
+    if (isV6) {
+      console.log('[Vite] Detected ARMv6 architecture, using Terser for minification')
+    }
+    return isV6
+  } catch (error) {
+    // If we can't determine CPU model, log the error and assume ARMv6 to be safe on 'arm' architecture
+    console.warn('[Vite] Unable to detect CPU model, defaulting to Terser for ARM compatibility:', error)
     return true
   }
 })()
