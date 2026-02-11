@@ -354,6 +354,7 @@ class GPIOManager:
         """Initialize GPIO mode."""
         try:
             GPIO.setmode(self.config.GPIO_MODE)
+            GPIO.setwarnings(False)  # Suppress warnings about pins already in use
             self.initialized = True
             logging.info("GPIO initialized successfully")
         except RuntimeError as e:
@@ -395,6 +396,16 @@ class PIRSensor:
     def start_monitoring(self):
         """Start monitoring for motion events."""
         try:
+            # Remove any existing event detection on this pin first
+            # This handles cases where the pin was used previously
+            try:
+                GPIO.remove_event_detect(self.pin)
+                logging.debug(f"Removed existing event detection on GPIO{self.pin}")
+            except RuntimeError:
+                # No existing event detection, which is fine
+                pass
+            
+            # Add new event detection
             GPIO.add_event_detect(
                 self.pin,
                 GPIO.RISING,
