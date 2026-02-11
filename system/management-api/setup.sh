@@ -43,14 +43,42 @@ install() {
     # 1. Check prerequisites
     log_info "Checking prerequisites..."
     
-    # Check Node.js
-    if ! command_exists node; then
-        log_error "Node.js not found. Installing..."
-        apt-get update
-        apt-get install -y nodejs npm
+    # Read packages from module.json
+    local module_json="$SCRIPT_DIR/module.json"
+    local packages=()
+    
+    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+        # Parse apt_packages array from JSON
+        while IFS= read -r pkg; do
+            packages+=("$pkg")
+        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+    else
+        # Fallback to hardcoded packages if module.json or jq not available
+        log_warn "module.json or jq not found, using fallback package list"
+        packages=("nodejs" "npm" "openssl" "curl")
     fi
     
-    # Verify Node.js version
+    # Check which packages need installation
+    local to_install=()
+    for pkg in "${packages[@]}"; do
+        if ! command_exists "$pkg" && ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            to_install+=("$pkg")
+        fi
+    done
+    
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        log_info "Installing required packages: ${to_install[*]}"
+        apt-get update
+        apt-get install -y "${to_install[@]}"
+    fi
+    
+    # Verify Node.js is available and check version
+    if ! command_exists node; then
+        log_error "Node.js installation failed or not in PATH"
+        exit 1
+    fi
+    
     local node_version
     node_version=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
     if [ "$node_version" -lt 16 ]; then
@@ -58,14 +86,6 @@ install() {
         exit 1
     fi
     log_info "Node.js version: $(node --version) ✓"
-    
-    # Check other dependencies
-    for cmd in npm openssl curl; do
-        if ! command_exists "$cmd"; then
-            log_error "$cmd not found. Installing..."
-            apt-get install -y "$cmd"
-        fi
-    done
     
     # 2. Create directory structure
     log_info "Creating directories..."
@@ -302,7 +322,14 @@ uninstall() {
     # 7. Remove packages if in purge mode or requested
     if [ "$purge_mode" != "purge" ]; then
         echo ""
-        read -p "Remove installed packages (nodejs, npm)? (y/N): " -n 1 -r
+        # Read packages from module.json for display
+        local package_list="nodejs, npm, openssl, curl"
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            local packages_json
+            packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
+            [ -n "$packages_json" ] && package_list="$packages_json"
+        fi
+        read -p "Remove installed packages ($package_list)? (y/N): " -n 1 -r
         echo
         remove_packages=$REPLY
     fi
@@ -310,7 +337,17 @@ uninstall() {
     if [[ $remove_packages =~ ^[Yy]$ ]]; then
         log_step "Removing packages..."
         
-        local packages=("nodejs" "npm")
+        # Read packages from module.json
+        local packages=()
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            while IFS= read -r pkg; do
+                packages+=("$pkg")
+            done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
+        else
+            # Fallback to hardcoded packages
+            packages=("nodejs" "npm")
+        fi
+        
         for pkg in "${packages[@]}"; do
             if dpkg -l | grep -q "^ii  $pkg "; then
                 log_info "Removing $pkg..."

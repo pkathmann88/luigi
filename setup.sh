@@ -138,6 +138,118 @@ check_and_install_dependencies() {
     return 0
 }
 
+# Get apt packages from a module's module.json file
+# Returns space-separated list of package names
+get_module_apt_packages() {
+    local module_path="$1"
+    local module_json="$SCRIPT_DIR/$module_path/module.json"
+    
+    # Check if module.json exists
+    if [ ! -f "$module_json" ]; then
+        # No module.json = no packages
+        return 0
+    fi
+    
+    # Check if jq is available for JSON parsing
+    if ! command -v jq >/dev/null 2>&1; then
+        # jq not available, can't parse
+        return 0
+    fi
+    
+    # Parse apt_packages array from JSON
+    local packages
+    packages=$(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+    
+    if [ -n "$packages" ]; then
+        echo "$packages"
+    fi
+}
+
+# Collect all apt packages from all modules
+# Returns unique list of packages space-separated
+collect_all_apt_packages() {
+    local modules=("$@")
+    local all_packages=()
+    
+    # Collect packages from all modules
+    for module in "${modules[@]}"; do
+        local packages
+        packages=$(get_module_apt_packages "$module")
+        
+        if [ -n "$packages" ]; then
+            while IFS= read -r pkg; do
+                # Add to array if not already present
+                local already_added=0
+                for existing_pkg in "${all_packages[@]}"; do
+                    if [ "$existing_pkg" = "$pkg" ]; then
+                        already_added=1
+                        break
+                    fi
+                done
+                
+                if [ $already_added -eq 0 ]; then
+                    all_packages+=("$pkg")
+                fi
+            done <<< "$packages"
+        fi
+    done
+    
+    echo "${all_packages[@]}"
+}
+
+# Install apt packages in batch
+install_apt_packages() {
+    local packages=("$@")
+    
+    if [ ${#packages[@]} -eq 0 ]; then
+        log_info "No apt packages to install"
+        return 0
+    fi
+    
+    log_step "Installing apt packages for all modules..."
+    echo ""
+    
+    # Filter out packages that are already installed
+    local to_install=()
+    for pkg in "${packages[@]}"; do
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            log_info "✓ $pkg (already installed)"
+        else
+            log_info "  $pkg (needs installation)"
+            to_install+=("$pkg")
+        fi
+    done
+    
+    echo ""
+    
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        log_step "Installing ${#to_install[@]} package(s)..."
+        
+        # Update apt cache
+        log_info "Updating package cache..."
+        if ! apt-get update -qq; then
+            log_error "Failed to update package cache"
+            return 1
+        fi
+        
+        # Install packages
+        log_info "Installing packages: ${to_install[*]}"
+        if apt-get install -y -qq "${to_install[@]}"; then
+            log_info "✓ All packages installed successfully"
+            echo ""
+            return 0
+        else
+            log_error "Failed to install some packages"
+            return 1
+        fi
+    else
+        log_info "✓ All required packages are already installed"
+        echo ""
+        return 0
+    fi
+}
+
 # Discover all module setup scripts
 discover_modules() {
     local modules=()
@@ -403,6 +515,17 @@ install_modules() {
     fi
     
     echo ""
+    
+    # Collect and install all apt packages in batch before module installation
+    log_step "Collecting apt package requirements from all modules..."
+    local all_packages
+    read -r -a all_packages <<< "$(collect_all_apt_packages "${modules[@]}")"
+    
+    if ! install_apt_packages "${all_packages[@]}"; then
+        log_error "Failed to install required apt packages"
+        log_error "Cannot proceed with module installation"
+        return 1
+    fi
     
     # Execute install command for each module
     for module in "${modules[@]}"; do

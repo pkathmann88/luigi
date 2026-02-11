@@ -84,14 +84,36 @@ check_files() {
 install_dependencies() {
     log_step "Checking dependencies..."
     
-    # Check for Python 3
-    if ! command -v python3 &> /dev/null; then
-        log_error "Python 3 is not installed"
-        log_info "Installing Python 3..."
-        apt-get update
-        apt-get install -y python3
+    # Read packages from module.json
+    local module_json="$SCRIPT_DIR/module.json"
+    local packages=()
+    
+    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+        # Parse apt_packages array from JSON
+        while IFS= read -r pkg; do
+            packages+=("$pkg")
+        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
     else
-        log_info "Python 3 is already installed"
+        # Fallback to hardcoded packages if module.json or jq not available
+        log_warn "module.json or jq not found, using fallback package list"
+        packages=("python3")
+    fi
+    
+    # Check which packages need installation
+    local to_install=()
+    for pkg in "${packages[@]}"; do
+        if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            to_install+=("$pkg")
+        else
+            log_info "$pkg is already installed"
+        fi
+    done
+    
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        log_info "Installing required packages: ${to_install[*]}"
+        apt-get update
+        apt-get install -y "${to_install[@]}"
     fi
     
     log_info "All dependencies satisfied"
@@ -314,7 +336,14 @@ uninstall() {
     # Remove packages if in purge mode or requested
     if [ "$purge_mode" != "purge" ]; then
         echo ""
-        read -p "Remove installed packages (python3)? (y/N): " -n 1 -r
+        # Read packages from module.json for display
+        local package_list="python3"
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            local packages_json
+            packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
+            [ -n "$packages_json" ] && package_list="$packages_json"
+        fi
+        read -p "Remove installed packages ($package_list)? (y/N): " -n 1 -r
         echo ""
         remove_packages=$REPLY
     fi
@@ -324,6 +353,7 @@ uninstall() {
         log_warn "Note: python3 is a system package and may be needed by other software"
         log_info "Skipping python3 removal for safety"
         # We don't actually remove python3 as it's a critical system package
+        # This is intentional - python3 is too fundamental to remove automatically
     fi
     
     echo ""

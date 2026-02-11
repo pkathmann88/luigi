@@ -4,6 +4,12 @@
   "description": "Secure Node.js API server for Luigi system management and Raspberry Pi control",
   "category": "system",
   "dependencies": [],
+  "apt_packages": [
+    "nodejs",
+    "npm",
+    "openssl",
+    "curl"
+  ],
   "author": "Luigi Project",
   "provides": {
     "endpoints": [
@@ -13,9 +19,5 @@
       "/api/config",
       "/api/monitoring"
     ]
-  },
-  "requires": {
-    "packages": ["nodejs", "npm", "openssl", "curl"],
-    "node_version": ">=16.0.0"
   }
 }

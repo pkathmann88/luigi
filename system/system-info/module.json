@@ -6,6 +6,9 @@
   "dependencies": [
     "iot/ha-mqtt"
   ],
+  "apt_packages": [
+    "python3-psutil"
+  ],
   "author": "Luigi Project",
   "provides": {
     "sensors": [
