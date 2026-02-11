@@ -518,6 +518,39 @@ setup_sound_bonnet() {
     log_header "Sound Bonnet Setup"
     
     echo ""
+    
+    # Check if Sound Bonnet is already installed
+    local boot_configs=("/boot/firmware/config.txt" "/boot/config.txt")
+    local config_file=""
+    
+    for config in "${boot_configs[@]}"; do
+        if [ -f "$config" ]; then
+            config_file="$config"
+            break
+        fi
+    done
+    
+    if [ -n "$config_file" ]; then
+        # Check for I2S audio device tree overlay (characteristic of Sound Bonnet installation)
+        if grep -q "dtoverlay=hifiberry-dac\|dtoverlay=googlevoicehat-soundcard\|dtoverlay=adau7002-simple\|dtoverlay=i2s-mmap" "$config_file" 2>/dev/null; then
+            log_info "Sound Bonnet appears to be already installed"
+            log_info "Detected I2S audio configuration in $config_file"
+            echo ""
+            
+            # Verify audio device exists
+            if aplay -l 2>/dev/null | grep -q "card"; then
+                log_info "✓ Audio device detected with aplay -l"
+                log_info "Skipping Sound Bonnet installation"
+                echo ""
+                return 0
+            else
+                log_warn "I2S configuration found but no audio device detected"
+                log_warn "Sound Bonnet may need to be reinstalled"
+                echo ""
+            fi
+        fi
+    fi
+    
     echo "The Adafruit Sound Bonnet (Speaker Bonnet) provides high-quality I2S audio output"
     echo "for your Raspberry Pi. It is required for modules that use audio playback."
     echo ""

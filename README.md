@@ -24,8 +24,9 @@ cd luigi
 # Install all modules (requires root for system integration)
 sudo ./setup.sh install
 
-# During installation, you will be prompted to optionally install
-# the Adafruit Sound Bonnet for audio-capable modules (e.g., mario)
+# During installation, you will be prompted to:
+# 1. Optionally install the Adafruit Sound Bonnet for audio modules
+# 2. Configure ALSA audio device (automatic device detection)
 
 # Check installation status
 ./setup.sh status
