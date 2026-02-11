@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const path = require('path');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
@@ -23,13 +24,18 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security headers with Helmet
+// NOTE: 'unsafe-inline' for scriptSrc is required for Vite's dev mode HMR
+// In production, Vite generates external scripts, but we keep this for compatibility
+// Consider implementing nonce-based CSP in production for better security
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", 'data:'],
     },
   },
   hsts: {
@@ -86,6 +92,25 @@ app.use('/health', healthRoutes);
 
 // Protected API routes (authentication required)
 app.use('/api', routes);
+
+// Serve static frontend files
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Serve index.html for all non-API routes (SPA routing)
+app.get('*', (req, res, next) => {
+  // Skip if it's an API route or health check
+  if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+    return next();
+  }
+  
+  // Serve index.html for SPA
+  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+    if (err) {
+      next(); // Fall through to 404 handler if frontend not built
+    }
+  });
+});
 
 // 404 handler
 app.use(notFoundHandler);
