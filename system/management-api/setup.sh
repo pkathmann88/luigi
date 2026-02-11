@@ -126,81 +126,19 @@ install() {
     check_root
     log_info "Installing ${MODULE_NAME}..."
     
-    # 1. Check prerequisites
-    if [ "${SKIP_PACKAGES:-}" != "1" ]; then
-        log_info "Checking prerequisites..."
-        
-        # Read packages from module.json
-        local module_json="$SCRIPT_DIR/module.json"
-        local packages=()
-        
-        if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
-            # Parse apt_packages array from JSON
-            while IFS= read -r pkg; do
-                packages+=("$pkg")
-            done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
-        else
-            # Fallback to hardcoded packages if module.json or jq not available
-            log_warn "module.json or jq not found, using fallback package list"
-            packages=("nodejs" "npm" "openssl" "curl")
-        fi
-        
-        # Check which packages need installation
-        local to_install=()
-        for pkg in "${packages[@]}"; do
-            if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
-                to_install+=("$pkg")
-            fi
-        done
-        
-        # Install packages if needed
-        if [ ${#to_install[@]} -gt 0 ]; then
-            log_info "Installing required packages: ${to_install[*]}"
-            apt-get update
-            apt-get install -y "${to_install[@]}"
-        fi
-    else
-        log_info "Skipping package installation (managed centrally)"
-    fi
+    # 1. Build everything (backend + frontend) in source directory
+    log_info "Building application first..."
+    build
     
-    # Verify Node.js is available and check version
-    if ! command_exists node; then
-        log_error "Node.js installation failed or not in PATH"
-        exit 1
-    fi
-    
-    local node_version
-    node_version=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$node_version" -lt 16 ]; then
-        log_error "Node.js version 16 or higher is required (found: $(node --version))"
-        exit 1
-    fi
-    log_info "Node.js version: $(node --version) ✓"
-    
-    # 2. Create directory structure
-    log_info "Creating directories..."
+    # 2. Create directory structure for deployment
+    log_info "Creating deployment directories..."
     mkdir -p "$APP_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$AUDIT_LOG_DIR"
     mkdir -p "$CERTS_DIR"
     
-    # 2.5. Build frontend in source if not already built
-    # This ensures we always have a built frontend before copying
-    build_frontend_in_source "true"  # Prompt user before rebuilding
-    
     # 3. Copy application files
-    log_info "Copying application files..."
-    
-    # Check for pre-built backend dependencies in source
-    local has_prebuilt_backend=false
-    
-    if [ -d "$SCRIPT_DIR/node_modules" ] && [ -n "$(ls -A "$SCRIPT_DIR/node_modules" 2>/dev/null)" ]; then
-        has_prebuilt_backend=true
-        log_info "✓ Detected pre-built backend dependencies in source"
-    fi
-    
-    # Copy only production-necessary files (not development files)
-    log_info "Copying production files..."
+    log_info "Copying production files to deployment location..."
     
     # Core application files
     cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
@@ -214,11 +152,9 @@ install() {
     cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
     cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
     
-    # Copy pre-built backend dependencies if they exist
-    if [ "$has_prebuilt_backend" = true ]; then
-        log_info "Copying pre-built node_modules..."
-        cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
-    fi
+    # Copy backend dependencies (built by build() function)
+    log_info "Copying built node_modules..."
+    cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
     
     # Handle frontend - copy only necessary files
     if [ -d "$SCRIPT_DIR/frontend" ]; then
@@ -240,21 +176,7 @@ install() {
     # Set ownership
     chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
     
-    # 4. Install Node.js dependencies (skip if pre-built)
-    if [ "$has_prebuilt_backend" = true ]; then
-        log_info "Using pre-built backend dependencies (skipping npm install) ✓"
-        log_info "Note: Run 'npm install' in $APP_DIR if dependencies need updating"
-    else
-        log_info "Installing Node.js dependencies..."
-        cd "$APP_DIR"
-        sudo -u "$INSTALL_USER" npm install --production --no-audit
-        
-        # Run npm audit
-        log_info "Running security audit..."
-        sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
-    fi
-    
-    # 5. Deploy configuration
+    # 4. Deploy configuration
     log_info "Deploying configuration..."
     if [ ! -f "$CONFIG_DIR/.env" ]; then
         cp "$APP_DIR/.env.example" "$CONFIG_DIR/.env"
