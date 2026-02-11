@@ -110,8 +110,9 @@ get_module_dependencies() {
     
     # Check if jq is available for JSON parsing
     if ! command -v jq >/dev/null 2>&1; then
-        log_warn "jq not found, cannot parse module.json for $module_path"
-        log_warn "Install jq to enable dependency management: sudo apt-get install jq"
+        # Redirect warnings to stderr to avoid capture by command substitution
+        log_warn "jq not found, cannot parse module.json for $module_path" >&2
+        log_warn "Install jq to enable dependency management: sudo apt-get install jq" >&2
         return 0
     fi
     
