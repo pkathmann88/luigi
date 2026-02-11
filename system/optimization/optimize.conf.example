@@ -57,7 +57,7 @@ remove_packages=
 # Note: I2C must be enabled via raspi-config separately if needed for I2C devices
 #       (I2C is not required for basic audio functionality)
 # Reference: https://learn.adafruit.com/adafruit-speaker-bonnet-for-raspberry-pi/raspberry-pi-usage
-enable_sound_bonnet=no
+enable_sound_bonnet=yes
 
 [Logging]
 # Log file for optimization script

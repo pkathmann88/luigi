@@ -115,12 +115,13 @@ Configures Adafruit Sound Bonnet (Speaker Bonnet) setup:
 [SoundBonnet]
 # Adafruit Sound Bonnet (Speaker Bonnet) Setup
 # Set to yes to install and configure the Adafruit Sound Bonnet
-enable_sound_bonnet=no
+enable_sound_bonnet=yes
 ```
 
 **Adafruit Sound Bonnet:**
 - The Sound Bonnet is an I2S DAC (Digital-to-Analog Converter) add-on board for Raspberry Pi
 - Provides high-quality audio output for speakers
+- **Enabled by default** to support Luigi modules that require audio playback (e.g., Mario motion detection)
 - When enabled, the optimization script will:
   - Install required dependencies (wget, python3-pip)
   - Install adafruit-python-shell Python package
@@ -133,6 +134,7 @@ enable_sound_bonnet=no
   - Enable I2C only if you have additional I2C sensors or peripherals
 - After installation, a reboot is required for changes to take effect
 - Use `alsamixer` to adjust volume (50% is a good starting point)
+- Set to `no` if you don't have a Sound Bonnet or prefer different audio hardware
 - Reference: [Adafruit Sound Bonnet Setup Guide](https://learn.adafruit.com/adafruit-speaker-bonnet-for-raspberry-pi/raspberry-pi-usage)
 
 ### Kernel Section
@@ -289,9 +291,10 @@ This module is ideal for:
 - **Headless servers**: Systems without display or keyboard
 - **Embedded applications**: Dedicated single-purpose devices
 - **IoT projects**: Resource-constrained deployments
-- **Motion detection systems**: Like the Luigi Mario module
+- **Motion detection systems**: Like the Luigi Mario module (Sound Bonnet enabled by default for audio playback)
 - **Sensor monitoring**: Environmental or automation projects
 - **Network services**: Web servers, API endpoints, etc.
+- **Audio applications**: Projects requiring sound output (Sound Bonnet provides high-quality I2S audio)
 
 ## Uninstallation
 

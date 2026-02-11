@@ -47,7 +47,7 @@ class Config:
             'remove_packages': ''
         },
         'SoundBonnet': {
-            'enable_sound_bonnet': 'no'
+            'enable_sound_bonnet': 'yes'
         },
         'Logging': {
             'log_file': '/var/log/system-optimization.log',
