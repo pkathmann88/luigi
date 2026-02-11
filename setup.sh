@@ -512,6 +512,317 @@ execute_module_command() {
     return 0
 }
 
+# Setup Adafruit Sound Bonnet (Speaker Bonnet)
+# This is an optional setup that installs the necessary drivers for the Adafruit Sound Bonnet
+setup_sound_bonnet() {
+    log_header "Sound Bonnet Setup"
+    
+    echo ""
+    
+    # Check if Sound Bonnet is already installed
+    local boot_configs=("/boot/firmware/config.txt" "/boot/config.txt")
+    local config_file=""
+    
+    for config in "${boot_configs[@]}"; do
+        if [ -f "$config" ]; then
+            config_file="$config"
+            break
+        fi
+    done
+    
+    if [ -n "$config_file" ]; then
+        # Check for I2S audio device tree overlay (characteristic of Sound Bonnet installation)
+        if grep -qE "dtoverlay=(hifiberry-dac|googlevoicehat-soundcard|adau7002-simple|i2s-mmap)" "$config_file" 2>/dev/null; then
+            log_info "Sound Bonnet appears to be already installed"
+            log_info "Detected I2S audio configuration in $config_file"
+            echo ""
+            
+            # Verify audio device exists
+            if aplay -l 2>/dev/null | grep -q "card"; then
+                log_info "✓ Audio device detected with aplay -l"
+                log_info "Skipping Sound Bonnet installation"
+                echo ""
+                return 0
+            else
+                log_warn "I2S configuration found but no audio device detected"
+                log_warn "Sound Bonnet may need to be reinstalled"
+                echo ""
+            fi
+        fi
+    fi
+    
+    echo "The Adafruit Sound Bonnet (Speaker Bonnet) provides high-quality I2S audio output"
+    echo "for your Raspberry Pi. It is required for modules that use audio playback."
+    echo ""
+    echo "This will:"
+    echo "  - Install required dependencies (wget, python3-pip)"
+    echo "  - Install adafruit-python-shell"
+    echo "  - Download and run the i2samp.py installation script"
+    echo "  - Configure I2S audio in the boot configuration"
+    echo ""
+    echo "Note: I2C must be enabled separately via raspi-config if you need I2C devices."
+    echo "      (I2C is not required for basic audio functionality)"
+    echo ""
+    
+    log_warn "Do you want to install the Adafruit Sound Bonnet now?"
+    read -p "Install Sound Bonnet? (y/N): " -n 1 -r
+    echo ""
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Skipping Sound Bonnet installation"
+        log_info "You can install it later by re-running: sudo ./setup.sh install"
+        echo ""
+        return 0
+    fi
+    
+    log_step "Installing Adafruit Sound Bonnet..."
+    echo ""
+    
+    # Install dependencies
+    log_info "Installing required packages..."
+    local deps=("wget" "python3-pip" "python3-venv")
+    for dep in "${deps[@]}"; do
+        if dpkg -l "$dep" 2>/dev/null | grep -q "^ii"; then
+            log_info "✓ $dep (already installed)"
+        else
+            log_info "Installing $dep..."
+            if apt-get install -y -qq "$dep" 2>/dev/null; then
+                log_info "✓ $dep installed"
+            else
+                log_warn "Failed to install $dep, continuing anyway"
+            fi
+        fi
+    done
+    
+    echo ""
+    
+    # Install adafruit-python-shell
+    log_info "Installing adafruit-python-shell..."
+    if pip3 install --break-system-packages adafruit-python-shell >/dev/null 2>&1; then
+        log_info "✓ adafruit-python-shell installed"
+    else
+        log_warn "Failed with --break-system-packages, trying without it..."
+        if pip3 install adafruit-python-shell >/dev/null 2>&1; then
+            log_info "✓ adafruit-python-shell installed"
+        else
+            log_error "Failed to install adafruit-python-shell"
+            return 1
+        fi
+    fi
+    
+    echo ""
+    
+    # Download the i2samp.py installer script
+    local script_url='https://github.com/adafruit/Raspberry-Pi-Installer-Scripts/raw/main/i2samp.py'
+    local script_path='/tmp/i2samp.py'
+    
+    log_info "Downloading installation script from Adafruit..."
+    if wget -q -O "$script_path" "$script_url"; then
+        log_info "✓ Installation script downloaded"
+    else
+        log_error "Failed to download i2samp.py installation script"
+        return 1
+    fi
+    
+    # Make the script executable
+    chmod +x "$script_path"
+    
+    echo ""
+    
+    # Run the installation script
+    log_info "Running Sound Bonnet installation script..."
+    log_info "This may take a few minutes and will configure I2S audio..."
+    echo ""
+    
+    # The script needs to be run with environment variables preserved
+    if python3 "$script_path"; then
+        log_info "✓ Sound Bonnet installation complete!"
+    else
+        log_error "Installation script failed"
+        # Clean up the downloaded script
+        rm -f "$script_path" 2>/dev/null
+        return 1
+    fi
+    
+    # Clean up the downloaded script
+    rm -f "$script_path" 2>/dev/null
+    
+    echo ""
+    log_info "============================================"
+    log_info "Sound Bonnet Installation Complete"
+    log_info "============================================"
+    echo ""
+    log_warn "IMPORTANT: A reboot is required for the changes to take effect"
+    log_info "After reboot, use 'alsamixer' to adjust volume (50% is a good starting point)"
+    echo ""
+    
+    return 0
+}
+
+# Configure ALSA audio device for playback
+# Creates /etc/asound.conf with automatic format conversion
+configure_audio() {
+    log_header "Audio Configuration"
+    
+    echo ""
+    log_info "Configuring ALSA audio device for playback..."
+    echo ""
+    
+    # Check if aplay is available
+    if ! command -v aplay >/dev/null 2>&1; then
+        log_warn "aplay command not found - audio playback will not work"
+        log_warn "Install alsa-utils package: sudo apt-get install alsa-utils"
+        echo ""
+        return 0
+    fi
+    
+    # Check if asound.conf already exists
+    if [ -f /etc/asound.conf ]; then
+        log_info "Audio configuration already exists at /etc/asound.conf"
+        log_warn "Current audio configuration:"
+        head -10 /etc/asound.conf | sed 's/^/  /'
+        echo ""
+        log_warn "Do you want to reconfigure audio?"
+        read -p "Reconfigure audio? (y/N): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Skipping audio configuration"
+            echo ""
+            return 0
+        fi
+    fi
+    
+    # Detect available audio devices
+    log_info "Detecting available audio devices..."
+    local devices_output
+    devices_output=$(aplay -l 2>/dev/null)
+    
+    if [ -z "$devices_output" ]; then
+        log_warn "No audio devices detected by aplay -l"
+        log_warn "Audio playback may not work. Check that audio hardware is enabled."
+        echo ""
+        return 0
+    fi
+    
+    echo ""
+    log_info "Available audio devices:"
+    echo "$devices_output"
+    echo ""
+    
+    # Parse card and device numbers
+    local card_device_pairs=()
+    local card_device_names=()
+    
+    while IFS= read -r line; do
+        if [[ $line =~ ^card\ ([0-9]+):.*device\ ([0-9]+): ]]; then
+            local card="${BASH_REMATCH[1]}"
+            local device="${BASH_REMATCH[2]}"
+            card_device_pairs+=("$card:$device")
+            # Extract the device name from the next line or current line
+            local name
+            name=$(echo "$line" | sed 's/^card [0-9]*: \([^,]*\),.*/\1/')
+            card_device_names+=("Card $card, Device $device: $name")
+        fi
+    done <<< "$devices_output"
+    
+    if [ ${#card_device_pairs[@]} -eq 0 ]; then
+        log_warn "Could not parse audio devices from aplay output"
+        echo ""
+        return 0
+    fi
+    
+    # If only one device, use it automatically
+    local selected_card_device
+    if [ ${#card_device_pairs[@]} -eq 1 ]; then
+        selected_card_device="${card_device_pairs[0]}"
+        log_info "Only one audio device found, using: ${card_device_names[0]}"
+    else
+        # Multiple devices - let user choose
+        log_info "Multiple audio devices found. Please select one:"
+        for i in "${!card_device_pairs[@]}"; do
+            echo "  $((i+1)). ${card_device_names[$i]}"
+        done
+        echo ""
+        
+        local selection
+        while true; do
+            read -r -p "Enter selection (1-${#card_device_pairs[@]}): " selection
+            if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "${#card_device_pairs[@]}" ]; then
+                selected_card_device="${card_device_pairs[$((selection-1))]}"
+                log_info "Selected: ${card_device_names[$((selection-1))]}"
+                break
+            else
+                log_warn "Invalid selection. Please enter a number between 1 and ${#card_device_pairs[@]}"
+            fi
+        done
+    fi
+    
+    # Parse card and device from selection
+    local card
+    local device
+    card=$(echo "$selected_card_device" | cut -d: -f1)
+    device=$(echo "$selected_card_device" | cut -d: -f2)
+    
+    # Create /etc/asound.conf
+    log_info "Creating /etc/asound.conf with card $card, device $device..."
+    
+    if ! cat > /etc/asound.conf <<EOF
+# ALSA configuration for Luigi
+# Auto-generated by setup.sh
+# Card $card, Device $device
+#
+# Uses 'plug' plugin for automatic format conversion
+# This allows 16-bit WAV files to play on devices that only support 32-bit (e.g., I2S DACs)
+
+pcm.!default {
+    type plug
+    slave.pcm {
+        type hw
+        card $card
+        device $device
+    }
+}
+
+ctl.!default {
+    type hw
+    card $card
+}
+EOF
+    then
+        log_error "Failed to create /etc/asound.conf"
+        return 1
+    fi
+    
+    log_info "✓ Audio configuration created at /etc/asound.conf"
+    
+    # Test audio playback if sound files exist
+    local test_dirs=("/usr/share/sounds/mario")
+    for dir in "${test_dirs[@]}"; do
+        if [ -d "$dir" ]; then
+            local test_sound
+            test_sound=$(find "$dir" -name "*.wav" | head -1)
+            if [ -n "$test_sound" ]; then
+                log_info "Testing audio playback with: $(basename "$test_sound")..."
+                if aplay -q "$test_sound" 2>/dev/null; then
+                    log_info "✓ Audio test successful!"
+                    echo ""
+                    return 0
+                else
+                    log_warn "Audio test failed. You may need to check your audio configuration."
+                    log_warn "Try running: aplay -l"
+                    log_warn "And verify the card/device numbers in /etc/asound.conf"
+                fi
+            fi
+        fi
+    done
+    
+    log_info "✓ Audio configuration complete"
+    log_info "Audio will be tested when sound files are available"
+    echo ""
+    
+    return 0
+}
+
 # Install all modules or a specific module
 install_modules() {
     local specific_module="$1"
@@ -622,6 +933,12 @@ install_modules() {
         log_error "Cannot proceed with module installation"
         return 1
     fi
+    
+    # Optional Sound Bonnet setup (must be done before modules that need audio)
+    setup_sound_bonnet
+    
+    # Configure ALSA audio device (after Sound Bonnet if installed)
+    configure_audio
     
     # Execute install command for each module
     for module in "${modules[@]}"; do

@@ -16,7 +16,6 @@ This module optimizes the Raspberry Pi Zero W for better performance and lower r
 - **Boot Configuration**: Modifies `/boot/firmware/config.txt` to disable unused hardware interfaces and reduce GPU memory
 - **Kernel Module Blacklisting**: Prevents loading of unused kernel modules
 - **Package Removal**: Removes unnecessary packages to free up disk space
-- **Adafruit Sound Bonnet Setup**: Optionally installs and configures the Adafruit Speaker Bonnet for high-quality audio output
 
 ## Features
 
@@ -27,7 +26,6 @@ This module optimizes the Raspberry Pi Zero W for better performance and lower r
 - **Comprehensive Logging**: All operations logged to `/var/log/system-optimization.log`
 - **Backup Protection**: Automatically backs up boot config before modifications
 - **Interactive Installation**: Optional guided installation with prompts
-- **Sound Bonnet Integration**: Automated setup for Adafruit Sound Bonnet hardware
 
 ## Quick Start
 
@@ -106,36 +104,6 @@ gpu_mem=16
 - Default: 64MB allocated to GPU
 - Headless minimum: 16MB (frees ~48MB for system RAM)
 - Lower values free more memory for applications
-
-### Sound Bonnet Section
-
-Configures Adafruit Sound Bonnet (Speaker Bonnet) setup:
-
-```ini
-[SoundBonnet]
-# Adafruit Sound Bonnet (Speaker Bonnet) Setup
-# Set to yes to install and configure the Adafruit Sound Bonnet
-enable_sound_bonnet=yes
-```
-
-**Adafruit Sound Bonnet:**
-- The Sound Bonnet is an I2S DAC (Digital-to-Analog Converter) add-on board for Raspberry Pi
-- Provides high-quality audio output for speakers
-- **Enabled by default** to support Luigi modules that require audio playback (e.g., Mario motion detection)
-- When enabled, the optimization script will:
-  - Install required dependencies (wget, python3-pip)
-  - Install adafruit-python-shell Python package
-  - Download and run the official Adafruit i2samp.py installation script
-  - Configure I2S audio interface and ALSA settings
-  - Add necessary device tree overlays to boot configuration
-- **Important Note:** I2C must be enabled manually via `sudo raspi-config` → Interface Options → I2C if you plan to use I2C devices
-  - I2C is **not required** for basic audio functionality on the Sound Bonnet
-  - The Sound Bonnet uses I2S for audio, not I2C
-  - Enable I2C only if you have additional I2C sensors or peripherals
-- After installation, a reboot is required for changes to take effect
-- Use `alsamixer` to adjust volume (50% is a good starting point)
-- Set to `no` if you don't have a Sound Bonnet or prefer different audio hardware
-- Reference: [Adafruit Sound Bonnet Setup Guide](https://learn.adafruit.com/adafruit-speaker-bonnet-for-raspberry-pi/raspberry-pi-usage)
 
 ### Kernel Section
 
@@ -291,10 +259,9 @@ This module is ideal for:
 - **Headless servers**: Systems without display or keyboard
 - **Embedded applications**: Dedicated single-purpose devices
 - **IoT projects**: Resource-constrained deployments
-- **Motion detection systems**: Like the Luigi Mario module (Sound Bonnet enabled by default for audio playback)
+- **Motion detection systems**: Like the Luigi Mario module
 - **Sensor monitoring**: Environmental or automation projects
 - **Network services**: Web servers, API endpoints, etc.
-- **Audio applications**: Projects requiring sound output (Sound Bonnet provides high-quality I2S audio)
 
 ## Uninstallation
 
