@@ -59,19 +59,19 @@ sudo ./setup.sh install
 This will automatically:
 - Install dependencies (python3-rpi-lgpio, alsa-utils)
 - Extract and install sound files
+- **Configure audio device for aplay** (interactive selection)
 - Install the Python application
 - Install and enable the systemd service
 - Start the service
 
 **Audio Configuration:**
-Audio is configured during the root setup process (`sudo ./setup.sh install`):
-1. Optionally installs the Adafruit Sound Bonnet
-2. Detects all available audio devices (using `aplay -l`)
-3. Prompts you to select the audio device to use
-4. Creates `/etc/asound.conf` with automatic format conversion (16-bit → 32-bit)
-5. Tests audio playback to verify configuration
+During installation, the setup script will:
+1. Detect all available audio devices (using `aplay -l`)
+2. Prompt you to select the audio device to use
+3. Create `/etc/asound.conf` with your selection
+4. Test audio playback to verify configuration
 
-If you install the mario module directly (not through root setup.sh), audio configuration will be skipped if `/etc/asound.conf` already exists.
+If you have only one audio device, it will be selected automatically.
 
 ### Other Setup Commands
 
