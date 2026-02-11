@@ -93,25 +93,25 @@ install() {
     # 4.5. Build frontend
     log_info "Building web frontend..."
     if [ -d "$APP_DIR/frontend" ]; then
-        cd "$APP_DIR/frontend"
-        
-        # Install frontend dependencies
-        log_info "Installing frontend dependencies..."
-        sudo -u pi npm install --no-audit
-        
-        # Run type check
-        log_info "Running TypeScript type check..."
-        sudo -u pi npm run type-check
-        
-        # Build production bundle
-        log_info "Building production bundle..."
-        sudo -u pi npm run build
+        (
+            cd "$APP_DIR/frontend" || exit 1
+            
+            # Install frontend dependencies
+            log_info "Installing frontend dependencies..."
+            sudo -u pi npm install --no-audit
+            
+            # Run type check
+            log_info "Running TypeScript type check..."
+            sudo -u pi npm run type-check
+            
+            # Build production bundle
+            log_info "Building production bundle..."
+            sudo -u pi npm run build
+        )
         
         # Verify dist directory exists
         if [ -d "$APP_DIR/frontend/dist" ]; then
             log_info "Frontend build successful ✓"
-            log_info "Built files:"
-            ls -lh "$APP_DIR/frontend/dist" | tail -n +2 | awk '{print "  " $9 " (" $5 ")"}'
         else
             log_error "Frontend build failed - dist directory not found"
             exit 1
