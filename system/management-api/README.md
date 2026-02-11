@@ -39,6 +39,8 @@ The installer will:
 1. Check prerequisites and install Node.js if needed
 2. Install backend Node.js dependencies
 3. Build the web frontend (React/TypeScript)
+   - If a previous build exists, you'll be prompted whether to rebuild
+   - Rebuilding can take 5-15 minutes on Raspberry Pi Zero W
 4. Generate TLS certificates
 5. Configure the service
 6. Start the API server

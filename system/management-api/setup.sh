@@ -138,28 +138,44 @@ install() {
     # 4.5. Build frontend
     log_info "Building web frontend..."
     if [ -d "$APP_DIR/frontend" ]; then
-        (
-            cd "$APP_DIR/frontend" || exit 1
-            
-            # Install frontend dependencies
-            log_info "Installing frontend dependencies..."
-            sudo -u "$INSTALL_USER" npm install --no-audit
-            
-            # Run type check
-            log_info "Running TypeScript type check..."
-            sudo -u "$INSTALL_USER" npm run type-check
-            
-            # Build production bundle
-            log_info "Building production bundle..."
-            sudo -u "$INSTALL_USER" npm run build
-        )
+        # Check if frontend is already built
+        local should_build=true
+        if [ -d "$APP_DIR/frontend/dist" ] && [ -n "$(ls -A "$APP_DIR/frontend/dist" 2>/dev/null)" ]; then
+            log_info "Frontend build already exists in $APP_DIR/frontend/dist"
+            read -p "Do you want to rebuild the frontend? (y/N): " -r rebuild_choice
+            echo
+            if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
+                log_info "Skipping frontend rebuild (using existing build)"
+                should_build=false
+            else
+                log_info "Proceeding with frontend rebuild..."
+            fi
+        fi
         
-        # Verify dist directory exists
-        if [ -d "$APP_DIR/frontend/dist" ]; then
-            log_info "Frontend build successful ✓"
-        else
-            log_error "Frontend build failed - dist directory not found"
-            exit 1
+        if [ "$should_build" = true ]; then
+            (
+                cd "$APP_DIR/frontend" || exit 1
+                
+                # Install frontend dependencies
+                log_info "Installing frontend dependencies..."
+                sudo -u "$INSTALL_USER" npm install --no-audit
+                
+                # Run type check
+                log_info "Running TypeScript type check..."
+                sudo -u "$INSTALL_USER" npm run type-check
+                
+                # Build production bundle
+                log_info "Building production bundle..."
+                sudo -u "$INSTALL_USER" npm run build
+            )
+            
+            # Verify dist directory exists
+            if [ -d "$APP_DIR/frontend/dist" ]; then
+                log_info "Frontend build successful ✓"
+            else
+                log_error "Frontend build failed - dist directory not found"
+                exit 1
+            fi
         fi
     else
         log_warn "Frontend directory not found, skipping frontend build"
