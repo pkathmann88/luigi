@@ -19,5 +19,8 @@
       "/api/config",
       "/api/monitoring"
     ]
+  },
+  "requires": {
+    "node_version": ">=16.0.0"
   }
 }

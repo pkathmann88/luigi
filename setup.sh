@@ -166,7 +166,7 @@ get_module_apt_packages() {
 }
 
 # Collect all apt packages from all modules
-# Returns unique list of packages space-separated
+# Returns unique list of packages, one per line
 collect_all_apt_packages() {
     local modules=("$@")
     local all_packages=()
@@ -194,7 +194,8 @@ collect_all_apt_packages() {
         fi
     done
     
-    echo "${all_packages[@]}"
+    # Output one package per line
+    printf '%s\n' "${all_packages[@]}"
 }
 
 # Install apt packages in batch
@@ -519,7 +520,7 @@ install_modules() {
     # Collect and install all apt packages in batch before module installation
     log_step "Collecting apt package requirements from all modules..."
     local all_packages
-    mapfile -t all_packages < <(collect_all_apt_packages "${modules[@]}" | tr ' ' '\n')
+    mapfile -t all_packages < <(collect_all_apt_packages "${modules[@]}")
     
     if ! install_apt_packages "${all_packages[@]}"; then
         log_error "Failed to install required apt packages"
