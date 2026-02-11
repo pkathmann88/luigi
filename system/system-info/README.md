@@ -72,7 +72,7 @@ sudo systemctl start system-info.service
 
 # 7. (Optional) Setup MQTT integration
 # If ha-mqtt module is installed:
-sudo cp *_descriptor.json /etc/luigi/ha-mqtt/sensors.d/
+sudo cp *_descriptor.json /etc/luigi/iot/ha-mqtt/sensors.d/
 sudo /usr/local/bin/luigi-discover
 ```
 

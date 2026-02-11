@@ -38,7 +38,7 @@ INSTALL_RESET_SCRIPT="/usr/local/bin/mario-reset-cooldown"
 LOG_FILE="/var/log/motion.log"
 
 # ha-mqtt integration paths
-HA_MQTT_SENSORS_DIR="/etc/luigi/ha-mqtt/sensors.d"
+HA_MQTT_SENSORS_DIR="/etc/luigi/iot/ha-mqtt/sensors.d"
 HA_MQTT_DESCRIPTOR="$HA_MQTT_SENSORS_DIR/mario_motion.json"
 
 # Logging functions

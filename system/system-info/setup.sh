@@ -40,7 +40,7 @@ INSTALL_CONFIG="/etc/luigi/system/system-info/system-info.conf"
 LOG_FILE="/var/log/system-info.log"
 
 # ha-mqtt integration paths
-HA_MQTT_SENSORS_DIR="/etc/luigi/ha-mqtt/sensors.d"
+HA_MQTT_SENSORS_DIR="/etc/luigi/iot/ha-mqtt/sensors.d"
 
 # Logging functions
 log_info() {
