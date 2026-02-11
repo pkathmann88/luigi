@@ -62,36 +62,40 @@ install() {
     log_info "Installing ${MODULE_NAME}..."
     
     # 1. Check prerequisites
-    log_info "Checking prerequisites..."
-    
-    # Read packages from module.json
-    local module_json="$SCRIPT_DIR/module.json"
-    local packages=()
-    
-    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
-        # Parse apt_packages array from JSON
-        while IFS= read -r pkg; do
-            packages+=("$pkg")
-        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
-    else
-        # Fallback to hardcoded packages if module.json or jq not available
-        log_warn "module.json or jq not found, using fallback package list"
-        packages=("nodejs" "npm" "openssl" "curl")
-    fi
-    
-    # Check which packages need installation
-    local to_install=()
-    for pkg in "${packages[@]}"; do
-        if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
-            to_install+=("$pkg")
+    if [ "${SKIP_PACKAGES:-}" != "1" ]; then
+        log_info "Checking prerequisites..."
+        
+        # Read packages from module.json
+        local module_json="$SCRIPT_DIR/module.json"
+        local packages=()
+        
+        if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+            # Parse apt_packages array from JSON
+            while IFS= read -r pkg; do
+                packages+=("$pkg")
+            done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+        else
+            # Fallback to hardcoded packages if module.json or jq not available
+            log_warn "module.json or jq not found, using fallback package list"
+            packages=("nodejs" "npm" "openssl" "curl")
         fi
-    done
-    
-    # Install packages if needed
-    if [ ${#to_install[@]} -gt 0 ]; then
-        log_info "Installing required packages: ${to_install[*]}"
-        apt-get update
-        apt-get install -y "${to_install[@]}"
+        
+        # Check which packages need installation
+        local to_install=()
+        for pkg in "${packages[@]}"; do
+            if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+                to_install+=("$pkg")
+            fi
+        done
+        
+        # Install packages if needed
+        if [ ${#to_install[@]} -gt 0 ]; then
+            log_info "Installing required packages: ${to_install[*]}"
+            apt-get update
+            apt-get install -y "${to_install[@]}"
+        fi
+    else
+        log_info "Skipping package installation (managed centrally)"
     fi
     
     # Verify Node.js is available and check version
@@ -347,7 +351,7 @@ uninstall() {
     fi
     
     # 7. Remove packages if in purge mode or requested
-    if [ "$purge_mode" != "purge" ]; then
+    if [ "$purge_mode" != "purge" ] && [ "${SKIP_PACKAGES:-}" != "1" ]; then
         echo ""
         # Read packages from module.json for display
         local package_list="nodejs, npm, openssl, curl"
@@ -361,7 +365,9 @@ uninstall() {
         remove_packages=$REPLY
     fi
     
-    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package removal (managed centrally)"
+    elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         log_step "Removing packages..."
         
         # Read packages from module.json
@@ -467,7 +473,24 @@ status() {
 }
 
 # Main
-case "${1:-}" in
+# Parse command and flags
+action="${1:-}"
+shift || true
+
+# Parse flags
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --skip-packages)
+            export SKIP_PACKAGES=1
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+case "$action" in
     install)
         install
         ;;
@@ -478,7 +501,10 @@ case "${1:-}" in
         status
         ;;
     *)
-        echo "Usage: $0 {install|uninstall|status}"
+        echo "Usage: $0 {install|uninstall|status} [--skip-packages]"
+        echo ""
+        echo "Options:"
+        echo "  --skip-packages  - Skip apt package installation/removal (for centralized management)"
         exit 1
         ;;
 esac

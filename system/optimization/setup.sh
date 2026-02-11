@@ -82,6 +82,12 @@ check_files() {
 
 # Install dependencies
 install_dependencies() {
+    # Check if --skip-packages flag is set
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package installation (managed centrally)"
+        return 0
+    fi
+    
     log_step "Checking dependencies..."
     
     # Read packages from module.json
@@ -334,7 +340,7 @@ uninstall() {
     fi
     
     # Remove packages if in purge mode or requested
-    if [ "$purge_mode" != "purge" ]; then
+    if [ "$purge_mode" != "purge" ] && [ "${SKIP_PACKAGES:-}" != "1" ]; then
         echo ""
         # Read packages from module.json for display
         local package_list="python3"
@@ -348,7 +354,9 @@ uninstall() {
         remove_packages=$REPLY
     fi
     
-    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package removal (managed centrally)"
+    elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         log_step "Removing packages..."
         log_warn "Note: python3 is a system package and may be needed by other software"
         log_info "Skipping python3 removal for safety"
@@ -399,6 +407,20 @@ status() {
 # Main script logic
 main() {
     local command="${1:-install}"
+    shift || true
+    
+    # Parse flags
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --skip-packages)
+                export SKIP_PACKAGES=1
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
     
     case "$command" in
         install)
@@ -416,12 +438,15 @@ main() {
         *)
             log_error "Unknown command: $command"
             echo ""
-            echo "Usage: sudo $0 [install|uninstall|status]"
+            echo "Usage: sudo $0 [install|uninstall|status] [--skip-packages]"
             echo ""
             echo "Commands:"
             echo "  install   - Install the system optimization module (default)"
             echo "  uninstall - Remove the system optimization module"
             echo "  status    - Show installation status"
+            echo ""
+            echo "Options:"
+            echo "  --skip-packages  - Skip apt package installation/removal (for centralized management)"
             exit 1
             ;;
     esac

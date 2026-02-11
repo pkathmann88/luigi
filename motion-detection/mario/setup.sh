@@ -113,6 +113,12 @@ check_files() {
 
 # Install dependencies
 install_dependencies() {
+    # Check if --skip-packages flag is set
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package installation (managed centrally)"
+        return 0
+    fi
+    
     log_step "Installing dependencies..."
     
     # Read packages from module.json
@@ -717,7 +723,7 @@ uninstall() {
     fi
     
     # Remove packages if in purge mode or requested
-    if [ "$purge_mode" != "purge" ]; then
+    if [ "$purge_mode" != "purge" ] && [ "${SKIP_PACKAGES:-}" != "1" ]; then
         echo ""
         # Read packages from module.json for display
         local package_list="python3-rpi-lgpio, alsa-utils"
@@ -731,7 +737,9 @@ uninstall() {
         remove_packages=$REPLY
     fi
     
-    if [[ "$remove_packages" =~ ^[Yy]$ ]]; then
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package removal (managed centrally)"
+    elif [[ "$remove_packages" =~ ^[Yy]$ ]]; then
         log_info "Removing packages..."
         
         # Read packages from module.json
@@ -802,7 +810,7 @@ install() {
     echo "====================================="
     echo ""
     
-    check_root "$@"
+    check_root
     check_files
     install_dependencies
     install_sounds
@@ -834,25 +842,42 @@ install() {
 # Main script
 main() {
     local action="${1:-install}"
+    shift || true
+    
+    # Parse flags
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --skip-packages)
+                export SKIP_PACKAGES=1
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
     
     case "$action" in
         install)
-            install "$@"
+            install
             ;;
         uninstall)
-            check_root "$@"
+            check_root
             uninstall
             ;;
         status)
             show_status
             ;;
         *)
-            echo "Usage: $0 [install|uninstall|status]"
+            echo "Usage: $0 [install|uninstall|status] [--skip-packages]"
             echo ""
             echo "Commands:"
             echo "  install   - Install mario motion detection service (default)"
             echo "  uninstall - Remove mario motion detection service"
             echo "  status    - Show installation status"
+            echo ""
+            echo "Options:"
+            echo "  --skip-packages  - Skip apt package installation/removal (for centralized management)"
             echo ""
             exit 1
             ;;
