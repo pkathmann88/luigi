@@ -350,57 +350,15 @@ class GPIOManager:
         self.config = config
         self.initialized = False
     
-    def initialize(self, max_retries=3, retry_delay=2):
-        """
-        Initialize GPIO mode with retry logic for timing issues.
-        
-        On systems with I2C enabled, GPIO subsystem initialization may be
-        delayed. This method retries GPIO setup to handle race conditions.
-        
-        Args:
-            max_retries: Maximum number of initialization attempts (default: 3)
-            retry_delay: Delay in seconds between retries (default: 2)
-            
-        Raises:
-            RuntimeError: If GPIO initialization fails after all retries
-            
-        Note:
-            This method is backward compatible - default parameters are used
-            if called without arguments (e.g., `initialize()`).
-        """
-        last_error = None
-        
-        for attempt in range(1, max_retries + 1):
-            try:
-                GPIO.setmode(self.config.GPIO_MODE)
-                self.initialized = True
-                logging.info("GPIO initialized successfully")
-                return
-                
-            except RuntimeError as e:
-                last_error = e
-                error_msg = str(e)
-                
-                if attempt < max_retries:
-                    logging.warning(
-                        f"GPIO init attempt {attempt}/{max_retries} failed: {error_msg}. "
-                        f"Retrying in {retry_delay}s..."
-                    )
-                    time.sleep(retry_delay)
-                else:
-                    logging.error(
-                        f"GPIO initialization failed after {max_retries} attempts. "
-                        f"Last error: {error_msg}"
-                    )
-        
-        # All retries exhausted
-        error_context = (
-            "This may occur on systems with I2C enabled where GPIO subsystem "
-            "initialization is delayed. Check: (1) GPIO permissions, "
-            "(2) Service start order, (3) Kernel module loading."
-        )
-        logging.error(error_context)
-        raise RuntimeError(f"GPIO initialization failed: {last_error}") from last_error
+    def initialize(self):
+        """Initialize GPIO mode."""
+        try:
+            GPIO.setmode(self.config.GPIO_MODE)
+            self.initialized = True
+            logging.info("GPIO initialized successfully")
+        except RuntimeError as e:
+            logging.error(f"Failed to initialize GPIO: {e}")
+            raise
     
     def cleanup(self):
         """Clean up GPIO resources."""
