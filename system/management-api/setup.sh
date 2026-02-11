@@ -56,6 +56,71 @@ readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
 readonly LOG_DIR="/var/log"
 readonly AUDIT_LOG_DIR="/var/log/luigi"
 
+# Helper function: Build frontend in source directory
+# Used by both build() and install() commands
+build_frontend_in_source() {
+    local prompt_user="${1:-true}"  # Default to prompting user
+    
+    if [ ! -d "$SCRIPT_DIR/frontend" ]; then
+        log_warn "Frontend directory not found, skipping frontend build"
+        return 0
+    fi
+    
+    # Check if frontend is already built
+    local should_build=true
+    if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
+        if [ "$prompt_user" = "true" ]; then
+            log_info "Frontend build already exists in $SCRIPT_DIR/frontend/dist"
+            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
+            echo
+            if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
+                log_info "Skipping frontend rebuild (using existing build)"
+                should_build=false
+            else
+                log_info "Proceeding with frontend rebuild..."
+            fi
+        else
+            log_info "✓ Frontend already built in source"
+            should_build=false
+        fi
+    fi
+    
+    if [ "$should_build" = true ]; then
+        log_info "Building web frontend in source directory..."
+        (
+            cd "$SCRIPT_DIR/frontend" || exit 1
+            
+            # Determine user context for npm commands
+            local build_user="$USER"
+            local use_sudo=""
+            if [ -n "${SUDO_USER:-}" ]; then
+                build_user="$INSTALL_USER"
+                use_sudo="sudo -u $INSTALL_USER"
+            fi
+            
+            # Install frontend dependencies
+            log_info "Installing frontend dependencies..."
+            $use_sudo npm install --no-audit
+            
+            # Run type check
+            log_info "Running TypeScript type check..."
+            $use_sudo npm run type-check
+            
+            # Build production bundle
+            log_info "Building production bundle..."
+            $use_sudo npm run build
+        )
+        
+        # Verify dist directory exists
+        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+            log_info "Frontend build successful ✓"
+        else
+            log_error "Frontend build failed - dist directory not found"
+            exit 1
+        fi
+    fi
+}
+
 # Install function
 install() {
     check_root
@@ -121,36 +186,7 @@ install() {
     
     # 2.5. Build frontend in source if not already built
     # This ensures we always have a built frontend before copying
-    if [ -d "$SCRIPT_DIR/frontend" ]; then
-        if [ ! -d "$SCRIPT_DIR/frontend/dist" ] || [ -z "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
-            log_info "Frontend not pre-built, building in source directory..."
-            (
-                cd "$SCRIPT_DIR/frontend" || exit 1
-                
-                # Install frontend dependencies
-                log_info "Installing frontend dependencies..."
-                sudo -u "$INSTALL_USER" npm install --no-audit
-                
-                # Run type check
-                log_info "Running TypeScript type check..."
-                sudo -u "$INSTALL_USER" npm run type-check
-                
-                # Build production bundle
-                log_info "Building production bundle..."
-                sudo -u "$INSTALL_USER" npm run build
-            )
-            
-            # Verify dist directory exists
-            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-                log_info "Frontend build successful ✓"
-            else
-                log_error "Frontend build failed - dist directory not found"
-                exit 1
-            fi
-        else
-            log_info "✓ Frontend already built in source"
-        fi
-    fi
+    build_frontend_in_source "false"  # Don't prompt in install, auto-build if needed
     
     # 3. Copy application files
     log_info "Copying application files..."
@@ -393,50 +429,7 @@ build() {
     $use_sudo npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
     
     # 3. Build frontend (in place)
-    log_info "Building web frontend..."
-    if [ -d "$SCRIPT_DIR/frontend" ]; then
-        # Check if frontend is already built
-        local should_build=true
-        if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
-            log_info "Frontend build already exists in $SCRIPT_DIR/frontend/dist"
-            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
-            echo
-            if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
-                log_info "Skipping frontend rebuild (using existing build)"
-                should_build=false
-            else
-                log_info "Proceeding with frontend rebuild..."
-            fi
-        fi
-        
-        if [ "$should_build" = true ]; then
-            (
-                cd "$SCRIPT_DIR/frontend" || exit 1
-                
-                # Install frontend dependencies
-                log_info "Installing frontend dependencies..."
-                $use_sudo npm install --no-audit
-                
-                # Run type check
-                log_info "Running TypeScript type check..."
-                $use_sudo npm run type-check
-                
-                # Build production bundle
-                log_info "Building production bundle..."
-                $use_sudo npm run build
-            )
-            
-            # Verify dist directory exists
-            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-                log_info "Frontend build successful ✓"
-            else
-                log_error "Frontend build failed - dist directory not found"
-                exit 1
-            fi
-        fi
-    else
-        log_warn "Frontend directory not found, skipping frontend build"
-    fi
+    build_frontend_in_source "true"  # Prompt user in build command
     
     # Display build information
     log_info ""
