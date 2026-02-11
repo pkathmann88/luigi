@@ -14,11 +14,14 @@ Shared functions for all Luigi module setup scripts. Eliminates duplicate code a
 - `RED`, `GREEN`, `YELLOW`, `BLUE`, `CYAN`, `NC` - ANSI color codes for terminal output
 
 #### Logging Functions
-- `log_info(message)` - Print informational message in green
-- `log_warn(message)` - Print warning message in yellow  
-- `log_error(message)` - Print error message in red
-- `log_step(message)` - Print step message in blue
+- `log_info(message)` - Print informational message in green with [INFO] prefix
+- `log_warn(message)` - Print warning message in yellow with [WARN] prefix
+- `log_error(message)` - Print error message in red with [ERROR] prefix
+- `log_step(message)` - Print step message in blue with [STEP] prefix
 - `log_header(message)` - Print section header in cyan with decorative borders
+- `log_debug(message)` - Print debug message in blue with [DEBUG] prefix
+- `log_success(message)` - Print success message with ✓ symbol (alternative format)
+- `log_warning(message)` - Print warning message with ⚠ symbol (alternative format)
 
 #### Permission Checking
 - `check_root()` - Verify script is run with root privileges, exit if not
@@ -90,6 +93,11 @@ log_step "Installing dependencies..."
 log_info "All dependencies installed successfully"
 log_warn "Configuration file already exists"
 log_error "Failed to create directory"
+log_debug "Variable value: $DEBUG_VAR"
+
+# Alternative format with symbols
+log_success "Package installed successfully"
+log_warning "Partial installation detected"
 ```
 
 ### Using Package Management
@@ -154,17 +162,23 @@ fi
 
 ## Module-Specific Customization
 
-Some modules may need to override helper functions with custom logging formats. This is allowed:
+Some modules may need to override helper functions with custom logging formats. This is allowed and documented:
 
 ```bash
 # Source the helpers first
 source "$REPO_ROOT/util/setup-helpers.sh"
 
-# Then override specific functions
+# Then override specific functions for module-specific formatting
 log_info() {
-    echo -e "\033[0;32m[INFO]\033[0m $1"  # Custom format
+    echo -e "\033[0;32m[INFO]\033[0m $1"  # Custom format without color variables
 }
 ```
+
+**Current overrides:**
+- `system/management-api/setup.sh` - Custom log format for consistency with Node.js app
+- All other functions should use the helper versions
+
+**Note:** Overriding is discouraged unless there's a specific formatting requirement. Always document why an override is needed.
 
 ## Scripts Using This Helper
 
