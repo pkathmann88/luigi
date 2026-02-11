@@ -55,6 +55,12 @@ npm run build
 
 The production files will be in the `dist/` directory.
 
+**Build Performance:**
+- **Raspberry Pi Zero W (ARMv6):** 5-15 minutes - Automatically uses Terser (pure JavaScript) for compatibility
+- **Modern systems (ARMv7+, x86_64):** 1-3 minutes - Automatically uses esbuild (native binaries) for speed
+
+The build system automatically detects your CPU architecture and uses the appropriate minifier.
+
 ### Type Checking
 
 ```bash

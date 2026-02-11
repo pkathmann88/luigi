@@ -56,116 +56,127 @@ readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
 readonly LOG_DIR="/var/log"
 readonly AUDIT_LOG_DIR="/var/log/luigi"
 
+# Helper function: Build frontend in source directory
+# Used by both build() and install() commands
+build_frontend_in_source() {
+    local prompt_user="${1:-true}"  # Default to prompting user
+    
+    if [ ! -d "$SCRIPT_DIR/frontend" ]; then
+        log_warn "Frontend directory not found, skipping frontend build"
+        return 0
+    fi
+    
+    # Check if frontend is already built
+    local should_build=true
+    if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
+        if [ "$prompt_user" = "true" ]; then
+            log_info "Frontend build already exists in $SCRIPT_DIR/frontend/dist"
+            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
+            echo
+            if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
+                log_info "Skipping frontend rebuild (using existing build)"
+                should_build=false
+            else
+                log_info "Proceeding with frontend rebuild..."
+            fi
+        else
+            log_info "✓ Frontend already built in source"
+            should_build=false
+        fi
+    fi
+    
+    if [ "$should_build" = true ]; then
+        log_info "Building web frontend in source directory..."
+        (
+            cd "$SCRIPT_DIR/frontend" || exit 1
+            
+            # Determine user context for npm commands
+            local build_user="$USER"
+            local use_sudo=""
+            if [ -n "${SUDO_USER:-}" ]; then
+                build_user="$INSTALL_USER"
+                use_sudo="sudo -u $INSTALL_USER"
+            fi
+            
+            # Install frontend dependencies
+            log_info "Installing frontend dependencies..."
+            $use_sudo npm install --no-audit
+            
+            # Run type check
+            log_info "Running TypeScript type check..."
+            $use_sudo npm run type-check
+            
+            # Build production bundle
+            log_info "Building production bundle..."
+            $use_sudo npm run build
+        )
+        
+        # Verify dist directory exists
+        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+            log_info "Frontend build successful ✓"
+        else
+            log_error "Frontend build failed - dist directory not found"
+            exit 1
+        fi
+    fi
+}
+
 # Install function
 install() {
     check_root
     log_info "Installing ${MODULE_NAME}..."
     
-    # 1. Check prerequisites
-    if [ "${SKIP_PACKAGES:-}" != "1" ]; then
-        log_info "Checking prerequisites..."
-        
-        # Read packages from module.json
-        local module_json="$SCRIPT_DIR/module.json"
-        local packages=()
-        
-        if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
-            # Parse apt_packages array from JSON
-            while IFS= read -r pkg; do
-                packages+=("$pkg")
-            done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
-        else
-            # Fallback to hardcoded packages if module.json or jq not available
-            log_warn "module.json or jq not found, using fallback package list"
-            packages=("nodejs" "npm" "openssl" "curl")
-        fi
-        
-        # Check which packages need installation
-        local to_install=()
-        for pkg in "${packages[@]}"; do
-            if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
-                to_install+=("$pkg")
-            fi
-        done
-        
-        # Install packages if needed
-        if [ ${#to_install[@]} -gt 0 ]; then
-            log_info "Installing required packages: ${to_install[*]}"
-            apt-get update
-            apt-get install -y "${to_install[@]}"
-        fi
-    else
-        log_info "Skipping package installation (managed centrally)"
-    fi
+    # 1. Build everything (backend + frontend) in source directory
+    log_info "Building application first..."
+    build
     
-    # Verify Node.js is available and check version
-    if ! command_exists node; then
-        log_error "Node.js installation failed or not in PATH"
-        exit 1
-    fi
-    
-    local node_version
-    node_version=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$node_version" -lt 16 ]; then
-        log_error "Node.js version 16 or higher is required (found: $(node --version))"
-        exit 1
-    fi
-    log_info "Node.js version: $(node --version) ✓"
-    
-    # 2. Create directory structure
-    log_info "Creating directories..."
+    # 2. Create directory structure for deployment
+    log_info "Creating deployment directories..."
     mkdir -p "$APP_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$AUDIT_LOG_DIR"
     mkdir -p "$CERTS_DIR"
     
     # 3. Copy application files
-    log_info "Copying application files..."
-    cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
+    log_info "Copying production files to deployment location..."
+    
+    # Core application files
+    cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
+    cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
+    cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
+    cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
+    cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
+    
+    # Copy directories
+    cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
+    
+    # Copy backend dependencies (built by build() function)
+    log_info "Copying built node_modules..."
+    cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
+    
+    # Handle frontend - copy only necessary files
+    if [ -d "$SCRIPT_DIR/frontend" ]; then
+        mkdir -p "$APP_DIR/frontend"
+        
+        # Always copy only built frontend assets (source is never copied)
+        # Frontend is built in source before this point
+        log_info "Copying built frontend dist..."
+        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+            cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
+            # Copy package.json for reference
+            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
+        else
+            log_error "Frontend dist directory not found - frontend should have been built"
+            exit 1
+        fi
+    fi
     
     # Set ownership
     chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
     
-    # 4. Install Node.js dependencies
-    log_info "Installing Node.js dependencies..."
-    cd "$APP_DIR"
-    sudo -u "$INSTALL_USER" npm install --production --no-audit
-    
-    # Run npm audit
-    log_info "Running security audit..."
-    sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
-    
-    # 4.5. Build frontend
-    log_info "Building web frontend..."
-    if [ -d "$APP_DIR/frontend" ]; then
-        (
-            cd "$APP_DIR/frontend" || exit 1
-            
-            # Install frontend dependencies
-            log_info "Installing frontend dependencies..."
-            sudo -u "$INSTALL_USER" npm install --no-audit
-            
-            # Run type check
-            log_info "Running TypeScript type check..."
-            sudo -u "$INSTALL_USER" npm run type-check
-            
-            # Build production bundle
-            log_info "Building production bundle..."
-            sudo -u "$INSTALL_USER" npm run build
-        )
-        
-        # Verify dist directory exists
-        if [ -d "$APP_DIR/frontend/dist" ]; then
-            log_info "Frontend build successful ✓"
-        else
-            log_error "Frontend build failed - dist directory not found"
-            exit 1
-        fi
-    else
-        log_warn "Frontend directory not found, skipping frontend build"
-    fi
-    
-    # 5. Deploy configuration
+    # 4. Deploy configuration
     log_info "Deploying configuration..."
     if [ ! -f "$CONFIG_DIR/.env" ]; then
         cp "$APP_DIR/.env.example" "$CONFIG_DIR/.env"
@@ -253,6 +264,105 @@ install() {
     log_info "  Stop:    sudo systemctl stop $SERVICE_NAME"
     log_info "  Restart: sudo systemctl restart $SERVICE_NAME"
     log_info "  Logs:    sudo journalctl -u $SERVICE_NAME -f"
+    log_info ""
+}
+
+# Build function - builds frontend and backend without full installation
+# Builds in place (in the repository directory) for development workflows
+build() {
+    log_info "Building ${MODULE_NAME} in place..."
+    
+    # For build command, check if we're running with sudo
+    # If so, we'll use INSTALL_USER; otherwise use current user
+    local build_user="$USER"
+    local use_sudo=""
+    if [ -n "${SUDO_USER:-}" ]; then
+        build_user="$INSTALL_USER"
+        use_sudo="sudo -u $INSTALL_USER"
+        log_info "Running as sudo, will build as user: $build_user"
+    else
+        log_info "Running as user: $build_user"
+    fi
+    
+    # 1. Check prerequisites
+    if [ "${SKIP_PACKAGES:-}" != "1" ]; then
+        # Package installation requires root
+        if [ "$EUID" -ne 0 ]; then
+            log_warn "Package installation requires root privileges"
+            log_warn "Run with sudo to install packages, or use --skip-packages"
+        else
+            log_info "Checking prerequisites..."
+            
+            # Read packages from module.json
+            local module_json="$SCRIPT_DIR/module.json"
+            local packages=()
+            
+            if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+                # Parse apt_packages array from JSON
+                while IFS= read -r pkg; do
+                    packages+=("$pkg")
+                done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+            else
+                # Fallback to hardcoded packages if module.json or jq not available
+                log_warn "module.json or jq not found, using fallback package list"
+                packages=("nodejs" "npm" "openssl" "curl")
+            fi
+            
+            # Check which packages need installation
+            local to_install=()
+            for pkg in "${packages[@]}"; do
+                if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+                    to_install+=("$pkg")
+                fi
+            done
+            
+            # Install packages if needed
+            if [ ${#to_install[@]} -gt 0 ]; then
+                log_info "Installing required packages: ${to_install[*]}"
+                apt-get update
+                apt-get install -y "${to_install[@]}"
+            fi
+        fi
+    else
+        log_info "Skipping package installation (managed centrally)"
+    fi
+    
+    # Verify Node.js is available and check version
+    if ! command_exists node; then
+        log_error "Node.js installation failed or not in PATH"
+        exit 1
+    fi
+    
+    local node_version
+    node_version=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$node_version" -lt 16 ]; then
+        log_error "Node.js version 16 or higher is required (found: $(node --version))"
+        exit 1
+    fi
+    log_info "Node.js version: $(node --version) ✓"
+    
+    # 2. Install Node.js dependencies (in place)
+    log_info "Installing Node.js dependencies..."
+    cd "$SCRIPT_DIR"
+    $use_sudo npm install --production --no-audit
+    
+    # Run npm audit
+    log_info "Running security audit..."
+    $use_sudo npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
+    
+    # 3. Build frontend (in place)
+    build_frontend_in_source "true"  # Prompt user in build command
+    
+    # Display build information
+    log_info ""
+    log_info "✓ Build complete!"
+    log_info ""
+    log_info "Built files location: $SCRIPT_DIR"
+    log_info "Backend: $SCRIPT_DIR (Node.js dependencies installed)"
+    log_info "Frontend: $SCRIPT_DIR/frontend/dist"
+    log_info ""
+    log_info "Note: Built in place (repository directory)"
+    log_info "For full installation with deployment, run: sudo ./setup.sh install"
     log_info ""
 }
 
@@ -494,6 +604,9 @@ case "$action" in
     install)
         install
         ;;
+    build)
+        build
+        ;;
     uninstall)
         uninstall
         ;;
@@ -501,10 +614,16 @@ case "$action" in
         status
         ;;
     *)
-        echo "Usage: $0 {install|uninstall|status} [--skip-packages]"
+        echo "Usage: $0 {install|build|uninstall|status} [--skip-packages]"
+        echo ""
+        echo "Commands:"
+        echo "  install         - Full installation (copies to ~/luigi, deploys config/certs/service)"
+        echo "  build           - Build in place (repository directory) - for development"
+        echo "  uninstall       - Remove installation"
+        echo "  status          - Check installation status"
         echo ""
         echo "Options:"
-        echo "  --skip-packages  - Skip apt package installation/removal (for centralized management)"
+        echo "  --skip-packages - Skip apt package installation/removal (for centralized management)"
         exit 1
         ;;
 esac

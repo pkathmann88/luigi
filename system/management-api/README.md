@@ -37,11 +37,14 @@ sudo ./setup.sh install
 
 The installer will:
 1. Check prerequisites and install Node.js if needed
-2. Install backend Node.js dependencies
-3. Build the web frontend (React/TypeScript)
+2. Copy application files to `~/luigi/system/management-api`
+3. **Detect pre-built artifacts** (from `build` command) or build if needed
 4. Generate TLS certificates
 5. Configure the service
 6. Start the API server
+
+**Pre-built Deployment:**
+If you've run `./setup.sh build` first, the installer will automatically detect and use the pre-built frontend/backend, making installation much faster (no rebuild needed).
 
 **IMPORTANT:** After installation, edit the configuration file and set a strong password:
 
@@ -50,6 +53,55 @@ sudo nano /etc/luigi/system/management-api/.env
 ```
 
 Change `AUTH_PASSWORD` to a secure password (minimum 12 characters).
+
+### Build Then Deploy Workflow (Recommended)
+
+For the fastest installation, especially on slow hardware:
+
+```bash
+# Step 1: Build in repository (development location)
+cd system/management-api
+sudo ./setup.sh build  # Builds in place: ~/repos/luigi/system/management-api
+
+# Step 2: Deploy pre-built application
+sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api (uses pre-built)
+```
+
+**Benefits:**
+- Build once in your development location
+- Install copies pre-built artifacts (no rebuild, very fast)
+- Can build on faster machine, deploy on Raspberry Pi
+- CI/CD friendly
+
+### Build Only (Development)
+
+To build the frontend and backend without full installation:
+
+```bash
+cd system/management-api
+# Run with sudo for package installation, or without sudo if packages already installed
+sudo ./setup.sh build
+# OR (if Node.js already installed)
+./setup.sh build --skip-packages
+```
+
+The build command:
+- **Builds in place** (in the repository directory, not in `~/luigi`)
+- Installs Node.js dependencies (backend and frontend)
+- Builds the React/TypeScript frontend
+- Skips: configuration deployment, certificates, service installation
+
+**Key Difference from Install:**
+- `build` - Builds in your repository location (e.g., `~/repos/luigi/system/management-api`)
+- `install` - Copies to `~/luigi/system/management-api` and deploys as a service
+
+This is useful for:
+- Development workflows (build where you code)
+- CI/CD pipelines
+- Testing builds without affecting running services
+- Building before manually deploying
+
+After building, you can run the full `install` command to complete the deployment.
 
 ### Manual Installation
 
@@ -569,6 +621,28 @@ Security:
   - commandValidator: whitelist validation
   - pathValidator: traversal prevention
 ```
+
+## Troubleshooting
+
+### "Illegal instruction" Error During Frontend Build
+
+**Problem:** Installation fails with "Illegal instruction" error during `npm run build` in the frontend step.
+
+**Cause:** This occurs on Raspberry Pi Zero W (ARMv6 architecture) when using build tools with native binaries compiled for newer ARM architectures.
+
+**Solution:** The frontend build configuration automatically detects ARMv6 and uses appropriate tools:
+- **ARMv6 (Pi Zero W):** Uses Terser (pure JavaScript) for minification - slower but compatible
+- **Other architectures:** Uses esbuild (native binaries) for minification - faster
+
+The detection is automatic. No manual configuration needed.
+
+**Note:** If you still encounter this issue, verify you're using the latest version of the frontend configuration (`vite.config.ts` and `package.json`).
+
+### Frontend Build Takes Long Time
+
+**Expected:** Frontend build on Raspberry Pi Zero W can take 5-15 minutes due to limited CPU resources. This is normal. The build automatically uses pure JavaScript tools (Terser) on ARMv6 for compatibility, which are slower than native alternatives.
+
+On more modern systems (ARMv7, ARMv8, x86_64), the build uses faster esbuild and completes in 1-3 minutes.
 
 ## Dependencies
 
