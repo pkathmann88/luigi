@@ -24,7 +24,7 @@ export const Login: React.FC = () => {
       } else {
         setError('Invalid username or password');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
