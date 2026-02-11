@@ -243,15 +243,17 @@ deploy_ha_mqtt_descriptors() {
         local dest="$HA_MQTT_SENSORS_DIR/${sensor_id}.json"
         
         log_info "Installing sensor descriptor: $sensor_id..."
-        cp "$SCRIPT_DIR/$sensor_file" "$dest" || {
-            log_error "Failed to copy sensor descriptor: $sensor_file"
-            exit 1
-        }
+        if ! cp "$SCRIPT_DIR/$sensor_file" "$dest" 2>/dev/null; then
+            log_warn "Failed to copy sensor descriptor: $sensor_file"
+            log_info "MQTT integration skipped - system monitoring will work standalone"
+            return 0
+        fi
         
-        chmod 644 "$dest" || {
-            log_error "Failed to set descriptor permissions: $dest"
-            exit 1
-        }
+        if ! chmod 644 "$dest" 2>/dev/null; then
+            log_warn "Failed to set descriptor permissions: $dest"
+            log_info "MQTT integration skipped - system monitoring will work standalone"
+            return 0
+        fi
         
         descriptor_count=$((descriptor_count + 1))
     done
