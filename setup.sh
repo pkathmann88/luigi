@@ -532,7 +532,7 @@ setup_sound_bonnet() {
     
     if [ -n "$config_file" ]; then
         # Check for I2S audio device tree overlay (characteristic of Sound Bonnet installation)
-        if grep -q "dtoverlay=hifiberry-dac\|dtoverlay=googlevoicehat-soundcard\|dtoverlay=adau7002-simple\|dtoverlay=i2s-mmap" "$config_file" 2>/dev/null; then
+        if grep -qE "dtoverlay=(hifiberry-dac|googlevoicehat-soundcard|adau7002-simple|i2s-mmap)" "$config_file" 2>/dev/null; then
             log_info "Sound Bonnet appears to be already installed"
             log_info "Detected I2S audio configuration in $config_file"
             echo ""
@@ -680,7 +680,7 @@ configure_audio() {
     if [ -f /etc/asound.conf ]; then
         log_info "Audio configuration already exists at /etc/asound.conf"
         log_warn "Current audio configuration:"
-        head -10 /etc/asound.conf
+        head -10 /etc/asound.conf | sed 's/^/  /'
         echo ""
         log_warn "Do you want to reconfigure audio?"
         read -p "Reconfigure audio? (y/N): " -n 1 -r

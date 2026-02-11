@@ -492,8 +492,8 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
    This error occurs when aplay cannot access the configured audio device.
    
    **Solution:**
-   - Reconfigure audio with root setup: `sudo ../../setup.sh install` (choose 'y' to reconfigure audio)
-   - Or reconfigure from module directory: `sudo ./setup.sh install` (will skip if already configured)
+   - Reconfigure audio with root setup (from repository root): `sudo ./setup.sh install` (choose 'y' to reconfigure audio)
+   - Or reconfigure from mario module directory: `sudo ./setup.sh install` (will skip if already configured)
    - Or manually create `/etc/asound.conf`:
      ```bash
      # Find your audio device
