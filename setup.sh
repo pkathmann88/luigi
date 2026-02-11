@@ -512,6 +512,121 @@ execute_module_command() {
     return 0
 }
 
+# Setup Adafruit Sound Bonnet (Speaker Bonnet)
+# This is an optional setup that installs the necessary drivers for the Adafruit Sound Bonnet
+setup_sound_bonnet() {
+    log_header "Sound Bonnet Setup"
+    
+    echo ""
+    echo "The Adafruit Sound Bonnet (Speaker Bonnet) provides high-quality I2S audio output"
+    echo "for your Raspberry Pi. It is required for modules that use audio playback."
+    echo ""
+    echo "This will:"
+    echo "  - Install required dependencies (wget, python3-pip)"
+    echo "  - Install adafruit-python-shell"
+    echo "  - Download and run the i2samp.py installation script"
+    echo "  - Configure I2S audio in the boot configuration"
+    echo ""
+    echo "Note: I2C must be enabled separately via raspi-config if you need I2C devices."
+    echo "      (I2C is not required for basic audio functionality)"
+    echo ""
+    
+    log_warn "Do you want to install the Adafruit Sound Bonnet now?"
+    read -p "Install Sound Bonnet? (y/N): " -n 1 -r
+    echo ""
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Skipping Sound Bonnet installation"
+        log_info "You can install it later by running: sudo system/optimization/setup.sh install"
+        log_info "Then run: sudo optimize.py"
+        echo ""
+        return 0
+    fi
+    
+    log_step "Installing Adafruit Sound Bonnet..."
+    echo ""
+    
+    # Install dependencies
+    log_info "Installing required packages..."
+    local deps=("wget" "python3-pip" "python3-venv")
+    for dep in "${deps[@]}"; do
+        if dpkg -l "$dep" 2>/dev/null | grep -q "^ii"; then
+            log_info "✓ $dep (already installed)"
+        else
+            log_info "Installing $dep..."
+            if apt-get install -y -qq "$dep" 2>/dev/null; then
+                log_info "✓ $dep installed"
+            else
+                log_warn "Failed to install $dep, continuing anyway"
+            fi
+        fi
+    done
+    
+    echo ""
+    
+    # Install adafruit-python-shell
+    log_info "Installing adafruit-python-shell..."
+    if pip3 install --break-system-packages adafruit-python-shell >/dev/null 2>&1; then
+        log_info "✓ adafruit-python-shell installed"
+    else
+        log_warn "Failed with --break-system-packages, trying without it..."
+        if pip3 install adafruit-python-shell >/dev/null 2>&1; then
+            log_info "✓ adafruit-python-shell installed"
+        else
+            log_error "Failed to install adafruit-python-shell"
+            return 1
+        fi
+    fi
+    
+    echo ""
+    
+    # Download the i2samp.py installer script
+    local script_url='https://github.com/adafruit/Raspberry-Pi-Installer-Scripts/raw/main/i2samp.py'
+    local script_path='/tmp/i2samp.py'
+    
+    log_info "Downloading installation script from Adafruit..."
+    if wget -q -O "$script_path" "$script_url"; then
+        log_info "✓ Installation script downloaded"
+    else
+        log_error "Failed to download i2samp.py installation script"
+        return 1
+    fi
+    
+    # Make the script executable
+    chmod +x "$script_path"
+    
+    echo ""
+    
+    # Run the installation script
+    log_info "Running Sound Bonnet installation script..."
+    log_info "This may take a few minutes and will configure I2S audio..."
+    echo ""
+    
+    # The script needs to be run with environment variables preserved
+    if python3 "$script_path"; then
+        log_info "✓ Sound Bonnet installation complete!"
+    else
+        log_error "Installation script failed"
+        # Clean up the downloaded script
+        rm -f "$script_path" 2>/dev/null
+        return 1
+    fi
+    
+    # Clean up the downloaded script
+    rm -f "$script_path" 2>/dev/null
+    
+    echo ""
+    log_info "============================================"
+    log_info "Sound Bonnet Installation Complete"
+    log_info "============================================"
+    echo ""
+    log_warn "IMPORTANT: A reboot is required for the changes to take effect"
+    log_info "After reboot, use 'alsamixer' to adjust volume (50% is a good starting point)"
+    echo ""
+    
+    return 0
+}
+
 # Install all modules or a specific module
 install_modules() {
     local specific_module="$1"
@@ -622,6 +737,9 @@ install_modules() {
         log_error "Cannot proceed with module installation"
         return 1
     fi
+    
+    # Optional Sound Bonnet setup (must be done before modules that need audio)
+    setup_sound_bonnet
     
     # Execute install command for each module
     for module in "${modules[@]}"; do
