@@ -431,6 +431,7 @@ install_modules() {
 # Uninstall all modules or a specific module
 uninstall_modules() {
     local specific_module="$1"
+    local purge_mode="$2"
     local modules
     local failed_modules=()
     local success_count=0
@@ -451,7 +452,25 @@ uninstall_modules() {
         log_info "Found ${#modules[@]} module(s) to uninstall"
     fi
     
+    # Show purge warning if enabled
+    if [ "$purge_mode" = "purge" ]; then
+        echo ""
+        log_warn "PURGE MODE ENABLED"
+        log_warn "This will remove ALL Luigi files, configurations, and installed packages"
+        log_warn "Your system will be restored to its pre-Luigi state"
+        echo ""
+        read -p "Are you absolutely sure? Type 'yes' to continue: " -r
+        echo ""
+        if [ "$REPLY" != "yes" ]; then
+            log_info "Purge cancelled"
+            return 0
+        fi
+    fi
+    
     echo ""
+    
+    # Export purge mode for module scripts
+    export LUIGI_PURGE_MODE="$purge_mode"
     
     # Execute uninstall command for each module
     for module in "${modules[@]}"; do
@@ -461,6 +480,23 @@ uninstall_modules() {
             failed_modules+=("$module")
         fi
     done
+    
+    # Remove setup script dependencies if purging everything
+    if [ "$purge_mode" = "purge" ] && [ -z "$specific_module" ]; then
+        echo ""
+        log_step "Removing setup script dependencies..."
+        
+        # Remove jq if it was installed
+        if command -v jq >/dev/null 2>&1; then
+            log_info "Removing jq..."
+            if apt-get remove -y jq >/dev/null 2>&1; then
+                apt-get autoremove -y >/dev/null 2>&1
+                log_info "✓ jq removed"
+            else
+                log_warn "Failed to remove jq (may not have been installed by Luigi)"
+            fi
+        fi
+    fi
     
     # Summary
     log_header "Uninstallation Summary"
@@ -472,6 +508,10 @@ uninstall_modules() {
             echo "  - $module"
         done
         return 1
+    fi
+    
+    if [ "$purge_mode" = "purge" ]; then
+        log_info "System has been restored to pre-Luigi state"
     fi
     
     echo ""
@@ -513,11 +553,12 @@ show_status() {
 
 # Show usage information
 show_usage() {
-    echo "Usage: $0 [install|uninstall|status] [module]"
+    echo "Usage: $0 [install|uninstall|purge|status] [module]"
     echo ""
     echo "Commands:"
     echo "  install   - Install all modules or a specific module (default)"
-    echo "  uninstall - Remove all modules or a specific module"
+    echo "  uninstall - Remove all modules or a specific module (keeps configs)"
+    echo "  purge     - Remove all modules AND installed packages (complete cleanup)"
     echo "  status    - Show installation status of all modules or a specific module"
     echo ""
     echo "Arguments:"
@@ -527,7 +568,8 @@ show_usage() {
     echo "  sudo $0 install                         # Install all modules"
     echo "  sudo $0 install motion-detection/mario  # Install specific module"
     echo "  sudo $0 status                          # Show status of all modules"
-    echo "  sudo $0 uninstall                       # Uninstall all modules"
+    echo "  sudo $0 uninstall                       # Uninstall all modules (keep configs)"
+    echo "  sudo $0 purge                           # Complete removal (packages + configs)"
     echo ""
     echo "Supported categories:"
     for category in "${CATEGORIES[@]}"; do
@@ -548,7 +590,11 @@ main() {
             ;;
         uninstall)
             check_root "$@"
-            uninstall_modules "$module"
+            uninstall_modules "$module" ""
+            ;;
+        purge)
+            check_root "$@"
+            uninstall_modules "$module" "purge"
             ;;
         status)
             show_status "$module"

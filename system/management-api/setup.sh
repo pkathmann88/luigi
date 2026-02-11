@@ -210,6 +210,21 @@ uninstall() {
     require_root
     log_info "Uninstalling ${MODULE_NAME}..."
     
+    # Check if purge mode is enabled
+    local purge_mode="${LUIGI_PURGE_MODE:-}"
+    local remove_config="N"
+    local remove_logs="N"
+    local remove_certs="N"
+    local remove_packages="N"
+    
+    if [ "$purge_mode" = "purge" ]; then
+        log_warn "PURGE MODE: Removing all files, configs, and packages"
+        remove_config="y"
+        remove_logs="y"
+        remove_certs="y"
+        remove_packages="y"
+    fi
+    
     # 1. Stop and disable service
     if systemctl is-active --quiet "$SERVICE_NAME"; then
         log_info "Stopping service..."
@@ -234,42 +249,78 @@ uninstall() {
         rm -rf "$APP_DIR"
     fi
     
-    # 4. Ask about configuration removal
-    if [ -d "$CONFIG_DIR" ]; then
+    # 4. Handle configuration removal
+    if [ "$purge_mode" != "purge" ] && [ -d "$CONFIG_DIR" ]; then
         log_warn "Configuration directory exists: $CONFIG_DIR"
         read -p "Remove configuration? (y/N): " -n 1 -r
         echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            log_info "Removing configuration..."
-            rm -rf "$CONFIG_DIR"
-        else
-            log_info "Keeping configuration"
-        fi
+        remove_config=$REPLY
     fi
     
-    # 5. Ask about log removal
-    log_warn "Log files exist in $LOG_DIR"
-    read -p "Remove log files? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [[ $remove_config =~ ^[Yy]$ ]]; then
+        if [ -d "$CONFIG_DIR" ]; then
+            log_info "Removing configuration..."
+            rm -rf "$CONFIG_DIR"
+        fi
+    else
+        [ -d "$CONFIG_DIR" ] && log_info "Keeping configuration"
+    fi
+    
+    # 5. Handle log removal
+    if [ "$purge_mode" != "purge" ]; then
+        log_warn "Log files exist in $LOG_DIR"
+        read -p "Remove log files? (y/N): " -n 1 -r
+        echo
+        remove_logs=$REPLY
+    fi
+    
+    if [[ $remove_logs =~ ^[Yy]$ ]]; then
         log_info "Removing log files..."
-        rm -f "$LOG_DIR/management-api.log"*
-        rm -rf "$AUDIT_LOG_DIR"
+        rm -f "$LOG_DIR/management-api.log"* 2>/dev/null
+        rm -rf "$AUDIT_LOG_DIR" 2>/dev/null
     else
         log_info "Keeping log files"
     fi
     
-    # 6. Ask about certificate removal
-    if [ -d "$CERTS_DIR" ]; then
+    # 6. Handle certificate removal
+    if [ "$purge_mode" != "purge" ] && [ -d "$CERTS_DIR" ]; then
         log_warn "TLS certificates exist in $CERTS_DIR"
         read -p "Remove certificates? (y/N): " -n 1 -r
         echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        remove_certs=$REPLY
+    fi
+    
+    if [[ $remove_certs =~ ^[Yy]$ ]]; then
+        if [ -d "$CERTS_DIR" ]; then
             log_info "Removing certificates..."
             rm -rf "$CERTS_DIR"
-        else
-            log_info "Keeping certificates"
         fi
+    else
+        [ -d "$CERTS_DIR" ] && log_info "Keeping certificates"
+    fi
+    
+    # 7. Remove packages if in purge mode or requested
+    if [ "$purge_mode" != "purge" ]; then
+        echo ""
+        read -p "Remove installed packages (nodejs, npm)? (y/N): " -n 1 -r
+        echo
+        remove_packages=$REPLY
+    fi
+    
+    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+        log_step "Removing packages..."
+        
+        local packages=("nodejs" "npm")
+        for pkg in "${packages[@]}"; do
+            if dpkg -l | grep -q "^ii  $pkg "; then
+                log_info "Removing $pkg..."
+                apt-get remove -y "$pkg" >/dev/null 2>&1 || log_warn "Failed to remove $pkg"
+            fi
+        done
+        
+        # Clean up unused dependencies
+        log_info "Removing unused dependencies..."
+        apt-get autoremove -y >/dev/null 2>&1
     fi
     
     log_info "✓ Uninstall complete!"

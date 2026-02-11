@@ -245,15 +245,28 @@ uninstall() {
     log_info "Uninstalling System Optimization Module..."
     echo ""
     
-    log_warn "This will remove the optimization script and config"
-    log_warn "It will NOT revert optimizations that have been applied"
-    echo ""
-    read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r
-    echo ""
+    # Check if purge mode is enabled
+    local purge_mode="${LUIGI_PURGE_MODE:-}"
+    local remove_config="N"
+    local remove_log="N"
+    local remove_packages="N"
     
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Uninstall cancelled"
-        exit 0
+    if [ "$purge_mode" = "purge" ]; then
+        log_warn "PURGE MODE: Removing all files, configs, and packages"
+        remove_config="y"
+        remove_log="y"
+        remove_packages="y"
+    else
+        log_warn "This will remove the optimization script and config"
+        log_warn "It will NOT revert optimizations that have been applied"
+        echo ""
+        read -p "Are you sure you want to uninstall? (y/N): " -n 1 -r
+        echo ""
+        
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Uninstall cancelled"
+            exit 0
+        fi
     fi
     
     log_step "Removing installed files..."
@@ -264,32 +277,53 @@ uninstall() {
         log_info "Removed: $INSTALL_BIN"
     fi
     
-    # Ask about config directory
-    if [ -d "$INSTALL_CONFIG_DIR" ]; then
+    # Handle config directory
+    if [ "$purge_mode" != "purge" ] && [ -d "$INSTALL_CONFIG_DIR" ]; then
         echo ""
         read -p "Remove config directory? (y/N): " -n 1 -r
         echo ""
-        
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -rf "$INSTALL_CONFIG_DIR"
-            log_info "Removed: $INSTALL_CONFIG_DIR"
-        else
-            log_info "Preserved: $INSTALL_CONFIG_DIR"
-        fi
+        remove_config=$REPLY
     fi
     
-    # Ask about log file
-    if [ -f "$LOG_FILE" ]; then
+    if [[ $remove_config =~ ^[Yy]$ ]]; then
+        if [ -d "$INSTALL_CONFIG_DIR" ]; then
+            rm -rf "$INSTALL_CONFIG_DIR"
+            log_info "Removed: $INSTALL_CONFIG_DIR"
+        fi
+    else
+        [ -d "$INSTALL_CONFIG_DIR" ] && log_info "Preserved: $INSTALL_CONFIG_DIR"
+    fi
+    
+    # Handle log file
+    if [ "$purge_mode" != "purge" ] && [ -f "$LOG_FILE" ]; then
         echo ""
         read -p "Remove log file? (y/N): " -n 1 -r
         echo ""
-        
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        remove_log=$REPLY
+    fi
+    
+    if [[ $remove_log =~ ^[Yy]$ ]]; then
+        if [ -f "$LOG_FILE" ]; then
             rm -f "$LOG_FILE"
             log_info "Removed: $LOG_FILE"
-        else
-            log_info "Preserved: $LOG_FILE"
         fi
+    else
+        [ -f "$LOG_FILE" ] && log_info "Preserved: $LOG_FILE"
+    fi
+    
+    # Remove packages if in purge mode or requested
+    if [ "$purge_mode" != "purge" ]; then
+        echo ""
+        read -p "Remove installed packages (python3)? (y/N): " -n 1 -r
+        echo ""
+        remove_packages=$REPLY
+    fi
+    
+    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+        log_step "Removing packages..."
+        log_warn "Note: python3 is a system package and may be needed by other software"
+        log_info "Skipping python3 removal for safety"
+        # We don't actually remove python3 as it's a critical system package
     fi
     
     echo ""

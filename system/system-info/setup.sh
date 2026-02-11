@@ -323,6 +323,19 @@ uninstall() {
     
     check_root "$@"
     
+    # Check if purge mode is enabled
+    local purge_mode="${LUIGI_PURGE_MODE:-}"
+    local remove_config="N"
+    local remove_log="N"
+    local remove_packages="N"
+    
+    if [ "$purge_mode" = "purge" ]; then
+        log_warn "PURGE MODE: Removing all files, configs, and packages"
+        remove_config="y"
+        remove_log="y"
+        remove_packages="y"
+    fi
+    
     # Stop and disable service
     log_step "Stopping and disabling service..."
     if systemctl is-active --quiet system-info.service; then
@@ -366,29 +379,59 @@ uninstall() {
         fi
     fi
     
-    # Ask about config removal
-    echo ""
-    log_warn "Configuration directory: $INSTALL_CONFIG_DIR"
-    read -p "Remove configuration? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Handle config removal
+    if [ "$purge_mode" != "purge" ]; then
+        echo ""
+        log_warn "Configuration directory: $INSTALL_CONFIG_DIR"
+        read -p "Remove configuration? (y/N): " -n 1 -r
+        echo
+        remove_config=$REPLY
+    fi
+    
+    if [[ $remove_config =~ ^[Yy]$ ]]; then
         rm -rf "$INSTALL_CONFIG_DIR"
         log_info "Configuration removed"
     else
         log_info "Configuration preserved"
     fi
     
-    # Ask about log removal
-    if [ -f "$LOG_FILE" ]; then
-        log_warn "Log file: $LOG_FILE"
-        read -p "Remove log file? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Handle log removal
+    if [ "$purge_mode" != "purge" ]; then
+        if [ -f "$LOG_FILE" ]; then
+            log_warn "Log file: $LOG_FILE"
+            read -p "Remove log file? (y/N): " -n 1 -r
+            echo
+            remove_log=$REPLY
+        fi
+    fi
+    
+    if [[ $remove_log =~ ^[Yy]$ ]]; then
+        if [ -f "$LOG_FILE" ]; then
             rm -f "$LOG_FILE"*
             log_info "Log file removed"
-        else
-            log_info "Log file preserved"
         fi
+    else
+        [ -f "$LOG_FILE" ] && log_info "Log file preserved"
+    fi
+    
+    # Remove packages if in purge mode or requested
+    if [ "$purge_mode" != "purge" ]; then
+        echo ""
+        read -p "Remove installed packages (python3-psutil)? (y/N): " -n 1 -r
+        echo
+        remove_packages=$REPLY
+    fi
+    
+    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+        log_step "Removing packages..."
+        if dpkg -l | grep -q "^ii  python3-psutil "; then
+            log_info "Removing python3-psutil..."
+            apt-get remove -y python3-psutil >/dev/null 2>&1 || log_warn "Failed to remove python3-psutil"
+        fi
+        
+        # Clean up unused dependencies
+        log_info "Removing unused dependencies..."
+        apt-get autoremove -y >/dev/null 2>&1
     fi
     
     echo ""

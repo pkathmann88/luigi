@@ -427,6 +427,21 @@ verify_installation() {
 uninstall() {
     log_step "Uninstalling mario motion detection service..."
     
+    # Check if purge mode is enabled
+    local purge_mode="${LUIGI_PURGE_MODE:-}"
+    local remove_sounds="N"
+    local remove_log="N"
+    local remove_config="N"
+    local remove_packages="N"
+    
+    if [ "$purge_mode" = "purge" ]; then
+        log_warn "PURGE MODE: Removing all files, configs, and packages"
+        remove_sounds="y"
+        remove_log="y"
+        remove_config="y"
+        remove_packages="y"
+    fi
+    
     # Stop service if running
     if systemctl is-active --quiet mario.service 2>/dev/null; then
         log_info "Stopping service..."
@@ -466,9 +481,19 @@ uninstall() {
         rm -f "$HA_MQTT_DESCRIPTOR"
     fi
     
-    # Ask about sound files
-    read -rp "$(echo -e "${YELLOW}Remove sound files from $INSTALL_SOUNDS? [y/N]${NC} ")" response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    # Remove timer file
+    if [ -f "$TIMER_FILE" ]; then
+        log_info "Removing timer file..."
+        rm -f "$TIMER_FILE"
+    fi
+    
+    # Handle sound files
+    if [ "$purge_mode" != "purge" ]; then
+        read -rp "$(echo -e "${YELLOW}Remove sound files from $INSTALL_SOUNDS? [y/N]${NC} ")" response
+        remove_sounds=$response
+    fi
+    
+    if [[ "$remove_sounds" =~ ^[Yy]$ ]]; then
         if [ -d "$INSTALL_SOUNDS" ]; then
             log_info "Removing sound files..."
             rm -rf "$INSTALL_SOUNDS"
@@ -477,9 +502,13 @@ uninstall() {
         log_info "Keeping sound files"
     fi
     
-    # Ask about log file
-    read -rp "$(echo -e "${YELLOW}Remove log file $LOG_FILE? [y/N]${NC} ")" response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    # Handle log file
+    if [ "$purge_mode" != "purge" ]; then
+        read -rp "$(echo -e "${YELLOW}Remove log file $LOG_FILE? [y/N]${NC} ")" response
+        remove_log=$response
+    fi
+    
+    if [[ "$remove_log" =~ ^[Yy]$ ]]; then
         if [ -f "$LOG_FILE" ]; then
             log_info "Removing log file..."
             rm -f "$LOG_FILE"
@@ -488,9 +517,13 @@ uninstall() {
         log_info "Keeping log file"
     fi
     
-    # Ask about config file
-    read -rp "$(echo -e "${YELLOW}Remove config file $INSTALL_CONFIG? [y/N]${NC} ")" response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
+    # Handle config file
+    if [ "$purge_mode" != "purge" ]; then
+        read -rp "$(echo -e "${YELLOW}Remove config file $INSTALL_CONFIG? [y/N]${NC} ")" response
+        remove_config=$response
+    fi
+    
+    if [[ "$remove_config" =~ ^[Yy]$ ]]; then
         if [ -f "$INSTALL_CONFIG" ]; then
             log_info "Removing config file..."
             rm -f "$INSTALL_CONFIG"
@@ -500,7 +533,7 @@ uninstall() {
             if rmdir "$INSTALL_CONFIG_DIR" 2>/dev/null; then
                 log_info "Removed empty config directory"
             fi
-            # Try to remove parent directories if empty (derived from INSTALL_CONFIG_DIR)
+            # Try to remove parent directories if empty
             local parent_dir
             parent_dir=$(dirname "$INSTALL_CONFIG_DIR")
             rmdir "$parent_dir" 2>/dev/null || true
@@ -509,6 +542,28 @@ uninstall() {
         fi
     else
         log_info "Keeping config file"
+    fi
+    
+    # Remove packages if in purge mode or requested
+    if [ "$purge_mode" != "purge" ]; then
+        read -rp "$(echo -e "${YELLOW}Remove installed packages (python3-rpi.gpio, alsa-utils)? [y/N]${NC} ")" response
+        remove_packages=$response
+    fi
+    
+    if [[ "$remove_packages" =~ ^[Yy]$ ]]; then
+        log_info "Removing packages..."
+        
+        local packages=("python3-rpi.gpio" "alsa-utils")
+        for pkg in "${packages[@]}"; do
+            if dpkg -l | grep -q "^ii  $pkg "; then
+                log_info "Removing $pkg..."
+                apt-get remove -y "$pkg" >/dev/null 2>&1 || log_warn "Failed to remove $pkg"
+            fi
+        done
+        
+        # Clean up unused dependencies
+        log_info "Removing unused dependencies..."
+        apt-get autoremove -y >/dev/null 2>&1
     fi
     
     log_info "Uninstall completed"

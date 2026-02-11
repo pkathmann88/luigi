@@ -349,14 +349,30 @@ uninstall_module() {
     
     check_root
     
-    print_warning "This will remove all installed ha-mqtt files"
-    echo ""
+    # Check if purge mode is enabled
+    local purge_mode="${LUIGI_PURGE_MODE:-}"
+    local remove_config="N"
+    local remove_packages="N"
     
-    # Interactive prompts for config and sensors
-    read -p "Remove configuration and sensor descriptors? [y/N] " -n 1 -r
-    echo ""
-    local remove_config=$REPLY
+    if [ "$purge_mode" = "purge" ]; then
+        print_warning "PURGE MODE: Removing all files, configs, and packages"
+        remove_config="y"
+        remove_packages="y"
+    else
+        print_warning "This will remove all installed ha-mqtt files"
+        echo ""
+        
+        # Interactive prompts for config and sensors
+        read -p "Remove configuration and sensor descriptors? [y/N] " -n 1 -r
+        echo ""
+        remove_config=$REPLY
+        
+        read -p "Remove installed packages (mosquitto-clients, jq)? [y/N] " -n 1 -r
+        echo ""
+        remove_packages=$REPLY
+    fi
     
+    echo ""
     print_info "Removing installed files..."
     
     # Remove scripts
@@ -392,6 +408,28 @@ uninstall_module() {
         fi
     else
         print_info "Preserved: configuration directory"
+    fi
+    
+    # Remove packages if requested
+    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+        echo ""
+        print_info "Removing packages..."
+        
+        local packages=("mosquitto-clients" "jq")
+        for pkg in "${packages[@]}"; do
+            if dpkg -l | grep -q "^ii  $pkg "; then
+                print_info "Removing $pkg..."
+                if apt-get remove -y "$pkg" >/dev/null 2>&1; then
+                    print_success "$pkg removed"
+                else
+                    print_warning "Failed to remove $pkg"
+                fi
+            fi
+        done
+        
+        # Clean up unused dependencies
+        print_info "Removing unused dependencies..."
+        apt-get autoremove -y >/dev/null 2>&1
     fi
     
     echo ""
