@@ -217,6 +217,59 @@ deploy_libraries() {
     return 0
 }
 
+# Function to prompt for MQTT configuration
+prompt_mqtt_config() {
+    local mqtt_host="homeassistant.local"
+    local mqtt_port="1883"
+    local mqtt_username="luigi"
+    local mqtt_password=""
+    
+    echo ""
+    print_info "MQTT Broker Configuration"
+    echo "Please provide your MQTT broker connection details."
+    echo ""
+    
+    # Prompt for hostname
+    read -r -p "MQTT broker hostname [${mqtt_host}]: " input_host
+    if [ -n "$input_host" ]; then
+        mqtt_host="$input_host"
+    fi
+    
+    # Prompt for port
+    read -r -p "MQTT broker port [${mqtt_port}]: " input_port
+    if [ -n "$input_port" ]; then
+        mqtt_port="$input_port"
+    fi
+    
+    # Prompt for username
+    read -r -p "MQTT username [${mqtt_username}]: " input_username
+    if [ -n "$input_username" ]; then
+        mqtt_username="$input_username"
+    fi
+    
+    # Prompt for password (required)
+    while [ -z "$mqtt_password" ]; do
+        read -r -s -p "MQTT password (required): " mqtt_password
+        echo ""
+        if [ -z "$mqtt_password" ]; then
+            print_warning "Password cannot be empty"
+        fi
+    done
+    
+    echo ""
+    print_info "Configuration summary:"
+    echo "  Broker: ${mqtt_host}:${mqtt_port}"
+    echo "  Username: ${mqtt_username}"
+    echo "  Password: ********"
+    echo ""
+    
+    # Export for use in deploy_configuration
+    export MQTT_HOST="$mqtt_host"
+    export MQTT_PORT="$mqtt_port"
+    export MQTT_USERNAME="$mqtt_username"
+    export MQTT_PASSWORD="$mqtt_password"
+}
+
 # Function to deploy configuration
 deploy_configuration() {
     print_info "Deploying configuration..."
@@ -232,14 +285,31 @@ deploy_configuration() {
     # Only copy if config doesn't exist (don't overwrite existing)
     if [ -f "$config_dst" ]; then
         print_warning "Config already exists, not overwriting: $config_dst"
+        return 0
+    fi
+    
+    # Prompt for MQTT configuration
+    prompt_mqtt_config
+    
+    # Copy example config as template
+    if ! cp "$config_src" "$config_dst"; then
+        print_error "Failed to copy config template"
+        return 1
+    fi
+    
+    # Replace placeholders with user-provided values
+    sed -i "s/^HOST=.*/HOST=${MQTT_HOST}/" "$config_dst"
+    sed -i "s/^PORT=.*/PORT=${MQTT_PORT}/" "$config_dst"
+    sed -i "s/^USERNAME=.*/USERNAME=${MQTT_USERNAME}/" "$config_dst"
+    sed -i "s/^PASSWORD=.*/PASSWORD=${MQTT_PASSWORD}/" "$config_dst"
+    
+    # Set secure permissions
+    if chmod 600 "$config_dst"; then
+        print_success "Deployed: ha-mqtt.conf (600)"
+        print_success "MQTT configuration saved to $config_dst"
     else
-        if cp "$config_src" "$config_dst" && chmod 600 "$config_dst"; then
-            print_success "Deployed: ha-mqtt.conf (600)"
-            print_warning "Remember to edit $config_dst with your broker settings"
-        else
-            print_error "Failed to deploy config"
-            return 1
-        fi
+        print_error "Failed to set permissions on config file"
+        return 1
     fi
     
     return 0
@@ -357,11 +427,14 @@ install_module() {
     echo "========================================="
     echo ""
     print_info "Next steps:"
-    echo "  1. Edit configuration: sudo nano ${INSTALL_CONFIG_DIR}/ha-mqtt.conf"
-    echo "  2. Test connectivity: luigi-mqtt-status"
-    echo "  3. Add sensor descriptors to: ${SENSORS_DIR}/"
-    echo "  4. Register sensors: sudo luigi-discover"
-    echo "  5. Publish test value: luigi-publish --sensor test --value 42"
+    echo "  1. Test connectivity: luigi-mqtt-status"
+    echo "  2. Add sensor descriptors to: ${SENSORS_DIR}/"
+    echo "  3. Register sensors: sudo luigi-discover"
+    echo "  4. Publish test value: luigi-publish --sensor test --value 42"
+    echo ""
+    print_info "Configuration:"
+    echo "  - Config file: ${INSTALL_CONFIG_DIR}/ha-mqtt.conf"
+    echo "  - To change settings: sudo nano ${INSTALL_CONFIG_DIR}/ha-mqtt.conf"
     echo ""
     print_info "Documentation:"
     echo "  - Module README: ${SCRIPT_DIR}/README.md"
