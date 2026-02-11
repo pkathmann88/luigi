@@ -37,13 +37,14 @@ sudo ./setup.sh install
 
 The installer will:
 1. Check prerequisites and install Node.js if needed
-2. Install backend Node.js dependencies
-3. Build the web frontend (React/TypeScript)
-   - If a previous build exists, you'll be prompted whether to rebuild
-   - Rebuilding can take 5-15 minutes on Raspberry Pi Zero W
+2. Copy application files to `~/luigi/system/management-api`
+3. **Detect pre-built artifacts** (from `build` command) or build if needed
 4. Generate TLS certificates
 5. Configure the service
 6. Start the API server
+
+**Pre-built Deployment:**
+If you've run `./setup.sh build` first, the installer will automatically detect and use the pre-built frontend/backend, making installation much faster (no rebuild needed).
 
 **IMPORTANT:** After installation, edit the configuration file and set a strong password:
 
@@ -52,6 +53,25 @@ sudo nano /etc/luigi/system/management-api/.env
 ```
 
 Change `AUTH_PASSWORD` to a secure password (minimum 12 characters).
+
+### Build Then Deploy Workflow (Recommended)
+
+For the fastest installation, especially on slow hardware:
+
+```bash
+# Step 1: Build in repository (development location)
+cd system/management-api
+sudo ./setup.sh build  # Builds in place: ~/repos/luigi/system/management-api
+
+# Step 2: Deploy pre-built application
+sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api (uses pre-built)
+```
+
+**Benefits:**
+- Build once in your development location
+- Install copies pre-built artifacts (no rebuild, very fast)
+- Can build on faster machine, deploy on Raspberry Pi
+- CI/CD friendly
 
 ### Build Only (Development)
 

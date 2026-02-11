@@ -121,38 +121,68 @@ install() {
     
     # 3. Copy application files
     log_info "Copying application files..."
+    
+    # Check for pre-built artifacts in source
+    local has_prebuilt_frontend=false
+    local has_prebuilt_backend=false
+    
+    if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
+        has_prebuilt_frontend=true
+        log_info "✓ Detected pre-built frontend in source"
+    fi
+    
+    if [ -d "$SCRIPT_DIR/node_modules" ] && [ -n "$(ls -A "$SCRIPT_DIR/node_modules" 2>/dev/null)" ]; then
+        has_prebuilt_backend=true
+        log_info "✓ Detected pre-built backend dependencies in source"
+    fi
+    
+    if [ "$has_prebuilt_frontend" = true ] || [ "$has_prebuilt_backend" = true ]; then
+        log_info "Copying pre-built artifacts from repository..."
+    fi
+    
     cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
     
     # Set ownership
     chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
     
-    # 4. Install Node.js dependencies
-    log_info "Installing Node.js dependencies..."
-    cd "$APP_DIR"
-    sudo -u "$INSTALL_USER" npm install --production --no-audit
+    # 4. Install Node.js dependencies (skip if pre-built)
+    if [ "$has_prebuilt_backend" = true ]; then
+        log_info "Using pre-built backend dependencies (skipping npm install) ✓"
+        log_info "Note: Run 'npm install' in $APP_DIR if dependencies need updating"
+    else
+        log_info "Installing Node.js dependencies..."
+        cd "$APP_DIR"
+        sudo -u "$INSTALL_USER" npm install --production --no-audit
+        
+        # Run npm audit
+        log_info "Running security audit..."
+        sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
+    fi
     
-    # Run npm audit
-    log_info "Running security audit..."
-    sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
-    
-    # 4.5. Build frontend
-    log_info "Building web frontend..."
+    # 4.5. Build frontend (skip if pre-built)
+    log_info "Checking web frontend..."
     if [ -d "$APP_DIR/frontend" ]; then
-        # Check if frontend is already built
+        # Check if frontend is already built (from pre-built source or copied)
         local should_build=true
         if [ -d "$APP_DIR/frontend/dist" ] && [ -n "$(ls -A "$APP_DIR/frontend/dist" 2>/dev/null)" ]; then
-            log_info "Frontend build already exists in $APP_DIR/frontend/dist"
-            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
-            echo
-            if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
-                log_info "Skipping frontend rebuild (using existing build)"
+            if [ "$has_prebuilt_frontend" = true ]; then
+                log_info "Using pre-built frontend (skipping build) ✓"
                 should_build=false
             else
-                log_info "Proceeding with frontend rebuild..."
+                log_info "Frontend build already exists in $APP_DIR/frontend/dist"
+                read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
+                echo
+                if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
+                    log_info "Skipping frontend rebuild (using existing build)"
+                    should_build=false
+                else
+                    log_info "Proceeding with frontend rebuild..."
+                fi
             fi
         fi
         
         if [ "$should_build" = true ]; then
+            log_info "Building web frontend..."
             (
                 cd "$APP_DIR/frontend" || exit 1
                 
