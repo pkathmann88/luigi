@@ -82,7 +82,7 @@ Configuration file: `/etc/luigi/system/system-info/system-info.conf`
 
 ```ini
 [Logging]
-log_file = /var/log/system-info.log
+log_file = /var/log/luigi/system-info.log
 log_level = INFO
 log_max_bytes = 10485760
 log_backup_count = 5
@@ -99,7 +99,7 @@ main_loop_sleep_seconds = 60
 
 | Section | Option | Default | Description |
 |---------|--------|---------|-------------|
-| Logging | `log_file` | `/var/log/system-info.log` | Log file location |
+| Logging | `log_file` | `/var/log/luigi/system-info.log` | Log file location |
 | Logging | `log_level` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
 | Logging | `log_max_bytes` | `10485760` | Maximum log file size before rotation (10MB) |
 | Logging | `log_backup_count` | `5` | Number of rotated log files to keep |
@@ -194,7 +194,7 @@ sudo systemctl disable system-info
 sudo journalctl -u system-info -f
 
 # View log file
-sudo tail -f /var/log/system-info.log
+sudo tail -f /var/log/luigi/system-info.log
 
 # View recent errors
 sudo journalctl -u system-info -p err
@@ -300,7 +300,7 @@ This will:
 - **Dependencies**: `iot/ha-mqtt` (optional)
 - **Service Name**: `system-info.service`
 - **Configuration**: `/etc/luigi/system/system-info/system-info.conf`
-- **Log File**: `/var/log/system-info.log`
+- **Log File**: `/var/log/luigi/system-info.log`
 
 ## Development
 

@@ -960,7 +960,7 @@ cat descriptor.json | jq .
 
 - **Test connectivity:** `luigi-mqtt-status`
 - **Check discovery:** `sudo luigi-discover --verbose`
-- **View logs:** `tail -f /var/log/ha-mqtt.log`
+- **View logs:** `tail -f /var/log/luigi/ha-mqtt.log`
 - **Home Assistant logs:** Configuration → Logs
 - **MQTT broker logs:** `docker logs homeassistant_mqtt`
 

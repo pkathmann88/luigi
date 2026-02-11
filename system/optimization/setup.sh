@@ -34,7 +34,7 @@ CONFIG_EXAMPLE="optimize.conf.example"
 INSTALL_BIN="/usr/local/bin/optimize.py"
 INSTALL_CONFIG_DIR="/etc/luigi/system/optimization"
 INSTALL_CONFIG="/etc/luigi/system/optimization/optimize.conf"
-LOG_FILE="/var/log/system-optimization.log"
+LOG_FILE="/var/log/luigi/system-optimization.log"
 
 # Check if files exist
 check_files() {

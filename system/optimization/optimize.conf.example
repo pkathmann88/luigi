@@ -53,5 +53,5 @@ remove_packages=
 
 [Logging]
 # Log file for optimization script
-log_file=/var/log/system-optimization.log
+log_file=/var/log/luigi/system-optimization.log
 log_level=INFO

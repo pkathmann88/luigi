@@ -222,7 +222,7 @@ These skills provide context-aware guidance when working with Copilot.
 - **Python Scripts:** `/usr/local/bin/`
 - **systemd Services:** `/etc/systemd/system/`
 - **Resources:** `/usr/share/` (module-specific subdirectories)
-- **Logs:** `/var/log/` and systemd journal
+- **Logs:** `/var/log/luigi/` and systemd journal
 
 ### Python Architecture
 

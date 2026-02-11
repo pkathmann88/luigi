@@ -47,7 +47,7 @@ class Config:
             'remove_packages': ''
         },
         'Logging': {
-            'log_file': '/var/log/system-optimization.log',
+            'log_file': '/var/log/luigi/system-optimization.log',
             'log_level': 'INFO'
         }
     }

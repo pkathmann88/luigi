@@ -6,12 +6,13 @@ After=network.target
 [Service]
 Type=simple
 User=root
+ExecStartPre=/bin/mkdir -p /var/log/luigi
 ExecStart=/usr/bin/python3 /usr/local/bin/system-info.py
 Restart=on-failure
 RestartSec=10
-# Dual logging: both journalctl (automatic) and /var/log/system-info.log (traditional)
-StandardOutput=append:/var/log/system-info.log
-StandardError=append:/var/log/system-info.log
+# Dual logging: both journalctl (automatic) and /var/log/luigi/system-info.log (traditional)
+StandardOutput=append:/var/log/luigi/system-info.log
+StandardError=append:/var/log/luigi/system-info.log
 
 # Security hardening
 PrivateTmp=yes

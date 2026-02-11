@@ -9,6 +9,9 @@ User=pi
 Group=pi
 WorkingDirectory=/home/pi/luigi/system/management-api
 
+# Create log directory before starting
+ExecStartPre=/bin/mkdir -p /var/log/luigi
+
 # Environment
 Environment="NODE_ENV=production"
 EnvironmentFile=/etc/luigi/system/management-api/.env
@@ -30,7 +33,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/var/log
+ReadWritePaths=/var/log/luigi
 
 # Resource limits (Raspberry Pi Zero W constraints)
 LimitNOFILE=1024

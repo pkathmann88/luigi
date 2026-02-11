@@ -405,7 +405,7 @@ KEY_PATH=/home/pi/certs/server.key
 
 [Logging]
 # Logging configuration
-LOG_FILE=/var/log/management-api.log
+LOG_FILE=/var/log/luigi/management-api.log
 LOG_LEVEL=INFO
 LOG_MAX_BYTES=10485760
 LOG_BACKUP_COUNT=5
@@ -497,7 +497,7 @@ ALLOWED_IPS=192.168.1.100,192.168.1.101
 ### 2.4 Logging Strategy
 
 **Logging Configuration:**
-- Application log: `/var/log/management-api.log` (Winston, rotating 10MB x 5 files)
+- Application log: `/var/log/luigi/management-api.log` (Winston, rotating 10MB x 5 files)
 - Audit log: `/var/log/luigi/audit.log` (Security events, rotating 10MB x 10 files)
 - System log: journalctl (systemd captures stdout/stderr)
 - Levels used: DEBUG (development), INFO (operations), WARN (issues), ERROR (failures)
@@ -692,7 +692,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/var/log/management-api.log /var/log/luigi /tmp
+ReadWritePaths=/var/log/luigi /tmp
 
 # Resource limits (Raspberry Pi Zero W constraints)
 LimitNOFILE=1024
@@ -811,7 +811,7 @@ Action: Generate if not exists, skip if exists
 **Log Files:**
 ```
 Created by application (Winston)
-Location: /var/log/management-api.log, /var/log/luigi/audit.log
+Location: /var/log/luigi/management-api.log, /var/log/luigi/audit.log
 Permissions: 644
 Owner: pi:pi
 Rotation: Handled by Winston (10MB x 5 files, 10MB x 10 files)
