@@ -30,6 +30,17 @@ This component uses a PIR (Passive Infrared) motion sensor to detect movement an
 - Audio output device (speakers, headphones, or USB audio)
 - Jumper wires for GPIO connections
 
+### I2C Compatibility
+
+**The mario module is fully compatible with systems that have I2C enabled.** However, on fresh installations with I2C, there may be a brief GPIO subsystem initialization delay. The service includes automatic retry logic and proper startup dependencies to handle this seamlessly.
+
+**If you experience startup issues with I2C enabled:**
+- The service will automatically retry GPIO initialization (up to 3 attempts)
+- Service dependencies ensure GPIO subsystem is ready before starting
+- Check logs with: `sudo journalctl -u mario.service -n 50`
+
+No manual intervention is typically required - the built-in retry mechanism handles timing issues automatically.
+
 ## GPIO Configuration
 
 - **GPIO Pin 23** (Physical Pin 16) - PIR sensor data/output pin
@@ -478,17 +489,45 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
    sudo journalctl -u mario.service -n 50
    ```
 
-2. Verify Python script exists and has correct permissions:
+2. **Common Issue: "export_store: invalid GPIO 23" error**
+   
+   This error can occur on systems with I2C enabled, caused by GPIO subsystem timing issues.
+   
+   **Symptoms:**
+   - Service fails to start after fresh installation
+   - Error message in logs: "export_store: invalid GPIO 23"
+   - System has I2C enabled (via raspi-config or i2c-tools installed)
+   
+   **Solution:**
+   The mario service has built-in retry logic and proper startup dependencies to handle this automatically. If the issue persists:
+   
+   ```bash
+   # Verify service dependencies are correct
+   sudo systemctl cat mario.service | grep -A 3 "\[Unit\]"
+   
+   # Should show: After=network.target sysinit.target systemd-modules-load.service
+   ```
+   
+   If needed, reinstall the service:
+   ```bash
+   cd motion-detection/mario
+   sudo ./setup.sh uninstall
+   sudo ./setup.sh install
+   ```
+   
+   The updated service file ensures GPIO subsystem is ready before starting.
+
+3. Verify Python script exists and has correct permissions:
    ```bash
    ls -l /usr/local/bin/mario.py
    ```
 
-3. Verify Python dependencies:
+4. Verify Python dependencies:
    ```bash
    python3 -c "import RPi.GPIO"
    ```
 
-4. Test script manually:
+5. Test script manually:
    ```bash
    sudo python3 /usr/local/bin/mario.py
    ```

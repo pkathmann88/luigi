@@ -1,16 +1,21 @@
 [Unit]
 Description=Mario Motion Detection Service
 Documentation=https://github.com/pkathmann88/luigi
-After=network.target
+After=network.target sysinit.target systemd-modules-load.service
+# Ensure GPIO subsystem is ready before starting
+# This prevents "export_store: invalid GPIO" errors on systems with I2C enabled
 
 [Service]
 Type=simple
 # Note: root is required for GPIO access via RPi.GPIO library
 # TODO: Consider using gpio group and udev rules for non-root access
 User=root
+ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
+StartLimitBurst=5
+StartLimitIntervalSec=60
 # Dual logging: both journalctl (automatic) and /var/log/motion.log (traditional)
 StandardOutput=append:/var/log/motion.log
 StandardError=append:/var/log/motion.log
