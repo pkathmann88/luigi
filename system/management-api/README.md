@@ -53,6 +53,28 @@ sudo nano /etc/luigi/system/management-api/.env
 
 Change `AUTH_PASSWORD` to a secure password (minimum 12 characters).
 
+### Build Only (Development)
+
+To build the frontend and backend without full installation:
+
+```bash
+cd system/management-api
+sudo ./setup.sh build
+```
+
+The build command:
+- Installs Node.js dependencies (backend and frontend)
+- Builds the React/TypeScript frontend
+- Skips: configuration deployment, certificates, service installation
+
+This is useful for:
+- Development workflows
+- CI/CD pipelines
+- Pre-building before deployment
+- Testing builds without affecting running services
+
+After building, you can run the full `install` command to complete the deployment.
+
 ### Manual Installation
 
 ```bash

@@ -272,6 +272,142 @@ install() {
     log_info ""
 }
 
+# Build function - builds frontend and backend without full installation
+build() {
+    check_root
+    log_info "Building ${MODULE_NAME}..."
+    
+    # 1. Check prerequisites
+    if [ "${SKIP_PACKAGES:-}" != "1" ]; then
+        log_info "Checking prerequisites..."
+        
+        # Read packages from module.json
+        local module_json="$SCRIPT_DIR/module.json"
+        local packages=()
+        
+        if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+            # Parse apt_packages array from JSON
+            while IFS= read -r pkg; do
+                packages+=("$pkg")
+            done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+        else
+            # Fallback to hardcoded packages if module.json or jq not available
+            log_warn "module.json or jq not found, using fallback package list"
+            packages=("nodejs" "npm" "openssl" "curl")
+        fi
+        
+        # Check which packages need installation
+        local to_install=()
+        for pkg in "${packages[@]}"; do
+            if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+                to_install+=("$pkg")
+            fi
+        done
+        
+        # Install packages if needed
+        if [ ${#to_install[@]} -gt 0 ]; then
+            log_info "Installing required packages: ${to_install[*]}"
+            apt-get update
+            apt-get install -y "${to_install[@]}"
+        fi
+    else
+        log_info "Skipping package installation (managed centrally)"
+    fi
+    
+    # Verify Node.js is available and check version
+    if ! command_exists node; then
+        log_error "Node.js installation failed or not in PATH"
+        exit 1
+    fi
+    
+    local node_version
+    node_version=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$node_version" -lt 16 ]; then
+        log_error "Node.js version 16 or higher is required (found: $(node --version))"
+        exit 1
+    fi
+    log_info "Node.js version: $(node --version) ✓"
+    
+    # 2. Create directory structure (minimal for build)
+    log_info "Creating directories..."
+    mkdir -p "$APP_DIR"
+    
+    # 3. Copy application files
+    log_info "Copying application files..."
+    cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
+    
+    # Set ownership
+    chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
+    
+    # 4. Install Node.js dependencies
+    log_info "Installing Node.js dependencies..."
+    cd "$APP_DIR"
+    sudo -u "$INSTALL_USER" npm install --production --no-audit
+    
+    # Run npm audit
+    log_info "Running security audit..."
+    sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
+    
+    # 5. Build frontend
+    log_info "Building web frontend..."
+    if [ -d "$APP_DIR/frontend" ]; then
+        # Check if frontend is already built
+        local should_build=true
+        if [ -d "$APP_DIR/frontend/dist" ] && [ -n "$(ls -A "$APP_DIR/frontend/dist" 2>/dev/null)" ]; then
+            log_info "Frontend build already exists in $APP_DIR/frontend/dist"
+            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
+            echo
+            if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
+                log_info "Skipping frontend rebuild (using existing build)"
+                should_build=false
+            else
+                log_info "Proceeding with frontend rebuild..."
+            fi
+        fi
+        
+        if [ "$should_build" = true ]; then
+            (
+                cd "$APP_DIR/frontend" || exit 1
+                
+                # Install frontend dependencies
+                log_info "Installing frontend dependencies..."
+                sudo -u "$INSTALL_USER" npm install --no-audit
+                
+                # Run type check
+                log_info "Running TypeScript type check..."
+                sudo -u "$INSTALL_USER" npm run type-check
+                
+                # Build production bundle
+                log_info "Building production bundle..."
+                sudo -u "$INSTALL_USER" npm run build
+            )
+            
+            # Verify dist directory exists
+            if [ -d "$APP_DIR/frontend/dist" ]; then
+                log_info "Frontend build successful ✓"
+            else
+                log_error "Frontend build failed - dist directory not found"
+                exit 1
+            fi
+        fi
+    else
+        log_warn "Frontend directory not found, skipping frontend build"
+    fi
+    
+    # Display build information
+    log_info ""
+    log_info "✓ Build complete!"
+    log_info ""
+    log_info "Built files location: $APP_DIR"
+    log_info "Backend: $APP_DIR (Node.js dependencies installed)"
+    log_info "Frontend: $APP_DIR/frontend/dist"
+    log_info ""
+    log_info "Next steps for full installation:"
+    log_info "  1. Run: sudo ./setup.sh install"
+    log_info "  2. Or manually deploy configuration, certificates, and service"
+    log_info ""
+}
+
 # Uninstall function
 uninstall() {
     check_root
@@ -510,6 +646,9 @@ case "$action" in
     install)
         install
         ;;
+    build)
+        build
+        ;;
     uninstall)
         uninstall
         ;;
@@ -517,10 +656,16 @@ case "$action" in
         status
         ;;
     *)
-        echo "Usage: $0 {install|uninstall|status} [--skip-packages]"
+        echo "Usage: $0 {install|build|uninstall|status} [--skip-packages]"
+        echo ""
+        echo "Commands:"
+        echo "  install         - Full installation (build + deploy config + certificates + service)"
+        echo "  build           - Build frontend and backend only (no deployment)"
+        echo "  uninstall       - Remove installation"
+        echo "  status          - Check installation status"
         echo ""
         echo "Options:"
-        echo "  --skip-packages  - Skip apt package installation/removal (for centralized management)"
+        echo "  --skip-packages - Skip apt package installation/removal (for centralized management)"
         exit 1
         ;;
 esac
