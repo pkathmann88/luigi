@@ -103,7 +103,7 @@ prompt_credentials() {
         
         # Warn if less than 12 characters
         if [ ${#password} -lt 12 ]; then
-            log_warn "Password is less than 12 characters (warning will be shown)"
+            log_warn "Password is less than 12 characters (a warning will be logged at server startup)"
         fi
         
         # Confirm password
@@ -166,13 +166,19 @@ generate_backend_env() {
     # Create config directory if it doesn't exist
     mkdir -p "$config_dir"
     
-    # Generate .env from template, replacing credentials
+    # Generate .env from template, replacing credentials safely
     if [ -f "$SCRIPT_DIR/.env.example" ]; then
+        # Copy template
         cp "$SCRIPT_DIR/.env.example" "$env_file"
         
+        # Escape special characters for sed (safer approach using printf)
+        local escaped_user escaped_pass
+        escaped_user=$(printf '%s\n' "$AUTH_USERNAME" | sed 's/[[\.*^$/]/\\&/g')
+        escaped_pass=$(printf '%s\n' "$AUTH_PASSWORD" | sed 's/[[\.*^$/]/\\&/g')
+        
         # Replace placeholder credentials with actual ones
-        sed -i "s/^AUTH_USERNAME=.*/AUTH_USERNAME=$AUTH_USERNAME/" "$env_file"
-        sed -i "s/^AUTH_PASSWORD=.*/AUTH_PASSWORD=$AUTH_PASSWORD/" "$env_file"
+        sed -i "s/^AUTH_USERNAME=.*/AUTH_USERNAME=$escaped_user/" "$env_file"
+        sed -i "s/^AUTH_PASSWORD=.*/AUTH_PASSWORD=$escaped_pass/" "$env_file"
     else
         log_error ".env.example not found"
         return 1

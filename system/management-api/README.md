@@ -180,19 +180,17 @@ Use the credentials you set during installation. If you need to change them:
    cd system/management-api
    sudo ./setup.sh build  # Enter new credentials when prompted
    ```
+   
+   This automatically updates both frontend (rebuilt with new creds) and backend (.env file).
 
-2. **Update backend config:** (automatically done by build, or manually edit)
-   ```bash
-   sudo nano /etc/luigi/system/management-api/.env
-   # Update AUTH_USERNAME and AUTH_PASSWORD
-   ```
-
-3. **Restart service:**
+2. **Restart service:**
    ```bash
    sudo systemctl restart management-api
    ```
 
-**Note**: Credentials are embedded in the frontend at build time and stored in the backend `.env` file. The setup script ensures both match automatically.
+**Alternative (Manual Edit - Advanced Users):**
+
+If you only want to change backend credentials without rebuilding the frontend, you can manually edit `/etc/luigi/system/management-api/.env`. Note that this will cause authentication to fail if the frontend has different credentials embedded.
 
 ### Building the Frontend
 
