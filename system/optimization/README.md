@@ -23,7 +23,7 @@ This module optimizes the Raspberry Pi Zero W for better performance and lower r
 - **Highly Configurable**: INI-style config file at `/etc/luigi/system/optimization/optimize.conf`
 - **Idempotent Execution**: Can be run multiple times safely - applies current configuration each time
 - **Dry-Run Mode**: Preview changes before applying them
-- **Comprehensive Logging**: All operations logged to `/var/log/system-optimization.log`
+- **Comprehensive Logging**: All operations logged to `/var/log/luigi/system-optimization.log`
 - **Backup Protection**: Automatically backs up boot config before modifications
 - **Interactive Installation**: Optional guided installation with prompts
 
@@ -138,7 +138,7 @@ Configures logging behavior:
 
 ```ini
 [Logging]
-log_file=/var/log/system-optimization.log
+log_file=/var/log/luigi/system-optimization.log
 log_level=INFO
 ```
 
@@ -190,13 +190,13 @@ sudo ./setup.sh status
 View the full optimization log:
 
 ```bash
-sudo cat /var/log/system-optimization.log
+sudo cat /var/log/luigi/system-optimization.log
 ```
 
 View recent log entries:
 
 ```bash
-sudo tail -f /var/log/system-optimization.log
+sudo tail -f /var/log/luigi/system-optimization.log
 ```
 
 ## Best Practices
@@ -317,7 +317,7 @@ If SSH is not accessible, remove the SD card and edit the config file from anoth
 
 - Script: `/usr/local/bin/optimize.py`
 - Config: `/etc/luigi/system/optimization/optimize.conf`
-- Log: `/var/log/system-optimization.log`
+- Log: `/var/log/luigi/system-optimization.log`
 - Boot Config: `/boot/firmware/config.txt` or `/boot/config.txt`
 - Module Blacklist: `/etc/modprobe.d/luigi-blacklist.conf`
 

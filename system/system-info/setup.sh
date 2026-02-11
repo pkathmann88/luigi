@@ -43,7 +43,7 @@ INSTALL_BIN="/usr/local/bin/system-info.py"
 INSTALL_SERVICE="/etc/systemd/system/system-info.service"
 INSTALL_CONFIG_DIR="/etc/luigi/system/system-info"
 INSTALL_CONFIG="/etc/luigi/system/system-info/system-info.conf"
-LOG_FILE="/var/log/system-info.log"
+LOG_FILE="/var/log/luigi/system-info.log"
 
 # ha-mqtt integration paths
 HA_MQTT_SENSORS_DIR="/etc/luigi/iot/ha-mqtt/sensors.d"

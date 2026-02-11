@@ -222,7 +222,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 
 # Logging
 LOG_LEVEL=INFO              # DEBUG, INFO, WARN, ERROR
-LOG_FILE=/var/log/management-api.log
+LOG_FILE=/var/log/luigi/management-api.log
 AUDIT_LOG_FILE=/var/log/luigi/audit.log
 ```
 

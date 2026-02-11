@@ -48,7 +48,7 @@ class Config:
     """Load application configuration from file with fallback to defaults."""
     
     # Default configuration values
-    DEFAULT_LOG_FILE = "/var/log/system-info.log"
+    DEFAULT_LOG_FILE = "/var/log/luigi/system-info.log"
     DEFAULT_LOG_LEVEL = "INFO"
     DEFAULT_LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
     DEFAULT_LOG_BACKUP_COUNT = 5

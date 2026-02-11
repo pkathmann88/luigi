@@ -6,7 +6,7 @@
 
 [Logging]
 # Log file location
-log_file = /var/log/system-info.log
+log_file = /var/log/luigi/system-info.log
 
 # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 log_level = INFO

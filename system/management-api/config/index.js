@@ -39,7 +39,7 @@ const config = {
 
   // Logging
   logging: {
-    file: process.env.LOG_FILE || '/var/log/management-api.log',
+    file: process.env.LOG_FILE || '/var/log/luigi/management-api.log',
     level: process.env.LOG_LEVEL || 'info',
     maxBytes: parseInt(process.env.LOG_MAX_BYTES, 10) || 10485760,
     backupCount: parseInt(process.env.LOG_BACKUP_COUNT, 10) || 5,

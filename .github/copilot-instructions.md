@@ -395,7 +395,7 @@ The project is designed for extensibility. When adding new modules (whether for 
    - Python script structure (GPIO setup, callbacks, cleanup)
    - Service script structure (init.d or systemd)
    - Stop file mechanism for graceful shutdown
-   - Logging to `/var/log/`
+   - Logging to `/var/log/luigi/`
    - Configuration via constants or config files
 5. **Update parent READMEs** to reference new component
 6. **Consider modularity:** Make components independent when possible, shared libraries when needed
@@ -480,7 +480,7 @@ def publish_motion_detected():
   - For modules under `sensors/temp/`, config path is `/etc/luigi/sensors/temp/`
   - Config files should use `.conf` extension with INI or key=value format
   - Legacy modules may still use hardcoded constants (transitioning to config files)
-- **Logs:** Written to `/var/log/motion.log` on Raspberry Pi
+- **Logs:** Written to `/var/log/luigi/{module-name}.log` on Raspberry Pi
 - **Temp files:** Use `/tmp/` for runtime state (e.g., `/tmp/stop_mario`, `/tmp/mario_timer`)
 - **Sound files:** Install to `/usr/share/sounds/mario/` on target system
 - **Module resources:** Install to `/usr/share/{module-name}/` on target system

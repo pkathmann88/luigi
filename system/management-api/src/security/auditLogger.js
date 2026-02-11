@@ -14,6 +14,36 @@ if (!fs.existsSync(auditLogDir)) {
   fs.mkdirSync(auditLogDir, { recursive: true, mode: 0o755 });
 }
 
+// Custom format for console output
+const consoleFormat = winston.format.combine(
+  winston.format.colorize(),
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    // If message is an object, extract meaningful info
+    let msg = message;
+    if (typeof message === 'object' && message !== null) {
+      // Extract event type and other key fields
+      const { event, username, user, ip, success, operation, module: moduleName, ...rest } = message;
+      msg = event || 'audit';
+      if (username) msg += ` user=${username}`;
+      if (user) msg += ` user=${user}`;
+      if (ip) msg += ` ip=${ip}`;
+      if (success !== undefined) msg += ` success=${success}`;
+      if (operation) msg += ` operation=${operation}`;
+      if (moduleName) msg += ` module=${moduleName}`;
+      if (Object.keys(rest).length > 0) {
+        msg += ` ${JSON.stringify(rest)}`;
+      }
+    }
+    
+    let output = `${timestamp} [${level}] ${msg}`;
+    if (Object.keys(meta).length > 0) {
+      output += ` ${JSON.stringify(meta)}`;
+    }
+    return output;
+  })
+);
+
 // Audit logger configuration
 const auditLogger = winston.createLogger({
   level: 'info',
@@ -29,10 +59,7 @@ const auditLogger = winston.createLogger({
       tailable: true,
     }),
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
+      format: consoleFormat,
     }),
   ],
 });
