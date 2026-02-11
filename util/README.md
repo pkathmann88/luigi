@@ -20,8 +20,7 @@ Shared functions for all Luigi module setup scripts. Eliminates duplicate code a
 - `log_step(message)` - Print step message in blue with [STEP] prefix
 - `log_header(message)` - Print section header in cyan with decorative borders
 - `log_debug(message)` - Print debug message in blue with [DEBUG] prefix
-- `log_success(message)` - Print success message with ✓ symbol (alternative format)
-- `log_warning(message)` - Print warning message with ⚠ symbol (alternative format)
+- `log_success(message)` - Print success message with ✓ symbol
 
 #### Permission Checking
 - `check_root()` - Verify script is run with root privileges, exit if not
@@ -94,10 +93,7 @@ log_info "All dependencies installed successfully"
 log_warn "Configuration file already exists"
 log_error "Failed to create directory"
 log_debug "Variable value: $DEBUG_VAR"
-
-# Alternative format with symbols
 log_success "Package installed successfully"
-log_warning "Partial installation detected"
 ```
 
 ### Using Package Management

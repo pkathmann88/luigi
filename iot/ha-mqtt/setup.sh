@@ -41,14 +41,14 @@ check_prerequisites() {
     
     # Check bash version
     if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
-        log_warning "Bash 4.0 or higher recommended (found: $BASH_VERSION)"
+        log_warn "Bash 4.0 or higher recommended (found: $BASH_VERSION)"
     fi
     
     # Check for required commands
     local commands=("mosquitto_pub" "jq")
     for cmd in "${commands[@]}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
-            log_warning "$cmd not found - will attempt to install"
+            log_warn "$cmd not found - will attempt to install"
             missing=1
         else
             log_success "$cmd found"
@@ -75,7 +75,7 @@ install_packages() {
     if [ ${#packages[@]} -eq 0 ]; then
         # Fallback to hardcoded packages if module.json not available
         # Note: jq is required to parse module.json, so it must be in the list
-        log_warning "module.json not found or jq not available, using fallback package list"
+        log_warn "module.json not found or jq not available, using fallback package list"
         packages=("mosquitto-clients" "jq")
     fi
     
@@ -226,7 +226,7 @@ prompt_mqtt_config() {
         read -r -s -p "MQTT password (required): " mqtt_password
         echo ""
         if [ -z "$mqtt_password" ]; then
-            log_warning "Password cannot be empty"
+            log_warn "Password cannot be empty"
         fi
     done
     
@@ -258,7 +258,7 @@ deploy_configuration() {
     
     # Only copy if config doesn't exist (don't overwrite existing)
     if [ -f "$config_dst" ]; then
-        log_warning "Config already exists, not overwriting: $config_dst"
+        log_warn "Config already exists, not overwriting: $config_dst"
         return 0
     fi
     
@@ -299,7 +299,7 @@ deploy_examples() {
             chmod 644 "${INSTALL_EXAMPLES_DIR}/sensors.d"/* 2>/dev/null || true
             log_success "Deployed example sensor descriptors"
         else
-            log_warning "No example descriptors to deploy"
+            log_warn "No example descriptors to deploy"
         fi
     fi
     
@@ -392,7 +392,7 @@ install_module() {
     
     # Test installation
     if ! test_installation; then
-        log_warning "Some installation tests failed"
+        log_warn "Some installation tests failed"
     fi
     
     echo ""
@@ -432,11 +432,11 @@ uninstall_module() {
     local remove_packages="N"
     
     if [ "$purge_mode" = "purge" ]; then
-        log_warning "PURGE MODE: Removing all files, configs, and packages"
+        log_warn "PURGE MODE: Removing all files, configs, and packages"
         remove_config="y"
         remove_packages="y"
     else
-        log_warning "This will remove all installed ha-mqtt files"
+        log_warn "This will remove all installed ha-mqtt files"
         echo ""
         
         # Interactive prompts for config and sensors
@@ -518,7 +518,7 @@ uninstall_module() {
                 if apt-get remove -y "$pkg" >/dev/null 2>&1; then
                     log_success "$pkg removed"
                 else
-                    log_warning "Failed to remove $pkg"
+                    log_warn "Failed to remove $pkg"
                 fi
             fi
         done
@@ -562,7 +562,7 @@ show_status() {
         echo "Run: sudo ./setup.sh install"
         exit 1
     else
-        log_warning "Partial installation detected"
+        log_warn "Partial installation detected"
     fi
     
     echo ""
@@ -595,7 +595,7 @@ show_status() {
             log_success "$count descriptor(s) found"
             find "$SENSORS_DIR" -name "*.json" -exec basename {} \; 2>/dev/null | sed 's/^/  - /'
         else
-            log_warning "No descriptors found"
+            log_warn "No descriptors found"
         fi
     else
         log_error "Sensors directory missing"
