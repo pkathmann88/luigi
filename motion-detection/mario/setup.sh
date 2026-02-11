@@ -35,7 +35,7 @@ INSTALL_SOUNDS="/usr/share/sounds/mario"
 INSTALL_CONFIG_DIR="/etc/luigi/motion-detection/mario"
 INSTALL_CONFIG="/etc/luigi/motion-detection/mario/mario.conf"
 INSTALL_RESET_SCRIPT="/usr/local/bin/mario-reset-cooldown"
-LOG_FILE="/var/log/motion.log"
+LOG_FILE="/var/log/luigi/mario.log"
 
 # ha-mqtt integration paths
 HA_MQTT_SENSORS_DIR="/etc/luigi/iot/ha-mqtt/sensors.d"
@@ -133,7 +133,7 @@ install_dependencies() {
     else
         # Fallback to hardcoded packages if module.json or jq not available
         log_warn "module.json or jq not found, using fallback package list"
-        packages=("python3-rpi.gpio" "alsa-utils")
+        packages=("python3-rpi-lgpio" "alsa-utils")
     fi
     
     # Check if packages are needed
@@ -180,9 +180,9 @@ install_sounds() {
         exit 1
     }
     
-    # Extract sound files
+    # Extract sound files (strip leading 'luigi/' directory from archive)
     log_info "Extracting sound files to $INSTALL_SOUNDS..."
-    tar -xzf "$SCRIPT_DIR/$SOUNDS_ARCHIVE" -C "$INSTALL_SOUNDS" || {
+    tar -xzf "$SCRIPT_DIR/$SOUNDS_ARCHIVE" -C "$INSTALL_SOUNDS" --strip-components=1 || {
         log_error "Failed to extract sound files"
         exit 1
     }
@@ -194,6 +194,145 @@ install_sounds() {
     local sound_count
     sound_count=$(find "$INSTALL_SOUNDS" -name "*.wav" | wc -l)
     log_info "Installed $sound_count sound file(s)"
+}
+
+# Configure audio device for aplay
+configure_audio() {
+    log_step "Configuring audio device for aplay..."
+    
+    # Check if aplay is available
+    if ! command -v aplay >/dev/null 2>&1; then
+        log_warn "aplay command not found - audio playback will not work"
+        log_warn "Install alsa-utils package: sudo apt-get install alsa-utils"
+        return 0
+    fi
+    
+    # Check if asound.conf already exists
+    if [ -f /etc/asound.conf ]; then
+        log_info "Audio configuration already exists at /etc/asound.conf"
+        log_warn "Current audio configuration:"
+        head -10 /etc/asound.conf
+        echo ""
+        log_warn "Do you want to reconfigure audio? (y/N): "
+        read -r -p "" -n 1 REPLY
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Skipping audio configuration"
+            return 0
+        fi
+    fi
+    
+    # Detect available audio devices
+    log_info "Detecting available audio devices..."
+    local devices_output
+    devices_output=$(aplay -l 2>/dev/null)
+    
+    if [ -z "$devices_output" ]; then
+        log_warn "No audio devices detected by aplay -l"
+        log_warn "Audio playback may not work. Check that audio hardware is enabled."
+        return 0
+    fi
+    
+    echo ""
+    log_info "Available audio devices:"
+    echo "$devices_output"
+    echo ""
+    
+    # Parse card and device numbers
+    local card_device_pairs=()
+    local card_device_names=()
+    
+    while IFS= read -r line; do
+        if [[ $line =~ ^card\ ([0-9]+):.*device\ ([0-9]+): ]]; then
+            local card="${BASH_REMATCH[1]}"
+            local device="${BASH_REMATCH[2]}"
+            card_device_pairs+=("$card:$device")
+            # Extract the device name from the next line or current line
+            local name=$(echo "$line" | sed 's/^card [0-9]*: \([^,]*\),.*/\1/')
+            card_device_names+=("Card $card, Device $device: $name")
+        fi
+    done <<< "$devices_output"
+    
+    if [ ${#card_device_pairs[@]} -eq 0 ]; then
+        log_warn "Could not parse audio devices from aplay output"
+        return 0
+    fi
+    
+    # If only one device, use it automatically
+    local selected_card_device
+    if [ ${#card_device_pairs[@]} -eq 1 ]; then
+        selected_card_device="${card_device_pairs[0]}"
+        log_info "Only one audio device found, using: ${card_device_names[0]}"
+    else
+        # Multiple devices - let user choose
+        log_info "Multiple audio devices found. Please select one:"
+        for i in "${!card_device_pairs[@]}"; do
+            echo "  $((i+1)). ${card_device_names[$i]}"
+        done
+        echo ""
+        
+        local selection
+        while true; do
+            read -r -p "Enter selection (1-${#card_device_pairs[@]}): " selection
+            if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "${#card_device_pairs[@]}" ]; then
+                selected_card_device="${card_device_pairs[$((selection-1))]}"
+                log_info "Selected: ${card_device_names[$((selection-1))]}"
+                break
+            else
+                log_warn "Invalid selection. Please enter a number between 1 and ${#card_device_pairs[@]}"
+            fi
+        done
+    fi
+    
+    # Parse card and device from selection
+    local card
+    local device
+    card=$(echo "$selected_card_device" | cut -d: -f1)
+    device=$(echo "$selected_card_device" | cut -d: -f2)
+    
+    # Create /etc/asound.conf
+    log_info "Creating /etc/asound.conf with card $card, device $device..."
+    
+    if ! cat > /etc/asound.conf <<EOF
+# ALSA configuration for Luigi Mario module
+# Auto-generated by setup.sh
+# Card $card, Device $device
+
+pcm.!default {
+    type hw
+    card $card
+    device $device
+}
+
+ctl.!default {
+    type hw
+    card $card
+}
+EOF
+    then
+        log_error "Failed to create /etc/asound.conf"
+        return 1
+    fi
+    
+    log_info "✓ Audio configuration created at /etc/asound.conf"
+    
+    # Test audio playback if a sound file exists
+    if [ -d "$INSTALL_SOUNDS" ]; then
+        local test_sound
+        test_sound=$(find "$INSTALL_SOUNDS" -name "*.wav" | head -1)
+        if [ -n "$test_sound" ]; then
+            log_info "Testing audio playback..."
+            if aplay -q "$test_sound" 2>/dev/null; then
+                log_info "✓ Audio test successful!"
+            else
+                log_warn "Audio test failed. You may need to check your audio configuration."
+                log_warn "Try running: aplay -l"
+                log_warn "And verify the card/device numbers in /etc/asound.conf"
+            fi
+        fi
+    fi
+    
+    log_info "Audio configuration complete"
 }
 
 # Install Python script
@@ -587,7 +726,7 @@ uninstall() {
     if [ "$purge_mode" != "purge" ] && [ "${SKIP_PACKAGES:-}" != "1" ]; then
         echo ""
         # Read packages from module.json for display
-        local package_list="python3-rpi.gpio, alsa-utils"
+        local package_list="python3-rpi-lgpio, alsa-utils"
         if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
             local packages_json
             packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
@@ -611,7 +750,7 @@ uninstall() {
             done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
         else
             # Fallback to hardcoded packages
-            packages=("python3-rpi.gpio" "alsa-utils")
+            packages=("python3-rpi-lgpio" "alsa-utils")
         fi
         
         for pkg in "${packages[@]}"; do
@@ -675,6 +814,7 @@ install() {
     check_files
     install_dependencies
     install_sounds
+    configure_audio
     install_script
     install_reset_script
     install_config
