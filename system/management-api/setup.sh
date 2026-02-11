@@ -90,6 +90,36 @@ install() {
     log_info "Running security audit..."
     sudo -u pi npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
     
+    # 4.5. Build frontend
+    log_info "Building web frontend..."
+    if [ -d "$APP_DIR/frontend" ]; then
+        cd "$APP_DIR/frontend"
+        
+        # Install frontend dependencies
+        log_info "Installing frontend dependencies..."
+        sudo -u pi npm install --no-audit
+        
+        # Run type check
+        log_info "Running TypeScript type check..."
+        sudo -u pi npm run type-check
+        
+        # Build production bundle
+        log_info "Building production bundle..."
+        sudo -u pi npm run build
+        
+        # Verify dist directory exists
+        if [ -d "$APP_DIR/frontend/dist" ]; then
+            log_info "Frontend build successful ✓"
+            log_info "Built files:"
+            ls -lh "$APP_DIR/frontend/dist" | tail -n +2 | awk '{print "  " $9 " (" $5 ")"}'
+        else
+            log_error "Frontend build failed - dist directory not found"
+            exit 1
+        fi
+    else
+        log_warn "Frontend directory not found, skipping frontend build"
+    fi
+    
     # 5. Deploy configuration
     log_info "Deploying configuration..."
     if [ ! -f "$CONFIG_DIR/.env" ]; then
@@ -156,9 +186,11 @@ install() {
     log_info ""
     log_info "✓ Installation complete!"
     log_info ""
-    log_info "Access the API at: https://<raspberry-pi-ip>:8443"
+    log_info "Access the Web Frontend at: https://<raspberry-pi-ip>:8443"
+    log_info "API endpoint: https://<raspberry-pi-ip>:8443/api"
     log_info "Health check: https://<raspberry-pi-ip>:8443/health"
     log_info "API documentation: $APP_DIR/README.md"
+    log_info "Frontend documentation: $APP_DIR/frontend/README.md"
     log_info ""
     log_info "Default credentials (CHANGE THESE!):"
     log_info "  Username: admin"
@@ -282,6 +314,12 @@ status() {
     else
         echo "✗ TLS certificates not found"
     fi
+    
+    if [ -d "$APP_DIR/frontend/dist" ]; then
+        echo "✓ Frontend built: $APP_DIR/frontend/dist"
+    else
+        echo "✗ Frontend not built (run: cd $APP_DIR/frontend && npm run build)"
+    fi
     echo ""
     
     # API health check
@@ -304,7 +342,8 @@ status() {
     
     # Access information
     echo "=== Access Information ==="
-    echo "API URL: https://<raspberry-pi-ip>:8443"
+    echo "Web Frontend: https://<raspberry-pi-ip>:8443"
+    echo "API endpoint: https://<raspberry-pi-ip>:8443/api"
     echo "Health check: https://<raspberry-pi-ip>:8443/health"
     echo "Configuration: $CONFIG_DIR/.env"
     echo "Application: $APP_DIR"
