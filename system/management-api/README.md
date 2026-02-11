@@ -59,7 +59,7 @@ curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt-get install -y nodejs npm openssl curl
 
 # 2. Copy application files
-# Note: Replace $USER with your username (e.g., 'pi' on Raspberry Pi)
+# Note: $USER and $HOME are environment variables that expand to your username and home directory
 sudo mkdir -p $HOME/luigi/system/management-api
 sudo cp -r ./* $HOME/luigi/system/management-api/
 sudo chown -R $USER:$USER $HOME/luigi/system/management-api

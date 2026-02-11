@@ -19,10 +19,13 @@ log_debug() { echo -e "\033[0;34m[DEBUG]\033[0m $1"; }
 INSTALL_USER="${SUDO_USER:-$(whoami)}"
 if [ "$INSTALL_USER" = "root" ]; then
     # If running directly as root (not via sudo), try to use 'pi' if it exists
+    # This handles Raspberry Pi where 'pi' is the default user
     if id -u pi >/dev/null 2>&1; then
         INSTALL_USER="pi"
+        log_warn "Running as root without sudo. Defaulting to user 'pi'"
     else
-        log_error "Cannot determine non-root user. Run with sudo or as a specific user."
+        log_error "Cannot determine non-root user for installation."
+        log_error "Please run this script with sudo as a regular user: sudo ./setup.sh install"
         exit 1
     fi
 fi
