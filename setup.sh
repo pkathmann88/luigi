@@ -71,6 +71,73 @@ check_root() {
     fi
 }
 
+# Check and install required dependencies for setup script
+check_and_install_dependencies() {
+    local missing_deps=()
+    local install_needed=0
+    
+    log_step "Checking setup script dependencies..."
+    
+    # Check for jq (required for module dependency management)
+    if ! command -v jq >/dev/null 2>&1; then
+        log_warn "jq is not installed (required for module dependency management)"
+        missing_deps+=("jq")
+        install_needed=1
+    else
+        log_info "✓ jq is installed"
+    fi
+    
+    # If dependencies are missing, offer to install them
+    if [ $install_needed -eq 1 ]; then
+        echo ""
+        log_warn "Missing dependencies: ${missing_deps[*]}"
+        echo ""
+        echo "These dependencies are required for proper module installation."
+        echo "Without them, module dependencies cannot be resolved and modules"
+        echo "may be installed in the wrong order."
+        echo ""
+        
+        # Auto-install if running as root, otherwise provide instructions
+        if [ "$EUID" -eq 0 ]; then
+            echo "Installing missing dependencies..."
+            echo ""
+            
+            # Update apt cache
+            log_step "Updating package cache..."
+            if ! apt-get update -qq; then
+                log_error "Failed to update package cache"
+                return 1
+            fi
+            
+            # Install missing packages
+            for dep in "${missing_deps[@]}"; do
+                log_step "Installing $dep..."
+                if apt-get install -y -qq "$dep"; then
+                    log_info "✓ $dep installed successfully"
+                else
+                    log_error "Failed to install $dep"
+                    return 1
+                fi
+            done
+            
+            echo ""
+            log_info "All dependencies installed successfully"
+            echo ""
+        else
+            echo "Please install the missing dependencies manually:"
+            echo "  sudo apt-get update"
+            echo "  sudo apt-get install ${missing_deps[*]}"
+            echo ""
+            return 1
+        fi
+    else
+        log_info "✓ All required dependencies are installed"
+        echo ""
+    fi
+    
+    return 0
+}
+
 # Discover all module setup scripts
 discover_modules() {
     local modules=()
@@ -243,6 +310,13 @@ install_modules() {
     local modules
     local failed_modules=()
     local success_count=0
+    
+    # Check and install required dependencies first
+    if ! check_and_install_dependencies; then
+        log_error "Failed to install required dependencies"
+        log_error "Cannot proceed with module installation"
+        return 1
+    fi
     
     if [ -n "$specific_module" ]; then
         # Install specific module with its dependencies
