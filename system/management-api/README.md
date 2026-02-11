@@ -4,8 +4,11 @@
 
 A RESTful HTTPS API that provides centralized management of Luigi modules, system operations, log viewing, and configuration management without requiring SSH access.
 
+**Includes a modern web-based frontend** for easy management through your browser.
+
 ## Features
 
+- **Web Frontend** - Modern, responsive UI for managing Luigi system from any device
 - **Module Management** - Start, stop, restart, and monitor Luigi modules
 - **System Control** - Reboot, shutdown, update, and clean up the system
 - **Log Viewing** - Access and search logs from all modules
@@ -78,6 +81,47 @@ sudo systemctl daemon-reload
 sudo systemctl enable management-api
 sudo systemctl start management-api
 ```
+
+## Web Frontend
+
+The management API includes a modern, responsive web frontend for easy system management.
+
+### Features
+
+- **Login Page** - Secure login with static credentials
+- **Dashboard** - Real-time system monitoring (CPU, memory, disk, uptime)
+- **Module Management** - Start, stop, restart modules with a click
+- **Log Viewer** - Browse and view logs from all modules
+- **Configuration Editor** - Edit module configurations directly
+- **Responsive Design** - Works on desktop, tablet, and mobile
+
+### Accessing the Frontend
+
+After installation, access the web interface at:
+
+```
+https://<raspberry-pi-ip>:8443/
+```
+
+Default credentials:
+- Username: `admin`
+- Password: `changeme123`
+
+**Important:** Change the default password in `/etc/luigi/system/management-api/.env`
+
+### Building the Frontend
+
+The frontend is built with React + TypeScript. To rebuild:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+The built files are automatically served by the backend at the root URL.
+
+For frontend development, see [frontend/README.md](frontend/README.md).
 
 ## Configuration
 
