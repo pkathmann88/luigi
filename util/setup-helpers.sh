@@ -56,6 +56,20 @@ log_header() {
     echo ""
 }
 
+log_debug() {
+    echo -e "${BLUE}[DEBUG]${NC} $1"
+}
+
+# Success message with checkmark (for ha-mqtt style)
+log_success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+# Warning message with warning symbol (for ha-mqtt style)
+log_warning() {
+    echo -e "${YELLOW}⚠${NC} $1"
+}
+
 ################################################################################
 # Permission Checking
 ################################################################################

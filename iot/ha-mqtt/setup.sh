@@ -33,50 +33,25 @@ SENSORS_DIR="${INSTALL_CONFIG_DIR}/sensors.d"
 # Version
 VERSION="1.0.0"
 
-# Override helper logging with ha-mqtt specific format
-print_success() {
-    echo -e "${GREEN}✓${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}✗${NC} $1" >&2
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠${NC} $1"
-}
-
-print_info() {
-    echo -e "${BLUE}ℹ${NC} $1"
-}
-
-# Override check_root to use print_error
-check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        print_error "This script must be run as root (use sudo)"
-        exit 1
-    fi
-}
-
 # Function to check prerequisites
 check_prerequisites() {
     local missing=0
     
-    print_info "Checking prerequisites..."
+    log_info "Checking prerequisites..."
     
     # Check bash version
     if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
-        print_warning "Bash 4.0 or higher recommended (found: $BASH_VERSION)"
+        log_warning "Bash 4.0 or higher recommended (found: $BASH_VERSION)"
     fi
     
     # Check for required commands
     local commands=("mosquitto_pub" "jq")
     for cmd in "${commands[@]}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
-            print_warning "$cmd not found - will attempt to install"
+            log_warning "$cmd not found - will attempt to install"
             missing=1
         else
-            print_success "$cmd found"
+            log_success "$cmd found"
         fi
     done
     
@@ -87,11 +62,11 @@ check_prerequisites() {
 install_packages() {
     # Check if --skip-packages flag is set (use helper function)
     if should_skip_packages; then
-        print_info "Skipping package installation (managed centrally)"
+        log_info "Skipping package installation (managed centrally)"
         return 0
     fi
     
-    print_info "Installing required packages..."
+    log_info "Installing required packages..."
     
     # Read packages from module.json using helper function
     local module_json="$SCRIPT_DIR/module.json"
@@ -100,7 +75,7 @@ install_packages() {
     if [ ${#packages[@]} -eq 0 ]; then
         # Fallback to hardcoded packages if module.json not available
         # Note: jq is required to parse module.json, so it must be in the list
-        print_warning "module.json not found or jq not available, using fallback package list"
+        log_warning "module.json not found or jq not available, using fallback package list"
         packages=("mosquitto-clients" "jq")
     fi
     
@@ -108,7 +83,7 @@ install_packages() {
     local to_install=()
     for pkg in "${packages[@]}"; do
         if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
-            print_success "$pkg already installed"
+            log_success "$pkg already installed"
         else
             to_install+=("$pkg")
         fi
@@ -118,17 +93,17 @@ install_packages() {
     if [ ${#to_install[@]} -gt 0 ]; then
         # Update package list
         if ! apt-get update >/dev/null 2>&1; then
-            print_error "Failed to update package list"
+            log_error "Failed to update package list"
             return 1
         fi
         
         # Install each package
         for pkg in "${to_install[@]}"; do
-            print_info "Installing $pkg..."
+            log_info "Installing $pkg..."
             if apt-get install -y "$pkg" >/dev/null 2>&1; then
-                print_success "$pkg installed"
+                log_success "$pkg installed"
             else
-                print_error "Failed to install $pkg"
+                log_error "Failed to install $pkg"
                 return 1
             fi
         done
@@ -139,7 +114,7 @@ install_packages() {
 
 # Function to create directory structure
 create_directories() {
-    print_info "Creating directory structure..."
+    log_info "Creating directory structure..."
     
     local directories=(
         "$INSTALL_LIB_DIR"
@@ -151,13 +126,13 @@ create_directories() {
     for dir in "${directories[@]}"; do
         if [ ! -d "$dir" ]; then
             if mkdir -p "$dir"; then
-                print_success "Created: $dir"
+                log_success "Created: $dir"
             else
-                print_error "Failed to create: $dir"
+                log_error "Failed to create: $dir"
                 return 1
             fi
         else
-            print_success "Exists: $dir"
+            log_success "Exists: $dir"
         fi
     done
     
@@ -166,7 +141,7 @@ create_directories() {
 
 # Function to deploy scripts
 deploy_scripts() {
-    print_info "Deploying scripts..."
+    log_info "Deploying scripts..."
     
     # Deploy bin scripts
     local bin_scripts=("luigi-publish" "luigi-discover" "luigi-mqtt-status")
@@ -175,14 +150,14 @@ deploy_scripts() {
         local dst="${INSTALL_BIN_DIR}/$script"
         
         if [ ! -f "$src" ]; then
-            print_error "Source file not found: $src"
+            log_error "Source file not found: $src"
             return 1
         fi
         
         if cp "$src" "$dst" && chmod 755 "$dst"; then
-            print_success "Deployed: $script (755)"
+            log_success "Deployed: $script (755)"
         else
-            print_error "Failed to deploy: $script"
+            log_error "Failed to deploy: $script"
             return 1
         fi
     done
@@ -192,7 +167,7 @@ deploy_scripts() {
 
 # Function to deploy libraries
 deploy_libraries() {
-    print_info "Deploying libraries..."
+    log_info "Deploying libraries..."
     
     # Deploy lib scripts
     local lib_scripts=("mqtt_helpers.sh" "ha_discovery_generator.sh")
@@ -201,14 +176,14 @@ deploy_libraries() {
         local dst="${INSTALL_LIB_DIR}/$script"
         
         if [ ! -f "$src" ]; then
-            print_error "Source file not found: $src"
+            log_error "Source file not found: $src"
             return 1
         fi
         
         if cp "$src" "$dst" && chmod 644 "$dst"; then
-            print_success "Deployed: $script (644)"
+            log_success "Deployed: $script (644)"
         else
-            print_error "Failed to deploy: $script"
+            log_error "Failed to deploy: $script"
             return 1
         fi
     done
@@ -224,7 +199,7 @@ prompt_mqtt_config() {
     local mqtt_password=""
     
     echo ""
-    print_info "MQTT Broker Configuration"
+    log_info "MQTT Broker Configuration"
     echo "Please provide your MQTT broker connection details."
     echo ""
     
@@ -251,12 +226,12 @@ prompt_mqtt_config() {
         read -r -s -p "MQTT password (required): " mqtt_password
         echo ""
         if [ -z "$mqtt_password" ]; then
-            print_warning "Password cannot be empty"
+            log_warning "Password cannot be empty"
         fi
     done
     
     echo ""
-    print_info "Configuration summary:"
+    log_info "Configuration summary:"
     echo "  Broker: ${mqtt_host}:${mqtt_port}"
     echo "  Username: ${mqtt_username}"
     echo "  Password: ********"
@@ -271,19 +246,19 @@ prompt_mqtt_config() {
 
 # Function to deploy configuration
 deploy_configuration() {
-    print_info "Deploying configuration..."
+    log_info "Deploying configuration..."
     
     local config_src="${SCRIPT_DIR}/config/ha-mqtt.conf.example"
     local config_dst="${INSTALL_CONFIG_DIR}/ha-mqtt.conf"
     
     if [ ! -f "$config_src" ]; then
-        print_error "Config example not found: $config_src"
+        log_error "Config example not found: $config_src"
         return 1
     fi
     
     # Only copy if config doesn't exist (don't overwrite existing)
     if [ -f "$config_dst" ]; then
-        print_warning "Config already exists, not overwriting: $config_dst"
+        log_warning "Config already exists, not overwriting: $config_dst"
         return 0
     fi
     
@@ -292,7 +267,7 @@ deploy_configuration() {
     
     # Copy example config as template
     if ! cp "$config_src" "$config_dst"; then
-        print_error "Failed to copy config template"
+        log_error "Failed to copy config template"
         return 1
     fi
     
@@ -304,10 +279,10 @@ deploy_configuration() {
     
     # Set secure permissions
     if chmod 600 "$config_dst"; then
-        print_success "Deployed: ha-mqtt.conf (600)"
-        print_success "MQTT configuration saved to $config_dst"
+        log_success "Deployed: ha-mqtt.conf (600)"
+        log_success "MQTT configuration saved to $config_dst"
     else
-        print_error "Failed to set permissions on config file"
+        log_error "Failed to set permissions on config file"
         return 1
     fi
     
@@ -316,22 +291,22 @@ deploy_configuration() {
 
 # Function to deploy examples
 deploy_examples() {
-    print_info "Deploying examples..."
+    log_info "Deploying examples..."
     
     # Deploy example descriptors
     if [ -d "${SCRIPT_DIR}/examples/sensors.d" ]; then
         if cp -r "${SCRIPT_DIR}/examples/sensors.d"/* "${INSTALL_EXAMPLES_DIR}/sensors.d/" 2>/dev/null; then
             chmod 644 "${INSTALL_EXAMPLES_DIR}/sensors.d"/* 2>/dev/null || true
-            print_success "Deployed example sensor descriptors"
+            log_success "Deployed example sensor descriptors"
         else
-            print_warning "No example descriptors to deploy"
+            log_warning "No example descriptors to deploy"
         fi
     fi
     
     # Deploy integration guide
     if [ -f "${SCRIPT_DIR}/examples/integration-guide.md" ]; then
         cp "${SCRIPT_DIR}/examples/integration-guide.md" "${INSTALL_EXAMPLES_DIR}/" 2>/dev/null || true
-        print_success "Deployed integration guide"
+        log_success "Deployed integration guide"
     fi
     
     return 0
@@ -339,31 +314,31 @@ deploy_examples() {
 
 # Function to test installation
 test_installation() {
-    print_info "Testing installation..."
+    log_info "Testing installation..."
     
     # Test that scripts are executable
     local scripts=("luigi-publish" "luigi-discover" "luigi-mqtt-status")
     for script in "${scripts[@]}"; do
         if command -v "$script" >/dev/null 2>&1; then
-            print_success "$script is in PATH"
+            log_success "$script is in PATH"
         else
-            print_error "$script not found in PATH"
+            log_error "$script not found in PATH"
             return 1
         fi
     done
     
     # Test that libraries can be sourced
     if bash -c "source ${INSTALL_LIB_DIR}/mqtt_helpers.sh" 2>/dev/null; then
-        print_success "mqtt_helpers.sh loads successfully"
+        log_success "mqtt_helpers.sh loads successfully"
     else
-        print_error "mqtt_helpers.sh failed to load"
+        log_error "mqtt_helpers.sh failed to load"
         return 1
     fi
     
     if bash -c "source ${INSTALL_LIB_DIR}/ha_discovery_generator.sh" 2>/dev/null; then
-        print_success "ha_discovery_generator.sh loads successfully"
+        log_success "ha_discovery_generator.sh loads successfully"
     else
-        print_error "ha_discovery_generator.sh failed to load"
+        log_error "ha_discovery_generator.sh failed to load"
         return 1
     fi
     
@@ -383,59 +358,59 @@ install_module() {
     # Check prerequisites
     if ! check_prerequisites; then
         if ! install_packages; then
-            print_error "Failed to install required packages"
+            log_error "Failed to install required packages"
             exit 1
         fi
     fi
     
     # Create directories
     if ! create_directories; then
-        print_error "Failed to create directory structure"
+        log_error "Failed to create directory structure"
         exit 1
     fi
     
     # Deploy files
     if ! deploy_scripts; then
-        print_error "Failed to deploy scripts"
+        log_error "Failed to deploy scripts"
         exit 1
     fi
     
     if ! deploy_libraries; then
-        print_error "Failed to deploy libraries"
+        log_error "Failed to deploy libraries"
         exit 1
     fi
     
     if ! deploy_configuration; then
-        print_error "Failed to deploy configuration"
+        log_error "Failed to deploy configuration"
         exit 1
     fi
     
     if ! deploy_examples; then
-        print_error "Failed to deploy examples"
+        log_error "Failed to deploy examples"
         exit 1
     fi
     
     # Test installation
     if ! test_installation; then
-        print_warning "Some installation tests failed"
+        log_warning "Some installation tests failed"
     fi
     
     echo ""
     echo "========================================="
-    print_success "Installation complete!"
+    log_success "Installation complete!"
     echo "========================================="
     echo ""
-    print_info "Next steps:"
+    log_info "Next steps:"
     echo "  1. Test connectivity: luigi-mqtt-status"
     echo "  2. Add sensor descriptors to: ${SENSORS_DIR}/"
     echo "  3. Register sensors: sudo luigi-discover"
     echo "  4. Publish test value: luigi-publish --sensor test --value 42"
     echo ""
-    print_info "Configuration:"
+    log_info "Configuration:"
     echo "  - Config file: ${INSTALL_CONFIG_DIR}/ha-mqtt.conf"
     echo "  - To change settings: sudo nano ${INSTALL_CONFIG_DIR}/ha-mqtt.conf"
     echo ""
-    print_info "Documentation:"
+    log_info "Documentation:"
     echo "  - Module README: ${SCRIPT_DIR}/README.md"
     echo "  - Integration guide: ${INSTALL_EXAMPLES_DIR}/integration-guide.md"
     echo "  - Example descriptors: ${INSTALL_EXAMPLES_DIR}/sensors.d/"
@@ -457,11 +432,11 @@ uninstall_module() {
     local remove_packages="N"
     
     if [ "$purge_mode" = "purge" ]; then
-        print_warning "PURGE MODE: Removing all files, configs, and packages"
+        log_warning "PURGE MODE: Removing all files, configs, and packages"
         remove_config="y"
         remove_packages="y"
     else
-        print_warning "This will remove all installed ha-mqtt files"
+        log_warning "This will remove all installed ha-mqtt files"
         echo ""
         
         # Interactive prompts for config and sensors
@@ -486,14 +461,14 @@ uninstall_module() {
     fi
     
     echo ""
-    print_info "Removing installed files..."
+    log_info "Removing installed files..."
     
     # Remove scripts
     local scripts=("luigi-publish" "luigi-discover" "luigi-mqtt-status")
     for script in "${scripts[@]}"; do
         if [ -f "${INSTALL_BIN_DIR}/$script" ]; then
             if rm -f "${INSTALL_BIN_DIR}/$script"; then
-                print_success "Removed: $script"
+                log_success "Removed: $script"
             fi
         fi
     done
@@ -501,14 +476,14 @@ uninstall_module() {
     # Remove libraries
     if [ -d "$INSTALL_LIB_DIR" ]; then
         if rm -rf "$INSTALL_LIB_DIR"; then
-            print_success "Removed: library directory"
+            log_success "Removed: library directory"
         fi
     fi
     
     # Remove examples
     if [ -d "$INSTALL_EXAMPLES_DIR" ]; then
         if rm -rf "$INSTALL_EXAMPLES_DIR"; then
-            print_success "Removed: examples directory"
+            log_success "Removed: examples directory"
         fi
     fi
     
@@ -516,19 +491,19 @@ uninstall_module() {
     if [[ $remove_config =~ ^[Yy]$ ]]; then
         if [ -d "$INSTALL_CONFIG_DIR" ]; then
             if rm -rf "$INSTALL_CONFIG_DIR"; then
-                print_success "Removed: configuration directory"
+                log_success "Removed: configuration directory"
             fi
         fi
     else
-        print_info "Preserved: configuration directory"
+        log_info "Preserved: configuration directory"
     fi
     
     # Remove packages if requested
     if should_skip_packages; then
-        print_info "Skipping package removal (managed centrally)"
+        log_info "Skipping package removal (managed centrally)"
     elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         echo ""
-        print_info "Removing packages..."
+        log_info "Removing packages..."
         
         # Read packages from module.json using helper function
         local packages=($(read_apt_packages "$SCRIPT_DIR/module.json"))
@@ -539,22 +514,22 @@ uninstall_module() {
         
         for pkg in "${packages[@]}"; do
             if dpkg -l | grep -q "^ii  $pkg "; then
-                print_info "Removing $pkg..."
+                log_info "Removing $pkg..."
                 if apt-get remove -y "$pkg" >/dev/null 2>&1; then
-                    print_success "$pkg removed"
+                    log_success "$pkg removed"
                 else
-                    print_warning "Failed to remove $pkg"
+                    log_warning "Failed to remove $pkg"
                 fi
             fi
         done
         
         # Clean up unused dependencies
-        print_info "Removing unused dependencies..."
+        log_info "Removing unused dependencies..."
         apt-get autoremove -y >/dev/null 2>&1
     fi
     
     echo ""
-    print_success "Uninstallation complete!"
+    log_success "Uninstallation complete!"
     echo ""
 }
 
@@ -566,36 +541,36 @@ show_status() {
     echo ""
     
     # Check installation
-    print_info "Installation Status:"
+    log_info "Installation Status:"
     
     local scripts=("luigi-publish" "luigi-discover" "luigi-mqtt-status")
     local installed=0
     for script in "${scripts[@]}"; do
         if [ -f "${INSTALL_BIN_DIR}/$script" ]; then
-            print_success "$script installed"
+            log_success "$script installed"
             installed=$((installed + 1))
         else
-            print_error "$script not installed"
+            log_error "$script not installed"
         fi
     done
     
     if [ $installed -eq 3 ]; then
-        print_success "All scripts installed"
+        log_success "All scripts installed"
     elif [ $installed -eq 0 ]; then
-        print_error "Module not installed"
+        log_error "Module not installed"
         echo ""
         echo "Run: sudo ./setup.sh install"
         exit 1
     else
-        print_warning "Partial installation detected"
+        log_warning "Partial installation detected"
     fi
     
     echo ""
     
     # Check configuration
-    print_info "Configuration:"
+    log_info "Configuration:"
     if [ -f "${INSTALL_CONFIG_DIR}/ha-mqtt.conf" ]; then
-        print_success "Config file exists"
+        log_success "Config file exists"
         
         # Show broker host
         if [ -r "${INSTALL_CONFIG_DIR}/ha-mqtt.conf" ]; then
@@ -606,36 +581,36 @@ show_status() {
             fi
         fi
     else
-        print_error "Config file missing"
+        log_error "Config file missing"
     fi
     
     echo ""
     
     # Check sensor descriptors
-    print_info "Sensor Descriptors:"
+    log_info "Sensor Descriptors:"
     if [ -d "$SENSORS_DIR" ]; then
         local count
         count=$(find "$SENSORS_DIR" -name "*.json" 2>/dev/null | wc -l)
         if [ "$count" -gt 0 ]; then
-            print_success "$count descriptor(s) found"
+            log_success "$count descriptor(s) found"
             find "$SENSORS_DIR" -name "*.json" -exec basename {} \; 2>/dev/null | sed 's/^/  - /'
         else
-            print_warning "No descriptors found"
+            log_warning "No descriptors found"
         fi
     else
-        print_error "Sensors directory missing"
+        log_error "Sensors directory missing"
     fi
     
     echo ""
     
     # Test MQTT connectivity if installed
     if [ $installed -eq 3 ]; then
-        print_info "MQTT Connectivity:"
+        log_info "MQTT Connectivity:"
         if command -v luigi-mqtt-status >/dev/null 2>&1; then
             if luigi-mqtt-status >/dev/null 2>&1; then
-                print_success "MQTT broker reachable"
+                log_success "MQTT broker reachable"
             else
-                print_error "Cannot connect to MQTT broker"
+                log_error "Cannot connect to MQTT broker"
                 echo "  Run 'luigi-mqtt-status' for details"
             fi
         fi
