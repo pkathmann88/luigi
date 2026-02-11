@@ -373,9 +373,25 @@ class GPIOManager:
             
         # Attempt GPIO initialization
         try:
+            # CRITICAL FIX for Raspberry Pi 4/5/Zero 2W:
+            # Clean up any existing GPIO state before initialization
+            # This fixes "Failed to add edge detection" errors caused by
+            # leftover state from previous runs or kernel drivers
+            logging.info("Calling GPIO.cleanup() to clear any existing GPIO state...")
+            try:
+                GPIO.cleanup()
+                logging.info("✓ GPIO.cleanup() completed - cleared existing state")
+            except Exception as cleanup_error:
+                # Cleanup may fail if no prior state exists - this is OK
+                logging.info(f"GPIO.cleanup() note: {cleanup_error} (may be expected)")
+            
             logging.info("Calling GPIO.setmode()...")
             GPIO.setmode(self.config.GPIO_MODE)
             logging.info(f"✓ GPIO.setmode() succeeded with mode: {self.config.GPIO_MODE}")
+            
+            # Suppress warnings about pins already in use (after cleanup, this should be safe)
+            GPIO.setwarnings(False)
+            logging.info("✓ GPIO.setwarnings(False) - suppressed reuse warnings")
             
             # Check current mode
             try:
