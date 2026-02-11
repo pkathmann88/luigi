@@ -57,11 +57,21 @@ sudo ./setup.sh install
 ```
 
 This will automatically:
-- Install dependencies (python3-rpi.gpio, alsa-utils)
+- Install dependencies (python3-rpi-lgpio, alsa-utils)
 - Extract and install sound files
+- **Configure audio device for aplay** (interactive selection)
 - Install the Python application
 - Install and enable the systemd service
 - Start the service
+
+**Audio Configuration:**
+During installation, the setup script will:
+1. Detect all available audio devices (using `aplay -l`)
+2. Prompt you to select the audio device to use
+3. Create `/etc/asound.conf` with your selection
+4. Test audio playback to verify configuration
+
+If you have only one audio device, it will be selected automatically.
 
 ### Other Setup Commands
 
@@ -81,15 +91,32 @@ If you prefer to install manually, follow these steps:
 
 ```bash
 sudo apt-get update
-sudo apt-get install python3-rpi.gpio alsa-utils
+sudo apt-get install python3-rpi-lgpio alsa-utils
+```
+
+**CRITICAL: Use python3-rpi-lgpio, NOT python3-rpi-lgpio or pip-installed RPi.GPIO**
+
+On Raspberry Pi models with newer kernels (6.6+), including:
+- Raspberry Pi 4
+- Raspberry Pi 5  
+- Raspberry Pi Zero 2W
+
+You **must** use `python3-rpi-lgpio` from apt. The older `RPi.GPIO` library (especially from pip) causes "Failed to add edge detection" errors with newer kernels.
+
+**If you previously installed RPi.GPIO via pip, remove it:**
+```bash
+sudo pip3 uninstall RPi.GPIO
+sudo apt-get install python3-rpi-lgpio
 ```
 
 ### 2. Extract Sound Files
 
 ```bash
 sudo mkdir -p /usr/share/sounds/mario
-sudo tar -xzf mario-sounds.tar.gz -C /usr/share/sounds/mario/
+sudo tar -xzf mario-sounds.tar.gz -C /usr/share/sounds/mario/ --strip-components=1
 ```
+
+The `--strip-components=1` flag removes the leading `luigi/` directory from the archive, placing sound files directly in `/usr/share/sounds/mario/`.
 
 The sound directory should contain `.wav` or compatible audio files that will be randomly selected during playback.
 
@@ -149,14 +176,17 @@ sudo systemctl disable mario.service
 
 ### Alternative: View Application Logs Directly
 
-The service also logs to `/var/log/motion.log`:
+The service logs to `/var/log/luigi/mario.log`:
 
 ```bash
 # Follow logs in real-time
-tail -f /var/log/motion.log
+tail -f /var/log/luigi/mario.log
 
 # View recent logs
-tail -100 /var/log/motion.log
+tail -100 /var/log/luigi/mario.log
+
+# View all logs
+cat /var/log/luigi/mario.log
 ```
 
 ### Manual Execution (Development/Testing)
@@ -269,7 +299,7 @@ SOUND_DIR=/usr/share/sounds/mario/
 # Timer file location for tracking last trigger time
 TIMER_FILE=/tmp/mario_timer
 # Log file location
-LOG_FILE=/var/log/motion.log
+LOG_FILE=/var/log/luigi/mario.log
 
 [Logging]
 # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -288,7 +318,7 @@ If the configuration file does not exist, the application will use default value
 - **GPIO Pin**: 23 (BCM)
 - **Sound Cooldown**: 1800 seconds (30 minutes - applies only to sound playback)
 - **Sound Directory**: `/usr/share/sounds/mario/`
-- **Log File**: `/var/log/motion.log`
+- **Log File**: `/var/log/luigi/mario.log`
 - **Log Level**: INFO
 
 ### Modifying Configuration
@@ -434,7 +464,7 @@ automation:
 
 **View MQTT logs in mario.log**:
 ```bash
-tail -f /var/log/motion.log | grep MQTT
+tail -f /var/log/luigi/mario.log | grep MQTT
 ```
 
 **Common issues:**
@@ -448,17 +478,57 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
 
 ### No Sound Output
 
-1. Test audio system:
+1. **Check audio configuration:**
    ```bash
-   speaker-test -t wav -c 2
-   ```
-
-2. Check audio device:
-   ```bash
+   # List available audio devices
    aplay -l
+   
+   # Check current configuration
+   cat /etc/asound.conf
    ```
 
-3. Adjust volume:
+2. **Common audio error: "audio open error: Unknown error 524"**
+   
+   This error occurs when aplay cannot access the configured audio device.
+   
+   **Solution:**
+   - Reconfigure audio during setup: `sudo ./setup.sh install` (choose 'y' to reconfigure)
+   - Or manually create `/etc/asound.conf`:
+     ```bash
+     # Find your audio device
+     aplay -l
+     
+     # Create /etc/asound.conf with your card and device numbers
+     sudo nano /etc/asound.conf
+     ```
+     
+     Example configuration for card 0, device 0:
+     ```
+     pcm.!default {
+         type hw
+         card 0
+         device 0
+     }
+     
+     ctl.!default {
+         type hw
+         card 0
+     }
+     ```
+
+3. **Test audio playback:**
+   ```bash
+   # Test with a sound file
+   aplay /usr/share/sounds/mario/callingmario1.wav
+   
+   # Test with speaker test
+   speaker-test -t wav -c 2
+   
+   # If audio works, restart the mario service
+   sudo systemctl restart mario.service
+   ```
+
+4. **Adjust volume:**
    ```bash
    alsamixer
    ```
@@ -468,7 +538,7 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
 1. Verify PIR sensor wiring
 2. Check GPIO pin assignment matches configuration
 3. Test PIR sensor sensitivity adjustment (potentiometers on sensor)
-4. Review logs: `tail -f /var/log/motion.log`
+4. Review logs: `tail -f /var/log/luigi/mario.log`
 
 ### Service Won't Start
 
@@ -478,17 +548,62 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
    sudo journalctl -u mario.service -n 50
    ```
 
-2. Verify Python script exists and has correct permissions:
+2. **Common Issue: "Failed to add edge detection" error**
+   
+   This error occurs on Raspberry Pi models with newer kernels (6.6+), particularly:
+   - Raspberry Pi 4
+   - Raspberry Pi 5
+   - Raspberry Pi Zero 2W
+   
+   **Symptoms:**
+   - Error message: "RuntimeError: Failed to add edge detection"
+   - In dmesg logs: "export_store: invalid GPIO X"
+   - GPIO initializes but event detection fails
+   
+   **Root Cause:**
+   This is a **library incompatibility issue**. The older `RPi.GPIO` library (especially when installed via pip) is incompatible with newer Raspberry Pi kernels (6.6+).
+   
+   **Solution:**
+   Use `python3-rpi-lgpio` from apt instead of `RPi.GPIO`:
+   
+   ```bash
+   # Remove any pip-installed RPi.GPIO
+   sudo pip3 uninstall RPi.GPIO -y
+   
+   # Remove old python3-rpi-lgpio if installed
+   sudo apt-get remove python3-rpi-lgpio -y
+   sudo apt-get autoremove -y
+   
+   # Install the correct library
+   sudo apt-get update
+   sudo apt-get install python3-rpi-lgpio -y
+   
+   # Restart the service
+   sudo systemctl restart mario.service
+   ```
+   
+   **Verification:**
+   Check which GPIO library is installed:
+   ```bash
+   dpkg -l | grep -i rpi
+   ```
+   
+   You should see `python3-rpi-lgpio`, NOT `python3-rpi-lgpio`.
+   
+   **Why this works:**
+   `python3-rpi-lgpio` is a compatibility shim that uses the newer `lgpio` library, which works correctly with kernel 6.6+. It provides the same `RPi.GPIO` API but uses the modern GPIO interface internally.
+
+3. Verify Python script exists and has correct permissions:
    ```bash
    ls -l /usr/local/bin/mario.py
    ```
 
-3. Verify Python dependencies:
+4. Verify Python dependencies:
    ```bash
    python3 -c "import RPi.GPIO"
    ```
 
-4. Test script manually:
+5. Test script manually:
    ```bash
    sudo python3 /usr/local/bin/mario.py
    ```
@@ -521,13 +636,13 @@ The mario module follows modern Python development practices:
 **Logging:**
 - Structured logging with `RotatingFileHandler`
 - 10MB file size limit with 5 backups
-- Dual output: journalctl + /var/log/motion.log
+- Dual output: journalctl + /var/log/luigi/mario.log
 
 ## Dependencies
 
-- **python3-rpi.gpio**: Python 3 library for GPIO control
+- **python3-rpi-lgpio**: Python 3 library for GPIO control
   ```bash
-  sudo apt-get install python3-rpi.gpio
+  sudo apt-get install python3-rpi-lgpio
   ```
 
 - **alsa-utils**: Audio playback utilities (includes `aplay`)

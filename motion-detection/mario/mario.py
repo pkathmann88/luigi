@@ -85,7 +85,7 @@ class Config:
     DEFAULT_SENSOR_PIN = 23
     DEFAULT_SOUND_DIR = "/usr/share/sounds/mario/"
     DEFAULT_TIMER_FILE = "/tmp/mario_timer"
-    DEFAULT_LOG_FILE = "/var/log/motion.log"
+    DEFAULT_LOG_FILE = "/var/log/luigi/mario.log"
     DEFAULT_COOLDOWN_SECONDS = 1800  # 30 minutes
     DEFAULT_MAIN_LOOP_SLEEP = 100    # seconds
     DEFAULT_LOG_LEVEL = "INFO"
@@ -351,13 +351,61 @@ class GPIOManager:
         self.initialized = False
     
     def initialize(self):
-        """Initialize GPIO mode."""
+        """Initialize GPIO mode with diagnostic logging."""
+        logging.info("=" * 60)
+        logging.info("Starting GPIO initialization")
+        logging.info(f"GPIO mode to set: {self.config.GPIO_MODE}")
+        logging.info(f"Target sensor pin: {self.config.SENSOR_PIN}")
+        
+        # Log environment diagnostics
         try:
+            import os
+            logging.info(f"Running as UID: {os.getuid()}, GID: {os.getgid()}")
+            logging.info(f"Effective UID: {os.geteuid()}, Effective GID: {os.getegid()}")
+        except Exception as e:
+            logging.warning(f"Could not get user info: {e}")
+        
+        # Check if running in mock mode
+        if MOCK_MODE:
+            logging.warning("Running in MOCK MODE (no actual hardware)")
+        else:
+            logging.info("Running in HARDWARE MODE (real GPIO)")
+            
+        # Attempt GPIO initialization
+        try:
+            logging.info("Calling GPIO.setmode()...")
             GPIO.setmode(self.config.GPIO_MODE)
+            logging.info(f"✓ GPIO.setmode() succeeded with mode: {self.config.GPIO_MODE}")
+            
+            # Check current mode
+            try:
+                mode = GPIO.getmode()
+                logging.info(f"Current GPIO mode after setmode: {mode}")
+            except Exception as e:
+                logging.warning(f"Could not get GPIO mode: {e}")
+            
             self.initialized = True
-            logging.info("GPIO initialized successfully")
+            logging.info("✓ GPIO initialization completed successfully")
+            logging.info("=" * 60)
+            
         except RuntimeError as e:
-            logging.error(f"Failed to initialize GPIO: {e}")
+            logging.error("=" * 60)
+            logging.error(f"✗ GPIO initialization FAILED with RuntimeError: {e}")
+            logging.error(f"Error type: {type(e).__name__}")
+            logging.error(f"Error args: {e.args}")
+            
+            # Try to provide helpful context
+            if "not permitted" in str(e).lower() or "permission" in str(e).lower():
+                logging.error("DIAGNOSIS: Permission denied - GPIO access requires root privileges")
+                logging.error("  Solution: Ensure service runs as root or user is in gpio group")
+            elif "already" in str(e).lower():
+                logging.error("DIAGNOSIS: GPIO mode already set")
+                logging.error("  Solution: Call GPIO.cleanup() before setmode")
+            else:
+                logging.error("DIAGNOSIS: Unknown GPIO initialization error")
+                logging.error("  Check: 1) RPi.GPIO library installed, 2) Running on Raspberry Pi, 3) Kernel modules loaded")
+            
+            logging.error("=" * 60)
             raise
     
     def cleanup(self):
@@ -384,26 +432,106 @@ class PIRSensor:
         self._event_registered = False
     
     def setup(self):
-        """Configure GPIO pin for sensor."""
+        """Configure GPIO pin for sensor with diagnostic logging."""
+        logging.info("=" * 60)
+        logging.info(f"Configuring PIR sensor on GPIO{self.pin}")
+        
         try:
+            logging.info(f"Calling GPIO.setup({self.pin}, GPIO.IN)...")
             GPIO.setup(self.pin, GPIO.IN)
-            logging.info(f"PIR sensor configured on GPIO{self.pin}")
+            logging.info(f"✓ GPIO.setup() succeeded for pin {self.pin}")
+            
+            # Try to read initial pin state
+            try:
+                state = GPIO.input(self.pin)
+                logging.info(f"Initial pin state: {state}")
+            except Exception as e:
+                logging.warning(f"Could not read pin state: {e}")
+            
+            logging.info(f"✓ PIR sensor configured successfully on GPIO{self.pin}")
+            logging.info("=" * 60)
+            
         except RuntimeError as e:
-            logging.error(f"Failed to setup sensor: {e}")
+            logging.error("=" * 60)
+            logging.error(f"✗ GPIO.setup() FAILED for pin {self.pin}")
+            logging.error(f"Error: {e}")
+            logging.error(f"Error type: {type(e).__name__}")
+            
+            if "in use" in str(e).lower():
+                logging.error(f"DIAGNOSIS: GPIO{self.pin} is already in use")
+                logging.error("  Possible causes: Another process using this pin, previous cleanup failed")
+                logging.error("  Solution: Check for other processes, try GPIO.cleanup() first")
+            elif "invalid" in str(e).lower():
+                logging.error(f"DIAGNOSIS: GPIO{self.pin} is invalid")
+                logging.error("  Solution: Check pin number is valid for BCM mode")
+            else:
+                logging.error("DIAGNOSIS: Unknown GPIO setup error")
+            
+            logging.error("=" * 60)
             raise
     
     def start_monitoring(self):
-        """Start monitoring for motion events."""
+        """Start monitoring for motion events with diagnostic logging."""
+        logging.info("=" * 60)
+        logging.info(f"Starting motion monitoring on GPIO{self.pin}")
+        
+        # Check if event detection already exists
+        logging.info("Checking for existing event detection...")
         try:
+            GPIO.remove_event_detect(self.pin)
+            logging.warning(f"Removed existing event detection on GPIO{self.pin} - this shouldn't normally happen")
+        except RuntimeError as e:
+            logging.info(f"No existing event detection found (expected): {e}")
+        
+        # Attempt to add event detection
+        try:
+            logging.info(f"Calling GPIO.add_event_detect({self.pin}, GPIO.RISING, callback=...)") 
             GPIO.add_event_detect(
                 self.pin,
                 GPIO.RISING,
                 callback=self.callback
             )
             self._event_registered = True
-            logging.info("Motion monitoring started")
+            logging.info("✓ GPIO.add_event_detect() succeeded")
+            logging.info("✓ Motion monitoring started successfully")
+            logging.info("=" * 60)
+            
         except RuntimeError as e:
-            logging.error(f"Failed to start monitoring: {e}")
+            logging.error("=" * 60)
+            logging.error(f"✗ GPIO.add_event_detect() FAILED for pin {self.pin}")
+            logging.error(f"Error: {e}")
+            logging.error(f"Error type: {type(e).__name__}")
+            logging.error(f"Error args: {e.args}")
+            
+            # Detailed diagnosis
+            error_str = str(e).lower()
+            if "failed to add edge detection" in error_str:
+                logging.error("DIAGNOSIS: Failed to add edge detection")
+                logging.error("  Common causes:")
+                logging.error("    1. Pin already has event detection (not cleaned up)")
+                logging.error("    2. GPIO in wrong mode or not initialized")
+                logging.error("    3. Pin already in use by kernel driver")
+                logging.error("    4. Insufficient permissions")
+                logging.error("  Troubleshooting:")
+                logging.error("    - Check: sudo cat /sys/kernel/debug/gpio")
+                logging.error("    - Check: lsmod | grep gpio")
+                logging.error("    - Try: GPIO.cleanup() and restart")
+            elif "in use" in error_str:
+                logging.error(f"DIAGNOSIS: GPIO{self.pin} is in use")
+                logging.error("  Another process or driver is using this pin")
+            else:
+                logging.error("DIAGNOSIS: Unknown event detection error")
+            
+            # Try to get GPIO mode for debugging
+            try:
+                mode = GPIO.getmode()
+                logging.error(f"Current GPIO mode: {mode} (expected: {GPIO.BCM})")
+                if mode != GPIO.BCM:
+                    logging.error("  ERROR: GPIO mode mismatch!")
+            except Exception as mode_e:
+                logging.error(f"Could not get GPIO mode: {mode_e}")
+            
+            logging.error("=" * 60)
             raise
     
     def stop_monitoring(self):
@@ -656,6 +784,97 @@ def signal_handler(signum, frame):
 # Main Entry Point
 # ============================================================================
 
+def run_startup_diagnostics():
+    """Run comprehensive diagnostics before attempting GPIO operations."""
+    logging.info("#" * 70)
+    logging.info("MARIO MOTION DETECTION - STARTUP DIAGNOSTICS")
+    logging.info("#" * 70)
+    
+    # System information
+    import platform
+    import sys
+    logging.info(f"Python version: {sys.version}")
+    logging.info(f"Platform: {platform.platform()}")
+    logging.info(f"Machine: {platform.machine()}")
+    logging.info(f"Processor: {platform.processor()}")
+    
+    # Check if running on Raspberry Pi
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            cpuinfo = f.read()
+            if 'Raspberry Pi' in cpuinfo or 'BCM' in cpuinfo:
+                logging.info("✓ Running on Raspberry Pi hardware")
+            else:
+                logging.warning("⚠ May not be running on Raspberry Pi hardware")
+    except Exception as e:
+        logging.warning(f"Could not read /proc/cpuinfo: {e}")
+    
+    # Check user/permissions
+    import os
+    logging.info(f"User ID: {os.getuid()}, Effective: {os.geteuid()}")
+    logging.info(f"Group ID: {os.getgid()}, Effective: {os.getegid()}")
+    if os.geteuid() != 0:
+        logging.warning("⚠ NOT running as root - GPIO access may fail")
+    else:
+        logging.info("✓ Running as root")
+    
+    # Check GPIO library
+    logging.info(f"RPi.GPIO library: {'MOCK MODE' if MOCK_MODE else 'Hardware mode'}")
+    if not MOCK_MODE:
+        try:
+            import RPi.GPIO
+            version = getattr(RPi.GPIO, 'VERSION', 'unknown')
+            logging.info(f"✓ RPi.GPIO version: {version}")
+        except Exception as e:
+            logging.error(f"✗ RPi.GPIO library issue: {e}")
+    
+    # Check for GPIO-related kernel modules
+    try:
+        import subprocess
+        result = subprocess.run(['lsmod'], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            gpio_modules = [line for line in result.stdout.split('\n') if 'gpio' in line.lower()]
+            if gpio_modules:
+                logging.info(f"GPIO kernel modules loaded: {len(gpio_modules)}")
+                for mod in gpio_modules[:5]:  # Show first 5
+                    logging.info(f"  - {mod.split()[0]}")
+            else:
+                logging.warning("No GPIO kernel modules found via lsmod")
+    except Exception as e:
+        logging.warning(f"Could not check kernel modules: {e}")
+    
+    # Check /dev/gpiochip0 access
+    try:
+        if os.path.exists('/dev/gpiochip0'):
+            stat = os.stat('/dev/gpiochip0')
+            logging.info(f"✓ /dev/gpiochip0 exists (mode: {oct(stat.st_mode)})")
+            if os.access('/dev/gpiochip0', os.R_OK | os.W_OK):
+                logging.info("✓ /dev/gpiochip0 is accessible (read/write)")
+            else:
+                logging.warning("⚠ /dev/gpiochip0 exists but not accessible")
+        else:
+            logging.warning("⚠ /dev/gpiochip0 does not exist")
+    except Exception as e:
+        logging.warning(f"Could not check /dev/gpiochip0: {e}")
+    
+    # Check log file writability
+    import pathlib
+    log_file = pathlib.Path("/var/log/luigi/mario.log")
+    try:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        logging.info(f"✓ Log directory exists: {log_file.parent}")
+        if log_file.exists():
+            logging.info(f"✓ Log file exists: {log_file}")
+        else:
+            logging.info(f"Log file will be created: {log_file}")
+    except Exception as e:
+        logging.error(f"✗ Cannot create log directory: {e}")
+    
+    logging.info("#" * 70)
+    logging.info("END DIAGNOSTICS - Starting application...")
+    logging.info("#" * 70)
+
+
 def main():
     """Main entry point for the application."""
     global app_instance
@@ -665,6 +884,10 @@ def main():
     
     # Setup logging with config
     setup_logging(config)
+    
+    # Run diagnostics BEFORE anything else
+    run_startup_diagnostics()
+    
     logging.info("=" * 60)
     logging.info("Mario Motion Detection Application Starting")
     logging.info("=" * 60)

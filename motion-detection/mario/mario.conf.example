@@ -19,7 +19,7 @@ SOUND_DIR=/usr/share/sounds/mario/
 # Timer file location for tracking last trigger time
 TIMER_FILE=/tmp/mario_timer
 # Log file location
-LOG_FILE=/var/log/motion.log
+LOG_FILE=/var/log/luigi/mario.log
 
 [Logging]
 # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL

@@ -8,12 +8,14 @@ Type=simple
 # Note: root is required for GPIO access via RPi.GPIO library
 # TODO: Consider using gpio group and udev rules for non-root access
 User=root
+# Ensure log directory exists before starting
+ExecStartPre=/bin/mkdir -p /var/log/luigi
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
-# Dual logging: both journalctl (automatic) and /var/log/motion.log (traditional)
-StandardOutput=append:/var/log/motion.log
-StandardError=append:/var/log/motion.log
+# Dual logging: both journalctl (automatic) and /var/log/luigi/mario.log (file)
+StandardOutput=append:/var/log/luigi/mario.log
+StandardError=append:/var/log/luigi/mario.log
 
 # Security hardening
 PrivateTmp=yes
