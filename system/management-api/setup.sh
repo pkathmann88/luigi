@@ -6,14 +6,27 @@ set -euo pipefail
 
 # Constants
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Source shared setup helpers
+# shellcheck source=../../util/setup-helpers.sh
+if [ -f "$REPO_ROOT/util/setup-helpers.sh" ]; then
+    source "$REPO_ROOT/util/setup-helpers.sh"
+else
+    echo "Error: Cannot find setup-helpers.sh"
+    echo "Expected location: $REPO_ROOT/util/setup-helpers.sh"
+    exit 1
+fi
+
 readonly MODULE_NAME="management-api"
 readonly MODULE_CATEGORY="system"
 
-# Color output functions (defined early for user detection)
+# Override logging functions with simpler format for this script
 log_info() { echo -e "\033[0;32m[INFO]\033[0m $1"; }
 log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 log_warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
 log_debug() { echo -e "\033[0;34m[DEBUG]\033[0m $1"; }
+
 
 # Detect the user who invoked sudo (fallback to current user if not using sudo)
 INSTALL_USER="${SUDO_USER:-$(whoami)}"
@@ -43,7 +56,7 @@ readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
 readonly LOG_DIR="/var/log"
 readonly AUDIT_LOG_DIR="/var/log/luigi"
 
-# Check root privileges
+# Check root privileges (use helper's check_root but override to use local error function)
 require_root() {
     if [ "$EUID" -ne 0 ]; then
         log_error "This script must be run as root (use sudo)"

@@ -13,15 +13,21 @@
 
 set -e  # Exit on error
 
-# Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Script directory and repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Source shared setup helpers
+# shellcheck source=../../util/setup-helpers.sh
+if [ -f "$REPO_ROOT/util/setup-helpers.sh" ]; then
+    source "$REPO_ROOT/util/setup-helpers.sh"
+else
+    echo "Error: Cannot find setup-helpers.sh"
+    echo "Expected location: $REPO_ROOT/util/setup-helpers.sh"
+    exit 1
+fi
 
 # Installation paths
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_SCRIPT="system-info.py"
 SERVICE_FILE="system-info.service"
 CONFIG_EXAMPLE="system-info.conf.example"
@@ -42,32 +48,7 @@ LOG_FILE="/var/log/system-info.log"
 # ha-mqtt integration paths
 HA_MQTT_SENSORS_DIR="/etc/luigi/iot/ha-mqtt/sensors.d"
 
-# Logging functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_step() {
-    echo -e "${BLUE}[STEP]${NC} $1"
-}
-
-# Check if running as root
-check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        log_error "This script must be run as root"
-        echo "Please run: sudo $0 $*"
-        exit 1
-    fi
-}
-
+# Check if files exist
 # Check if files exist
 check_files() {
     log_step "Checking required files..."
@@ -107,24 +88,19 @@ check_files() {
 
 # Install dependencies
 install_dependencies() {
-    # Check if --skip-packages flag is set
-    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+    # Check if --skip-packages flag is set (use helper function)
+    if should_skip_packages; then
         log_info "Skipping package installation (managed centrally)"
         return 0
     fi
     
     log_step "Installing dependencies..."
     
-    # Read packages from module.json
+    # Read packages from module.json using helper function
     local module_json="$SCRIPT_DIR/module.json"
-    local packages=()
+    local packages=($(read_apt_packages "$module_json"))
     
-    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
-        # Parse apt_packages array from JSON
-        while IFS= read -r pkg; do
-            packages+=("$pkg")
-        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
-    else
+    if [ ${#packages[@]} -eq 0 ]; then
         # Fallback to hardcoded packages if module.json or jq not available
         log_warn "module.json or jq not found, using fallback package list"
         packages=("python3-psutil")
@@ -469,18 +445,14 @@ uninstall() {
         remove_packages=$REPLY
     fi
     
-    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+    if should_skip_packages; then
         log_info "Skipping package removal (managed centrally)"
     elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         log_step "Removing packages..."
         
-        # Read packages from module.json
-        local packages=()
-        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
-            while IFS= read -r pkg; do
-                packages+=("$pkg")
-            done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
-        else
+        # Read packages from module.json using helper function
+        local packages=($(read_apt_packages "$SCRIPT_DIR/module.json"))
+        if [ ${#packages[@]} -eq 0 ]; then
             # Fallback to hardcoded packages
             packages=("python3-psutil")
         fi

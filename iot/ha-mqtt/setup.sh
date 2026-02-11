@@ -9,12 +9,19 @@
 
 set -e  # Exit on error
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Script directory and repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Source shared setup helpers
+# shellcheck source=../../util/setup-helpers.sh
+if [ -f "$REPO_ROOT/util/setup-helpers.sh" ]; then
+    source "$REPO_ROOT/util/setup-helpers.sh"
+else
+    echo "Error: Cannot find setup-helpers.sh"
+    echo "Expected location: $REPO_ROOT/util/setup-helpers.sh"
+    exit 1
+fi
 
 # Installation paths
 INSTALL_BIN_DIR="/usr/local/bin"
@@ -23,13 +30,10 @@ INSTALL_CONFIG_DIR="/etc/luigi/iot/ha-mqtt"
 INSTALL_EXAMPLES_DIR="/usr/share/luigi/ha-mqtt/examples"
 SENSORS_DIR="${INSTALL_CONFIG_DIR}/sensors.d"
 
-# Source directory (where this script is located)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # Version
 VERSION="1.0.0"
 
-# Function to print colored messages
+# Override helper logging with ha-mqtt specific format
 print_success() {
     echo -e "${GREEN}✓${NC} $1"
 }
@@ -46,7 +50,7 @@ print_info() {
     echo -e "${BLUE}ℹ${NC} $1"
 }
 
-# Function to check if running as root
+# Override check_root to use print_error
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         print_error "This script must be run as root (use sudo)"
@@ -81,24 +85,19 @@ check_prerequisites() {
 
 # Function to install packages
 install_packages() {
-    # Check if --skip-packages flag is set
-    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+    # Check if --skip-packages flag is set (use helper function)
+    if should_skip_packages; then
         print_info "Skipping package installation (managed centrally)"
         return 0
     fi
     
     print_info "Installing required packages..."
     
-    # Read packages from module.json
+    # Read packages from module.json using helper function
     local module_json="$SCRIPT_DIR/module.json"
-    local packages=()
+    local packages=($(read_apt_packages "$module_json"))
     
-    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
-        # Parse apt_packages array from JSON
-        while IFS= read -r pkg; do
-            packages+=("$pkg")
-        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
-    else
+    if [ ${#packages[@]} -eq 0 ]; then
         # Fallback to hardcoded packages if module.json not available
         # Note: jq is required to parse module.json, so it must be in the list
         print_warning "module.json not found or jq not available, using fallback package list"
@@ -525,19 +524,15 @@ uninstall_module() {
     fi
     
     # Remove packages if requested
-    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+    if should_skip_packages; then
         print_info "Skipping package removal (managed centrally)"
     elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         echo ""
         print_info "Removing packages..."
         
-        # Read packages from module.json
-        local packages=()
-        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
-            while IFS= read -r pkg; do
-                packages+=("$pkg")
-            done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
-        else
+        # Read packages from module.json using helper function
+        local packages=($(read_apt_packages "$SCRIPT_DIR/module.json"))
+        if [ ${#packages[@]} -eq 0 ]; then
             # Fallback to hardcoded packages
             packages=("mosquitto-clients" "jq")
         fi
