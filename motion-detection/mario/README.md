@@ -478,17 +478,43 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
    sudo journalctl -u mario.service -n 50
    ```
 
-2. Verify Python script exists and has correct permissions:
+2. **Common Issue: "Failed to add edge detection" error**
+   
+   This error occurs when trying to add GPIO event detection on a pin that already has event detection registered (from a previous run or another process).
+   
+   **Symptoms:**
+   - Error message: "RuntimeError: Failed to add edge detection"
+   - GPIO initializes successfully, but monitoring fails to start
+   - Typically happens after restarting the service or running the script multiple times
+   
+   **Solution:**
+   The mario module automatically handles this by:
+   - Setting `GPIO.setwarnings(False)` to suppress pin reuse warnings
+   - Removing any existing event detection before adding new detection
+   
+   If the issue persists, manually clean up GPIO state:
+   ```bash
+   # Stop the service
+   sudo systemctl stop mario.service
+   
+   # Verify no other process is using GPIO23
+   sudo lsof | grep -i gpio || echo "No GPIO processes found"
+   
+   # Restart the service
+   sudo systemctl start mario.service
+   ```
+
+3. Verify Python script exists and has correct permissions:
    ```bash
    ls -l /usr/local/bin/mario.py
    ```
 
-3. Verify Python dependencies:
+4. Verify Python dependencies:
    ```bash
    python3 -c "import RPi.GPIO"
    ```
 
-4. Test script manually:
+5. Test script manually:
    ```bash
    sudo python3 /usr/local/bin/mario.py
    ```
