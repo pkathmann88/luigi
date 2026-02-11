@@ -483,36 +483,27 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
 
 2. **Common Issue: "Failed to add edge detection" error**
    
-   This error occurs when trying to add GPIO event detection, particularly on Raspberry Pi 4, 5, or Zero 2W models.
+   This error occurs when trying to add GPIO event detection on a pin that already has event detection registered (from a previous run or another process).
    
    **Symptoms:**
    - Error message: "RuntimeError: Failed to add edge detection"
    - GPIO initializes successfully, but monitoring fails to start
-   - Typically happens after restarting the service or on first run
-   
-   **Root Cause:**
-   On newer Raspberry Pi models (4, 5, Zero 2W), GPIO pins can be left in an inconsistent state by:
-   - Previous script executions that didn't clean up properly
-   - Kernel drivers that claimed the pins during boot
-   - System processes that used GPIO
+   - Typically happens after restarting the service or running the script multiple times
    
    **Solution:**
    The mario module automatically handles this by:
-   - Calling `GPIO.cleanup()` at the very start of initialization
-   - This clears any leftover GPIO state before setting up new event detection
-   - Setting `GPIO.setwarnings(False)` to suppress warnings about pin reuse
+   - Setting `GPIO.setwarnings(False)` to suppress pin reuse warnings
+   - Removing any existing event detection before adding new detection
    
-   This fix is applied automatically - no manual intervention needed.
-   
-   If the issue persists after this fix, manually clean up GPIO state:
+   If the issue persists, manually clean up GPIO state:
    ```bash
    # Stop the service
    sudo systemctl stop mario.service
    
-   # Check for processes using GPIO
+   # Verify no other process is using GPIO23
    sudo lsof | grep -i gpio || echo "No GPIO processes found"
    
-   # Restart the service (will run GPIO.cleanup() automatically)
+   # Restart the service
    sudo systemctl start mario.service
    ```
 
