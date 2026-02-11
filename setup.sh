@@ -139,7 +139,7 @@ check_and_install_dependencies() {
 }
 
 # Get apt packages from a module's module.json file
-# Returns space-separated list of package names
+# Returns newline-separated list of package names
 get_module_apt_packages() {
     local module_path="$1"
     local module_json="$SCRIPT_DIR/$module_path/module.json"
@@ -156,7 +156,7 @@ get_module_apt_packages() {
         return 0
     fi
     
-    # Parse apt_packages array from JSON
+    # Parse apt_packages array from JSON (jq outputs one package per line)
     local packages
     packages=$(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
     
