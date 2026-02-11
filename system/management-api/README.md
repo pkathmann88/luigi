@@ -37,10 +37,11 @@ sudo ./setup.sh install
 
 The installer will:
 1. Check prerequisites and install Node.js if needed
-2. Install Node.js dependencies
-3. Generate TLS certificates
-4. Configure the service
-5. Start the API server
+2. Install backend Node.js dependencies
+3. Build the web frontend (React/TypeScript)
+4. Generate TLS certificates
+5. Configure the service
+6. Start the API server
 
 **IMPORTANT:** After installation, edit the configuration file and set a strong password:
 
@@ -62,20 +63,25 @@ sudo mkdir -p /home/pi/luigi/system/management-api
 sudo cp -r ./* /home/pi/luigi/system/management-api/
 sudo chown -R pi:pi /home/pi/luigi/system/management-api
 
-# 3. Install dependencies
+# 3. Install backend dependencies
 cd /home/pi/luigi/system/management-api
 npm install --production
 
-# 4. Create configuration
+# 4. Build frontend
+cd /home/pi/luigi/system/management-api/frontend
+npm install
+npm run build
+
+# 5. Create configuration
 sudo mkdir -p /etc/luigi/system/management-api
 sudo cp .env.example /etc/luigi/system/management-api/.env
 sudo chmod 600 /etc/luigi/system/management-api/.env
 sudo nano /etc/luigi/system/management-api/.env  # Set AUTH_PASSWORD
 
-# 5. Generate TLS certificates
+# 6. Generate TLS certificates
 bash scripts/generate-certs.sh
 
-# 6. Install and start service
+# 7. Install and start service
 sudo cp management-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable management-api
@@ -111,7 +117,9 @@ Default credentials:
 
 ### Building the Frontend
 
-The frontend is built with React + TypeScript. To rebuild:
+The frontend is automatically built during installation by `setup.sh install`. 
+
+If you need to rebuild it manually:
 
 ```bash
 cd frontend
