@@ -107,6 +107,12 @@ check_files() {
 
 # Install dependencies
 install_dependencies() {
+    # Check if --skip-packages flag is set
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package installation (managed centrally)"
+        return 0
+    fi
+    
     log_step "Installing dependencies..."
     
     # Read packages from module.json
@@ -449,7 +455,7 @@ uninstall() {
     fi
     
     # Remove packages if in purge mode or requested
-    if [ "$purge_mode" != "purge" ]; then
+    if [ "$purge_mode" != "purge" ] && [ "${SKIP_PACKAGES:-}" != "1" ]; then
         echo ""
         # Read packages from module.json for display
         local package_list="python3-psutil"
@@ -463,7 +469,9 @@ uninstall() {
         remove_packages=$REPLY
     fi
     
-    if [[ $remove_packages =~ ^[Yy]$ ]]; then
+    if [ "${SKIP_PACKAGES:-}" = "1" ]; then
+        log_info "Skipping package removal (managed centrally)"
+    elif [[ $remove_packages =~ ^[Yy]$ ]]; then
         log_step "Removing packages..."
         
         # Read packages from module.json
@@ -560,23 +568,43 @@ status() {
 }
 
 # Main script
-case "${1:-}" in
+# Parse command and flags
+action="${1:-}"
+shift || true
+
+# Parse flags
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --skip-packages)
+            export SKIP_PACKAGES=1
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+case "$action" in
     install)
-        install "$@"
+        install
         ;;
     uninstall)
-        uninstall "$@"
+        uninstall
         ;;
     status)
         status
         ;;
     *)
-        echo "Usage: sudo $0 {install|uninstall|status}"
+        echo "Usage: sudo $0 {install|uninstall|status} [--skip-packages]"
         echo ""
         echo "Commands:"
         echo "  install   - Install system-info module"
         echo "  uninstall - Remove system-info module"
         echo "  status    - Show installation and service status"
+        echo ""
+        echo "Options:"
+        echo "  --skip-packages  - Skip apt package installation/removal (for centralized management)"
         exit 1
         ;;
 esac

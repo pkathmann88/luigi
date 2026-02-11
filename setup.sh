@@ -251,6 +251,99 @@ install_apt_packages() {
     fi
 }
 
+# Remove apt packages in batch (after module uninstallation)
+remove_apt_packages() {
+    local packages=("$@")
+    local purge_mode="$1"
+    shift
+    packages=("$@")
+    
+    if [ ${#packages[@]} -eq 0 ]; then
+        log_info "No apt packages to remove"
+        return 0
+    fi
+    
+    log_step "Removing apt packages from all modules..."
+    echo ""
+    
+    # Filter packages that are actually installed
+    local to_remove=()
+    for pkg in "${packages[@]}"; do
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            log_info "  $pkg (installed)"
+            to_remove+=("$pkg")
+        else
+            log_info "✓ $pkg (not installed)"
+        fi
+    done
+    
+    echo ""
+    
+    # Remove packages if any are installed
+    if [ ${#to_remove[@]} -gt 0 ]; then
+        # In purge mode, don't prompt
+        if [ "$purge_mode" = "purge" ]; then
+            log_step "Removing ${#to_remove[@]} package(s)..."
+            log_info "Packages: ${to_remove[*]}"
+            
+            for pkg in "${to_remove[@]}"; do
+                log_info "Removing $pkg..."
+                if apt-get remove -y -qq "$pkg" 2>/dev/null; then
+                    log_info "✓ $pkg removed"
+                else
+                    log_warn "Failed to remove $pkg (may not have been installed by Luigi)"
+                fi
+            done
+            
+            # Clean up unused dependencies
+            log_info "Removing unused dependencies..."
+            apt-get autoremove -y -qq 2>/dev/null || true
+            
+            log_info "✓ Package removal completed"
+            echo ""
+        else
+            # In regular uninstall mode, prompt the user
+            log_warn "The following packages were installed by Luigi modules:"
+            for pkg in "${to_remove[@]}"; do
+                echo "  - $pkg"
+            done
+            echo ""
+            echo "Note: These packages may be used by other software on your system."
+            echo ""
+            read -p "Remove these packages? (y/N): " -n 1 -r
+            echo ""
+            
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                log_step "Removing ${#to_remove[@]} package(s)..."
+                
+                for pkg in "${to_remove[@]}"; do
+                    log_info "Removing $pkg..."
+                    if apt-get remove -y -qq "$pkg" 2>/dev/null; then
+                        log_info "✓ $pkg removed"
+                    else
+                        log_warn "Failed to remove $pkg"
+                    fi
+                done
+                
+                # Clean up unused dependencies
+                log_info "Removing unused dependencies..."
+                apt-get autoremove -y -qq 2>/dev/null || true
+                
+                log_info "✓ Package removal completed"
+                echo ""
+            else
+                log_info "Keeping packages"
+                echo ""
+            fi
+        fi
+    else
+        log_info "✓ No packages to remove"
+        echo ""
+    fi
+    
+    return 0
+}
+
 # Discover all module setup scripts
 discover_modules() {
     local modules=()
@@ -393,6 +486,8 @@ sort_modules_by_dependencies() {
 execute_module_command() {
     local module_path="$1"
     local command="$2"
+    shift 2
+    local extra_args=("$@")
     local module_setup="$SCRIPT_DIR/$module_path/setup.sh"
     
     if [ ! -f "$module_setup" ]; then
@@ -407,8 +502,8 @@ execute_module_command() {
     
     log_header "Module: $module_path"
     
-    # Execute the module setup script with the command
-    if ! "$module_setup" "$command"; then
+    # Execute the module setup script with the command and any extra args
+    if ! "$module_setup" "$command" "${extra_args[@]}"; then
         log_error "Failed to execute '$command' for module: $module_path"
         return 1
     fi
@@ -530,7 +625,7 @@ install_modules() {
     
     # Execute install command for each module
     for module in "${modules[@]}"; do
-        if execute_module_command "$module" "install"; then
+        if execute_module_command "$module" "install" "--skip-packages"; then
             ((success_count++))
         else
             failed_modules+=("$module")
@@ -596,14 +691,32 @@ uninstall_modules() {
     # Export purge mode for module scripts
     export LUIGI_PURGE_MODE="$purge_mode"
     
-    # Execute uninstall command for each module
+    # Execute uninstall command for each module with --skip-packages flag
     for module in "${modules[@]}"; do
-        if execute_module_command "$module" "uninstall"; then
+        if execute_module_command "$module" "uninstall" "--skip-packages"; then
             ((success_count++))
         else
             failed_modules+=("$module")
         fi
     done
+    
+    # Collect and remove apt packages AFTER all modules are uninstalled
+    if [ -z "$specific_module" ]; then
+        # Only do centralized package removal when uninstalling all modules
+        log_step "Collecting apt package requirements from all modules..."
+        local all_packages
+        mapfile -t all_packages < <(collect_all_apt_packages "${modules[@]}")
+        
+        if ! remove_apt_packages "$purge_mode" "${all_packages[@]}"; then
+            log_warn "Some packages could not be removed"
+        fi
+    else
+        # For specific module uninstall, show a note about packages
+        echo ""
+        log_info "Note: Apt packages are not removed when uninstalling a specific module"
+        log_info "To remove packages, use: sudo ./setup.sh uninstall (all modules)"
+        echo ""
+    fi
     
     # Remove setup script dependencies if purging everything
     if [ "$purge_mode" = "purge" ] && [ -z "$specific_module" ]; then
