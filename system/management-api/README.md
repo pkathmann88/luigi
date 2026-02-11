@@ -59,16 +59,17 @@ curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt-get install -y nodejs npm openssl curl
 
 # 2. Copy application files
-sudo mkdir -p /home/pi/luigi/system/management-api
-sudo cp -r ./* /home/pi/luigi/system/management-api/
-sudo chown -R pi:pi /home/pi/luigi/system/management-api
+# Note: $USER and $HOME are environment variables that expand to your username and home directory
+sudo mkdir -p $HOME/luigi/system/management-api
+sudo cp -r ./* $HOME/luigi/system/management-api/
+sudo chown -R $USER:$USER $HOME/luigi/system/management-api
 
 # 3. Install backend dependencies
-cd /home/pi/luigi/system/management-api
+cd $HOME/luigi/system/management-api
 npm install --production
 
 # 4. Build frontend
-cd /home/pi/luigi/system/management-api/frontend
+cd $HOME/luigi/system/management-api/frontend
 npm install
 npm run build
 
@@ -82,11 +83,14 @@ sudo nano /etc/luigi/system/management-api/.env  # Set AUTH_PASSWORD
 bash scripts/generate-certs.sh
 
 # 7. Install and start service
+# Edit management-api.service to set correct User, Group, and WorkingDirectory
 sudo cp management-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable management-api
 sudo systemctl start management-api
 ```
+
+**Note:** The automated installer (`./setup.sh install`) handles user detection and path configuration automatically.
 
 ## Web Frontend
 
@@ -144,9 +148,11 @@ AUTH_PASSWORD=your-secure-password-here  # Minimum 12 characters
 
 # HTTPS (Required for security)
 USE_HTTPS=true
-TLS_CERT_PATH=/home/pi/certs/server.crt
-TLS_KEY_PATH=/home/pi/certs/server.key
+TLS_CERT_PATH=$HOME/certs/server.crt
+TLS_KEY_PATH=$HOME/certs/server.key
 ```
+
+**Note:** Default paths use `$HOME/certs/`. The installer creates certificates at this location for the user running the script.
 
 ### Optional Settings
 
@@ -396,7 +402,7 @@ sudo journalctl -u management-api -n 100
 
 - **HTTPS is required** - HTTP Basic Auth sends credentials in base64 (not encrypted)
 - Self-signed certificates generated automatically during installation
-- Custom certificates can be used by replacing files in `/home/pi/certs/`
+- Custom certificates can be used by replacing files in `$HOME/certs/` (default location)
 
 ### Rate Limiting
 
@@ -433,14 +439,14 @@ sudo journalctl -u management-api -n 100
 cat /etc/luigi/system/management-api/.env
 
 # Verify TLS certificates exist
-ls -la /home/pi/certs/
+ls -la $HOME/certs/
 ```
 
 ### Certificate errors
 
 ```bash
 # Regenerate certificates
-bash /home/pi/luigi/system/management-api/scripts/generate-certs.sh
+bash $HOME/luigi/system/management-api/scripts/generate-certs.sh
 
 # Restart service
 sudo systemctl restart management-api
