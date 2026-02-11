@@ -83,16 +83,42 @@ check_prerequisites() {
 install_packages() {
     print_info "Installing required packages..."
     
-    # Update package list
-    if ! apt-get update >/dev/null 2>&1; then
-        print_error "Failed to update package list"
-        return 1
+    # Read packages from module.json
+    local module_json="$SCRIPT_DIR/module.json"
+    local packages=()
+    
+    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+        # Parse apt_packages array from JSON
+        while IFS= read -r pkg; do
+            packages+=("$pkg")
+        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+    else
+        # Fallback to hardcoded packages if module.json not available
+        # Note: jq is required to parse module.json, so it must be in the list
+        print_warning "module.json not found or jq not available, using fallback package list"
+        packages=("mosquitto-clients" "jq")
     fi
     
-    # Install packages
-    local packages=("mosquitto-clients" "jq")
+    # Check if packages are needed
+    local to_install=()
     for pkg in "${packages[@]}"; do
-        if ! dpkg -l | grep -q "^ii  $pkg "; then
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            print_success "$pkg already installed"
+        else
+            to_install+=("$pkg")
+        fi
+    done
+    
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        # Update package list
+        if ! apt-get update >/dev/null 2>&1; then
+            print_error "Failed to update package list"
+            return 1
+        fi
+        
+        # Install each package
+        for pkg in "${to_install[@]}"; do
             print_info "Installing $pkg..."
             if apt-get install -y "$pkg" >/dev/null 2>&1; then
                 print_success "$pkg installed"
@@ -100,10 +126,8 @@ install_packages() {
                 print_error "Failed to install $pkg"
                 return 1
             fi
-        else
-            print_success "$pkg already installed"
-        fi
-    done
+        done
+    fi
     
     return 0
 }
@@ -367,7 +391,15 @@ uninstall_module() {
         echo ""
         remove_config=$REPLY
         
-        read -p "Remove installed packages (mosquitto-clients, jq)? [y/N] " -n 1 -r
+        # Read packages from module.json for display
+        local package_list="mosquitto-clients, jq"
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            local packages_json
+            packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
+            [ -n "$packages_json" ] && package_list="$packages_json"
+        fi
+        
+        read -p "Remove installed packages ($package_list)? [y/N] " -n 1 -r
         echo ""
         remove_packages=$REPLY
     fi
@@ -415,7 +447,17 @@ uninstall_module() {
         echo ""
         print_info "Removing packages..."
         
-        local packages=("mosquitto-clients" "jq")
+        # Read packages from module.json
+        local packages=()
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            while IFS= read -r pkg; do
+                packages+=("$pkg")
+            done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
+        else
+            # Fallback to hardcoded packages
+            packages=("mosquitto-clients" "jq")
+        fi
+        
         for pkg in "${packages[@]}"; do
             if dpkg -l | grep -q "^ii  $pkg "; then
                 print_info "Removing $pkg..."

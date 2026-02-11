@@ -4,5 +4,8 @@
   "description": "System optimization for Raspberry Pi Zero W performance tuning",
   "category": "system",
   "dependencies": [],
+  "apt_packages": [
+    "python3"
+  ],
   "author": "Luigi Project"
 }

@@ -115,28 +115,53 @@ check_files() {
 install_dependencies() {
     log_step "Installing dependencies..."
     
-    # Update package list
-    log_info "Updating package list..."
-    apt-get update -qq || {
-        log_error "Failed to update package list"
-        exit 1
-    }
+    # Read packages from module.json
+    local module_json="$SCRIPT_DIR/module.json"
+    local packages=()
     
-    # Install Python GPIO library
-    log_info "Installing python3-rpi.gpio..."
-    apt-get install -y python3-rpi.gpio || {
-        log_error "Failed to install python3-rpi.gpio"
-        exit 1
-    }
+    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+        # Parse apt_packages array from JSON
+        while IFS= read -r pkg; do
+            packages+=("$pkg")
+        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+    else
+        # Fallback to hardcoded packages if module.json or jq not available
+        log_warn "module.json or jq not found, using fallback package list"
+        packages=("python3-rpi.gpio" "alsa-utils")
+    fi
     
-    # Install ALSA utilities
-    log_info "Installing alsa-utils..."
-    apt-get install -y alsa-utils || {
-        log_error "Failed to install alsa-utils"
-        exit 1
-    }
+    # Check if packages are needed
+    local to_install=()
+    for pkg in "${packages[@]}"; do
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            log_info "✓ $pkg (already installed)"
+        else
+            to_install+=("$pkg")
+        fi
+    done
     
-    log_info "Dependencies installed successfully"
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        # Update package list
+        log_info "Updating package list..."
+        apt-get update -qq || {
+            log_error "Failed to update package list"
+            exit 1
+        }
+        
+        # Install each package
+        for pkg in "${to_install[@]}"; do
+            log_info "Installing $pkg..."
+            apt-get install -y "$pkg" || {
+                log_error "Failed to install $pkg"
+                exit 1
+            }
+        done
+        
+        log_info "Dependencies installed successfully"
+    else
+        log_info "All dependencies are already installed"
+    fi
 }
 
 # Install sound files
@@ -546,14 +571,31 @@ uninstall() {
     
     # Remove packages if in purge mode or requested
     if [ "$purge_mode" != "purge" ]; then
-        read -rp "$(echo -e "${YELLOW}Remove installed packages (python3-rpi.gpio, alsa-utils)? [y/N]${NC} ")" response
+        # Read packages from module.json for display
+        local package_list="python3-rpi.gpio, alsa-utils"
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            local packages_json
+            packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
+            [ -n "$packages_json" ] && package_list="$packages_json"
+        fi
+        read -rp "$(echo -e "${YELLOW}Remove installed packages ($package_list)? [y/N]${NC} ")" response
         remove_packages=$response
     fi
     
     if [[ "$remove_packages" =~ ^[Yy]$ ]]; then
         log_info "Removing packages..."
         
-        local packages=("python3-rpi.gpio" "alsa-utils")
+        # Read packages from module.json
+        local packages=()
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            while IFS= read -r pkg; do
+                packages+=("$pkg")
+            done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
+        else
+            # Fallback to hardcoded packages
+            packages=("python3-rpi.gpio" "alsa-utils")
+        fi
+        
         for pkg in "${packages[@]}"; do
             if dpkg -l | grep -q "^ii  $pkg "; then
                 log_info "Removing $pkg..."

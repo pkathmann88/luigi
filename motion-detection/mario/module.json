@@ -6,6 +6,10 @@
   "dependencies": [
     "iot/ha-mqtt"
   ],
+  "apt_packages": [
+    "python3-rpi.gpio",
+    "alsa-utils"
+  ],
   "author": "Luigi Project",
   "hardware": {
     "gpio_pins": [23],

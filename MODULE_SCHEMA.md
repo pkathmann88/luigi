@@ -26,6 +26,7 @@ category/module-name/
 - **`description`** (string): Brief description of the module's purpose
 - **`category`** (string): Module category (e.g., "motion-detection", "iot", "system")
 - **`dependencies`** (array): List of module paths that must be installed before this module
+- **`apt_packages`** (array): List of apt package names required by this module (e.g., ["python3-rpi.gpio", "alsa-utils"])
 
 ### Optional Fields
 
@@ -34,9 +35,6 @@ category/module-name/
   - **`gpio_pins`** (array): List of GPIO pins used by the module
   - **`sensors`** (array): List of sensors or hardware components required
 - **`provides`** (array): List of commands, utilities, or services provided by this module
-- **`requires`** (object): System requirements
-  - **`packages`** (array): List of required system packages
-  - **`python_packages`** (array): List of required Python packages
 
 ## Example Schemas
 
@@ -50,6 +48,10 @@ category/module-name/
   "category": "motion-detection",
   "dependencies": [
     "iot/ha-mqtt"
+  ],
+  "apt_packages": [
+    "python3-rpi.gpio",
+    "alsa-utils"
   ],
   "author": "Luigi Project",
   "hardware": {
@@ -68,6 +70,10 @@ category/module-name/
   "description": "Home Assistant MQTT integration for Luigi sensor modules",
   "category": "iot",
   "dependencies": [],
+  "apt_packages": [
+    "mosquitto-clients",
+    "jq"
+  ],
   "author": "Luigi Project",
   "provides": [
     "luigi-publish",
@@ -85,7 +91,8 @@ category/module-name/
   "version": "1.0.0",
   "description": "A simple module example",
   "category": "sensors",
-  "dependencies": []
+  "dependencies": [],
+  "apt_packages": []
 }
 ```
 
@@ -146,13 +153,15 @@ Invalid `module.json` files will generate warnings but will not prevent module d
 
 1. **Always specify dependencies**: If your module uses functionality from another module (like mario → ha-mqtt), declare it in dependencies.
 
-2. **Keep descriptions concise**: Aim for one-line descriptions that clearly explain the module's purpose.
+2. **Always specify apt_packages**: List all apt packages your module requires (e.g., python3-rpi.gpio, mosquitto-clients). This enables batch installation and improves setup efficiency.
 
-3. **Use semantic versioning**: Follow semver (MAJOR.MINOR.PATCH) for version numbers.
+3. **Keep descriptions concise**: Aim for one-line descriptions that clearly explain the module's purpose.
 
-4. **Document hardware requirements**: If your module uses GPIO pins or specific hardware, document it in the `hardware` section.
+4. **Use semantic versioning**: Follow semver (MAJOR.MINOR.PATCH) for version numbers.
 
-5. **List provides**: If your module installs commands or services that other modules might depend on, list them in `provides`.
+5. **Document hardware requirements**: If your module uses GPIO pins or specific hardware, document it in the `hardware` section.
+
+6. **List provides**: If your module installs commands or services that other modules might depend on, list them in `provides`.
 
 ## Example Use Cases
 
@@ -167,13 +176,10 @@ A temperature sensor module that publishes to Home Assistant:
   "description": "DHT22 temperature and humidity sensor with MQTT publishing",
   "category": "sensors",
   "dependencies": ["iot/ha-mqtt"],
+  "apt_packages": ["python3-pip"],
   "hardware": {
     "gpio_pins": [4],
     "sensors": ["DHT22"]
-  },
-  "requires": {
-    "packages": ["python3-pip"],
-    "python_packages": ["Adafruit-DHT"]
   }
 }
 ```
@@ -192,6 +198,7 @@ A door automation module that uses both sensors and MQTT:
     "sensors/magnetic-switch",
     "iot/ha-mqtt"
   ],
+  "apt_packages": [],
   "hardware": {
     "gpio_pins": [17, 27],
     "sensors": ["Magnetic door sensor", "Relay module"]

@@ -109,21 +109,53 @@ check_files() {
 install_dependencies() {
     log_step "Installing dependencies..."
     
-    # Update package list
-    log_info "Updating package list..."
-    apt-get update -qq || {
-        log_error "Failed to update package list"
-        exit 1
-    }
+    # Read packages from module.json
+    local module_json="$SCRIPT_DIR/module.json"
+    local packages=()
     
-    # Install Python psutil library
-    log_info "Installing python3-psutil..."
-    apt-get install -y python3-psutil || {
-        log_error "Failed to install python3-psutil"
-        exit 1
-    }
+    if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+        # Parse apt_packages array from JSON
+        while IFS= read -r pkg; do
+            packages+=("$pkg")
+        done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+    else
+        # Fallback to hardcoded packages if module.json or jq not available
+        log_warn "module.json or jq not found, using fallback package list"
+        packages=("python3-psutil")
+    fi
     
-    log_info "Dependencies installed successfully"
+    # Check if packages are needed
+    local to_install=()
+    for pkg in "${packages[@]}"; do
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            log_info "✓ $pkg (already installed)"
+        else
+            to_install+=("$pkg")
+        fi
+    done
+    
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        # Update package list
+        log_info "Updating package list..."
+        apt-get update -qq || {
+            log_error "Failed to update package list"
+            exit 1
+        }
+        
+        # Install each package
+        for pkg in "${to_install[@]}"; do
+            log_info "Installing $pkg..."
+            apt-get install -y "$pkg" || {
+                log_error "Failed to install $pkg"
+                exit 1
+            }
+        done
+        
+        log_info "Dependencies installed successfully"
+    else
+        log_info "All dependencies are already installed"
+    fi
 }
 
 # Install Python script
@@ -417,17 +449,38 @@ uninstall() {
     # Remove packages if in purge mode or requested
     if [ "$purge_mode" != "purge" ]; then
         echo ""
-        read -p "Remove installed packages (python3-psutil)? (y/N): " -n 1 -r
+        # Read packages from module.json for display
+        local package_list="python3-psutil"
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            local packages_json
+            packages_json=$(jq -r '.apt_packages | join(", ")' "$SCRIPT_DIR/module.json" 2>/dev/null)
+            [ -n "$packages_json" ] && package_list="$packages_json"
+        fi
+        read -p "Remove installed packages ($package_list)? (y/N): " -n 1 -r
         echo
         remove_packages=$REPLY
     fi
     
     if [[ $remove_packages =~ ^[Yy]$ ]]; then
         log_step "Removing packages..."
-        if dpkg -l | grep -q "^ii  python3-psutil "; then
-            log_info "Removing python3-psutil..."
-            apt-get remove -y python3-psutil >/dev/null 2>&1 || log_warn "Failed to remove python3-psutil"
+        
+        # Read packages from module.json
+        local packages=()
+        if [ -f "$SCRIPT_DIR/module.json" ] && command -v jq >/dev/null 2>&1; then
+            while IFS= read -r pkg; do
+                packages+=("$pkg")
+            done < <(jq -r '.apt_packages[]? // empty' "$SCRIPT_DIR/module.json" 2>/dev/null)
+        else
+            # Fallback to hardcoded packages
+            packages=("python3-psutil")
         fi
+        
+        for pkg in "${packages[@]}"; do
+            if dpkg -l | grep -q "^ii  $pkg "; then
+                log_info "Removing $pkg..."
+                apt-get remove -y "$pkg" >/dev/null 2>&1 || log_warn "Failed to remove $pkg"
+            fi
+        done
         
         # Clean up unused dependencies
         log_info "Removing unused dependencies..."
