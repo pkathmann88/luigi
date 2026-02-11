@@ -273,42 +273,60 @@ install() {
 }
 
 # Build function - builds frontend and backend without full installation
+# Builds in place (in the repository directory) for development workflows
 build() {
-    check_root
-    log_info "Building ${MODULE_NAME}..."
+    log_info "Building ${MODULE_NAME} in place..."
+    
+    # For build command, check if we're running with sudo
+    # If so, we'll use INSTALL_USER; otherwise use current user
+    local build_user="$USER"
+    local use_sudo=""
+    if [ -n "${SUDO_USER:-}" ]; then
+        build_user="$INSTALL_USER"
+        use_sudo="sudo -u $INSTALL_USER"
+        log_info "Running as sudo, will build as user: $build_user"
+    else
+        log_info "Running as user: $build_user"
+    fi
     
     # 1. Check prerequisites
     if [ "${SKIP_PACKAGES:-}" != "1" ]; then
-        log_info "Checking prerequisites..."
-        
-        # Read packages from module.json
-        local module_json="$SCRIPT_DIR/module.json"
-        local packages=()
-        
-        if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
-            # Parse apt_packages array from JSON
-            while IFS= read -r pkg; do
-                packages+=("$pkg")
-            done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+        # Package installation requires root
+        if [ "$EUID" -ne 0 ]; then
+            log_warn "Package installation requires root privileges"
+            log_warn "Run with sudo to install packages, or use --skip-packages"
         else
-            # Fallback to hardcoded packages if module.json or jq not available
-            log_warn "module.json or jq not found, using fallback package list"
-            packages=("nodejs" "npm" "openssl" "curl")
-        fi
-        
-        # Check which packages need installation
-        local to_install=()
-        for pkg in "${packages[@]}"; do
-            if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
-                to_install+=("$pkg")
+            log_info "Checking prerequisites..."
+            
+            # Read packages from module.json
+            local module_json="$SCRIPT_DIR/module.json"
+            local packages=()
+            
+            if [ -f "$module_json" ] && command -v jq >/dev/null 2>&1; then
+                # Parse apt_packages array from JSON
+                while IFS= read -r pkg; do
+                    packages+=("$pkg")
+                done < <(jq -r '.apt_packages[]? // empty' "$module_json" 2>/dev/null)
+            else
+                # Fallback to hardcoded packages if module.json or jq not available
+                log_warn "module.json or jq not found, using fallback package list"
+                packages=("nodejs" "npm" "openssl" "curl")
             fi
-        done
-        
-        # Install packages if needed
-        if [ ${#to_install[@]} -gt 0 ]; then
-            log_info "Installing required packages: ${to_install[*]}"
-            apt-get update
-            apt-get install -y "${to_install[@]}"
+            
+            # Check which packages need installation
+            local to_install=()
+            for pkg in "${packages[@]}"; do
+                if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+                    to_install+=("$pkg")
+                fi
+            done
+            
+            # Install packages if needed
+            if [ ${#to_install[@]} -gt 0 ]; then
+                log_info "Installing required packages: ${to_install[*]}"
+                apt-get update
+                apt-get install -y "${to_install[@]}"
+            fi
         fi
     else
         log_info "Skipping package installation (managed centrally)"
@@ -328,33 +346,22 @@ build() {
     fi
     log_info "Node.js version: $(node --version) ✓"
     
-    # 2. Create directory structure (minimal for build)
-    log_info "Creating directories..."
-    mkdir -p "$APP_DIR"
-    
-    # 3. Copy application files
-    log_info "Copying application files..."
-    cp -r "$SCRIPT_DIR"/* "$APP_DIR/"
-    
-    # Set ownership
-    chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
-    
-    # 4. Install Node.js dependencies
+    # 2. Install Node.js dependencies (in place)
     log_info "Installing Node.js dependencies..."
-    cd "$APP_DIR"
-    sudo -u "$INSTALL_USER" npm install --production --no-audit
+    cd "$SCRIPT_DIR"
+    $use_sudo npm install --production --no-audit
     
     # Run npm audit
     log_info "Running security audit..."
-    sudo -u "$INSTALL_USER" npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
+    $use_sudo npm audit --audit-level=moderate || log_warn "Some vulnerabilities found - review with 'npm audit'"
     
-    # 5. Build frontend
+    # 3. Build frontend (in place)
     log_info "Building web frontend..."
-    if [ -d "$APP_DIR/frontend" ]; then
+    if [ -d "$SCRIPT_DIR/frontend" ]; then
         # Check if frontend is already built
         local should_build=true
-        if [ -d "$APP_DIR/frontend/dist" ] && [ -n "$(ls -A "$APP_DIR/frontend/dist" 2>/dev/null)" ]; then
-            log_info "Frontend build already exists in $APP_DIR/frontend/dist"
+        if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
+            log_info "Frontend build already exists in $SCRIPT_DIR/frontend/dist"
             read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
             echo
             if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
@@ -367,23 +374,23 @@ build() {
         
         if [ "$should_build" = true ]; then
             (
-                cd "$APP_DIR/frontend" || exit 1
+                cd "$SCRIPT_DIR/frontend" || exit 1
                 
                 # Install frontend dependencies
                 log_info "Installing frontend dependencies..."
-                sudo -u "$INSTALL_USER" npm install --no-audit
+                $use_sudo npm install --no-audit
                 
                 # Run type check
                 log_info "Running TypeScript type check..."
-                sudo -u "$INSTALL_USER" npm run type-check
+                $use_sudo npm run type-check
                 
                 # Build production bundle
                 log_info "Building production bundle..."
-                sudo -u "$INSTALL_USER" npm run build
+                $use_sudo npm run build
             )
             
             # Verify dist directory exists
-            if [ -d "$APP_DIR/frontend/dist" ]; then
+            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
                 log_info "Frontend build successful ✓"
             else
                 log_error "Frontend build failed - dist directory not found"
@@ -398,13 +405,12 @@ build() {
     log_info ""
     log_info "✓ Build complete!"
     log_info ""
-    log_info "Built files location: $APP_DIR"
-    log_info "Backend: $APP_DIR (Node.js dependencies installed)"
-    log_info "Frontend: $APP_DIR/frontend/dist"
+    log_info "Built files location: $SCRIPT_DIR"
+    log_info "Backend: $SCRIPT_DIR (Node.js dependencies installed)"
+    log_info "Frontend: $SCRIPT_DIR/frontend/dist"
     log_info ""
-    log_info "Next steps for full installation:"
-    log_info "  1. Run: sudo ./setup.sh install"
-    log_info "  2. Or manually deploy configuration, certificates, and service"
+    log_info "Note: Built in place (repository directory)"
+    log_info "For full installation with deployment, run: sudo ./setup.sh install"
     log_info ""
 }
 
@@ -659,8 +665,8 @@ case "$action" in
         echo "Usage: $0 {install|build|uninstall|status} [--skip-packages]"
         echo ""
         echo "Commands:"
-        echo "  install         - Full installation (build + deploy config + certificates + service)"
-        echo "  build           - Build frontend and backend only (no deployment)"
+        echo "  install         - Full installation (copies to ~/luigi, deploys config/certs/service)"
+        echo "  build           - Build in place (repository directory) - for development"
         echo "  uninstall       - Remove installation"
         echo "  status          - Check installation status"
         echo ""

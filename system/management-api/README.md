@@ -59,19 +59,27 @@ To build the frontend and backend without full installation:
 
 ```bash
 cd system/management-api
+# Run with sudo for package installation, or without sudo if packages already installed
 sudo ./setup.sh build
+# OR (if Node.js already installed)
+./setup.sh build --skip-packages
 ```
 
 The build command:
+- **Builds in place** (in the repository directory, not in `~/luigi`)
 - Installs Node.js dependencies (backend and frontend)
 - Builds the React/TypeScript frontend
 - Skips: configuration deployment, certificates, service installation
 
+**Key Difference from Install:**
+- `build` - Builds in your repository location (e.g., `~/repos/luigi/system/management-api`)
+- `install` - Copies to `~/luigi/system/management-api` and deploys as a service
+
 This is useful for:
-- Development workflows
+- Development workflows (build where you code)
 - CI/CD pipelines
-- Pre-building before deployment
 - Testing builds without affecting running services
+- Building before manually deploying
 
 After building, you can run the full `install` command to complete the deployment.
 
