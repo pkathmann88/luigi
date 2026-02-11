@@ -537,8 +537,7 @@ setup_sound_bonnet() {
     
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         log_info "Skipping Sound Bonnet installation"
-        log_info "You can install it later by running: sudo system/optimization/setup.sh install"
-        log_info "Then run: sudo optimize.py"
+        log_info "You can install it later by re-running: sudo ./setup.sh install"
         echo ""
         return 0
     fi
