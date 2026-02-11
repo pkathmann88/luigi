@@ -46,6 +46,9 @@ class Config:
         'Packages': {
             'remove_packages': ''
         },
+        'SoundBonnet': {
+            'enable_sound_bonnet': 'yes'
+        },
         'Logging': {
             'log_file': '/var/log/system-optimization.log',
             'log_level': 'INFO'
@@ -453,6 +456,93 @@ class SystemOptimizer:
         
         return True
     
+    def setup_sound_bonnet(self):
+        """Setup Adafruit Sound Bonnet (Speaker Bonnet)"""
+        self.logger.info("=== Setting up Adafruit Sound Bonnet ===")
+        
+        if not self.config.get_bool('SoundBonnet', 'enable_sound_bonnet'):
+            self.logger.info("Sound Bonnet setup not enabled in config, skipping")
+            return True
+        
+        self.logger.info("Installing Adafruit Sound Bonnet...")
+        self.logger.info("Note: I2C must be enabled via raspi-config if you need I2C devices")
+        self.logger.info("      (I2C is not required for basic audio functionality)")
+        
+        if self.dry_run:
+            self.logger.info("[DRY RUN] Would install Sound Bonnet drivers")
+            return True
+        
+        # Install dependencies
+        self.logger.info("Installing required packages...")
+        deps = ['wget', 'python3-pip', 'python3-venv']
+        for dep in deps:
+            if not self.run_command(['apt-get', 'install', '-y', dep], check=False):
+                self.logger.warning(f"Failed to install {dep}, continuing anyway")
+        
+        # Install adafruit-python-shell
+        self.logger.info("Installing adafruit-python-shell...")
+        if not self.run_command(['pip3', 'install', '--break-system-packages', 'adafruit-python-shell'], check=False):
+            self.logger.warning("Failed to install adafruit-python-shell, trying without --break-system-packages")
+            self.run_command(['pip3', 'install', 'adafruit-python-shell'], check=False)
+        
+        # Download the i2samp.py installer script
+        script_url = 'https://github.com/adafruit/Raspberry-Pi-Installer-Scripts/raw/main/i2samp.py'
+        script_path = '/tmp/i2samp.py'
+        
+        self.logger.info(f"Downloading installation script from {script_url}...")
+        if not self.run_command(['wget', '-O', script_path, script_url], check=False):
+            self.logger.error("Failed to download i2samp.py installation script")
+            return False
+        
+        # Make the script executable
+        if not self.run_command(['chmod', '+x', script_path], check=False):
+            self.logger.error("Failed to make installation script executable")
+            return False
+        
+        # Run the installation script
+        self.logger.info("Running Sound Bonnet installation script...")
+        self.logger.info("This may take a few minutes and will configure I2S audio...")
+        
+        # The script needs to be run with environment variables preserved
+        try:
+            result = subprocess.run(
+                ['python3', script_path],
+                env=os.environ.copy(),
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minutes timeout
+            )
+            
+            if result.stdout:
+                self.logger.info(f"Installation output:\n{result.stdout}")
+            if result.stderr:
+                self.logger.warning(f"Installation warnings:\n{result.stderr}")
+            
+            if result.returncode != 0:
+                self.logger.error(f"Installation script failed with exit code {result.returncode}")
+                return False
+            
+        except subprocess.TimeoutExpired:
+            self.logger.error("Installation script timed out after 5 minutes")
+            return False
+        except Exception as e:
+            self.logger.error(f"Failed to run installation script: {e}")
+            return False
+        
+        # Clean up the downloaded script
+        try:
+            os.remove(script_path)
+            self.logger.info(f"Cleaned up temporary file: {script_path}")
+        except Exception as e:
+            self.logger.warning(f"Could not remove temporary file: {e}")
+        
+        self.logger.info("Sound Bonnet installation complete!")
+        self.logger.info("Note: A reboot is required for the changes to take effect")
+        self.logger.info("After reboot, run the script again to perform a speaker test")
+        self.logger.info("Use 'alsamixer' to adjust volume (50% is a good starting point)")
+        
+        return True
+    
     def optimize(self):
         """Run all optimizations"""
         self.logger.info("Starting system optimization")
@@ -461,7 +551,8 @@ class SystemOptimizer:
             'services': self.disable_services(),
             'boot_config': self.optimize_boot_config(),
             'modules': self.blacklist_modules(),
-            'packages': self.remove_packages()
+            'packages': self.remove_packages(),
+            'sound_bonnet': self.setup_sound_bonnet()
         }
         
         self.logger.info("\n=== Optimization Summary ===")

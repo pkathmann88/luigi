@@ -51,6 +51,14 @@ blacklist_modules=
 # Examples: bluez, avahi-daemon, modemmanager
 remove_packages=
 
+[SoundBonnet]
+# Adafruit Sound Bonnet (Speaker Bonnet) Setup
+# Set to yes to install and configure the Adafruit Sound Bonnet
+# Note: I2C must be enabled via raspi-config separately if needed for I2C devices
+#       (I2C is not required for basic audio functionality)
+# Reference: https://learn.adafruit.com/adafruit-speaker-bonnet-for-raspberry-pi/raspberry-pi-usage
+enable_sound_bonnet=yes
+
 [Logging]
 # Log file for optimization script
 log_file=/var/log/system-optimization.log
