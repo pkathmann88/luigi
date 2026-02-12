@@ -448,7 +448,7 @@ uninstall_module() {
         echo ""
         
         # Interactive prompts for config and sensors
-        read -p "Remove configuration and sensor descriptors? [y/N] " -n 1 -r
+        read -p "Remove configuration and sensor descriptors? (y/N): " -n 1 -r
         echo ""
         remove_config=$REPLY
         
@@ -462,7 +462,7 @@ uninstall_module() {
                 [ -n "$packages_json" ] && package_list="$packages_json"
             fi
             
-            read -p "Remove installed packages ($package_list)? [y/N] " -n 1 -r
+            read -p "Remove installed packages ($package_list)? (y/N): " -n 1 -r
             echo ""
             remove_packages=$REPLY
         fi
