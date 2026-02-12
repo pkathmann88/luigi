@@ -582,10 +582,14 @@ uninstall() {
         systemctl daemon-reload
     fi
     
-    # 3. Remove application files
-    if [ -d "$APP_DIR" ]; then
-        log_info "Removing application directory..."
+    # 3. Remove application files (only if deployed to separate location)
+    # DO NOT remove if APP_DIR equals SCRIPT_DIR (in-place installation from repo)
+    if [ -d "$APP_DIR" ] && [ "$APP_DIR" != "$SCRIPT_DIR" ]; then
+        log_info "Removing application directory: $APP_DIR"
         rm -rf "$APP_DIR"
+    elif [ "$APP_DIR" = "$SCRIPT_DIR" ]; then
+        log_info "Skipping source directory removal (in-place installation)"
+        log_info "Application is running from repository: $SCRIPT_DIR"
     fi
     
     # 4. Handle configuration removal
