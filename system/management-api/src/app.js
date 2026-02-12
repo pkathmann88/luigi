@@ -51,6 +51,7 @@ const allowedOrigins = [
   'http://localhost',
   'http://localhost:80',
   'http://localhost:5173', // Vite dev server
+  'http://localhost:3000', // Alternative dev port
 ];
 
 app.use(cors({
@@ -63,9 +64,12 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Allow any localhost origin in development
-    if (config.isDevelopment && origin.startsWith('http://localhost')) {
-      return callback(null, true);
+    // In development, be slightly more permissive for localhost ports
+    if (config.isDevelopment && origin) {
+      const localhostPattern = /^http:\/\/localhost(:\d+)?$/;
+      if (localhostPattern.test(origin)) {
+        return callback(null, true);
+      }
     }
     
     // Reject other origins
