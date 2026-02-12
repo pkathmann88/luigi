@@ -2136,4 +2136,44 @@ getTTFB(console.log);
 
 ---
 
+## Luigi Management-API Frontend Example
+
+The Luigi management-api frontend is a production-ready implementation that demonstrates best practices from this skill:
+
+**Location:** `system/management-api/frontend/`
+
+**Implementation Details:**
+- **Framework:** React 18 with TypeScript
+- **Build Tool:** Vite (fast HMR, optimized builds)
+- **State Management:** React hooks and context
+- **API Integration:** Fetch API with authentication
+- **Authentication:** HTTP Basic Auth with credential management
+- **Styling:** CSS Modules for component isolation
+- **Backend API:** See `system/management-api/docs/API.md` for complete REST API reference
+
+**Key Features Demonstrated:**
+- Modern React patterns (functional components, hooks)
+- TypeScript for type safety
+- Responsive, mobile-friendly design
+- Secure authentication handling
+- API service layer with error handling
+- Component-based architecture
+- Build-time configuration (Vite environment variables)
+
+**Backend API Documentation:**
+`system/management-api/docs/API.md` provides the complete interface contract for frontend-backend communication:
+- All available endpoints (modules, system, logs, config, registry, monitoring)
+- Request/response schemas with TypeScript types
+- Authentication requirements
+- Error handling patterns
+- Rate limiting information
+- Security considerations
+
+**Use as Reference:** When building web frontends for Luigi modules, refer to:
+1. `system/management-api/docs/API.md` - Understand the backend API structure
+2. `system/management-api/frontend/` - See implementation patterns
+3. This skill - Apply modern web development best practices
+
+---
+
 **This skill provides comprehensive guidance for modern web-frontend development with emphasis on cross-browser support (Chrome, Edge, Firefox), accessibility, performance, and security. Use it as a reference for building production-ready web applications with state-of-the-art technologies.**

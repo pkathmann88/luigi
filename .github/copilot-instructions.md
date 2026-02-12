@@ -284,13 +284,86 @@ luigi/
 │       ├── examples/                # Integration examples
 │       └── tests/                   # Test infrastructure
 └── system/                          # System-level modules
-    └── optimization/                # System optimization
+    ├── optimization/                # System optimization
+    └── management-api/              # Web-based management interface
+        ├── README.md                # User documentation
+        ├── setup.sh                 # Installation script
+        ├── server.js                # Express.js server entry point
+        ├── docs/
+        │   └── API.md               # Complete REST API documentation
+        ├── src/                     # Backend source code
+        │   ├── routes/              # API route handlers
+        │   ├── controllers/         # Request controllers
+        │   ├── services/            # Business logic (moduleService, registryService, etc.)
+        │   ├── middleware/          # Auth, validation, rate limiting
+        │   └── utils/               # Utilities and helpers
+        └── frontend/                # React + TypeScript frontend
+            ├── src/
+            │   ├── pages/           # Page components (Dashboard, Modules, etc.)
+            │   ├── components/      # Reusable UI components
+            │   ├── services/        # API service layer
+            │   └── types/           # TypeScript type definitions
+            └── package.json         # Frontend dependencies
 ```
 
 **Key Files:**
 - **mario.py:** Core logic - GPIO setup, motion detection callback, cooldown management, sound playback
 - **mario:** Init.d service script for system daemon control (start/stop)
 - **mario-sounds.tar.gz:** Contains 10 WAV files (callingmario1.wav through callingmario10.wav)
+
+## Management-API Module
+
+**Location:** `system/management-api/`
+
+The management-api provides a web-based interface for managing Luigi modules and system operations. It serves as a reference implementation for Node.js backend development with React frontend.
+
+### Backend API Documentation
+
+**Location:** `system/management-api/docs/API.md`
+
+This document is the **single source of truth** for the management-api interface contract. It provides:
+
+- **Complete endpoint reference** - All available REST API endpoints
+- **Request/response schemas** - Detailed structure with TypeScript types
+- **Authentication** - HTTP Basic Auth requirements
+- **Error handling** - Standard error responses and status codes
+- **Module registry integration** - Read-only access to `/etc/luigi/modules/`
+- **Examples** - curl and JavaScript/TypeScript usage examples
+
+**When working with management-api:**
+1. **Backend changes:** Update `docs/API.md` to reflect any API modifications
+2. **Frontend integration:** Reference `docs/API.md` for correct endpoint usage and response types
+3. **New endpoints:** Document in `docs/API.md` following existing patterns
+
+### Key API Endpoints
+
+**Module Management:**
+- `GET /api/modules` - List all modules with registry data
+- `GET /api/modules/:name` - Get specific module status
+- `POST /api/modules/:name/start|stop|restart` - Control module services
+
+**Module Registry (Read-Only):**
+- `GET /api/registry` - List all registry entries with statistics
+- `GET /api/registry/:modulePath(*)` - Get specific registry entry
+
+**System Operations:**
+- `GET /api/system/status` - System metrics (CPU, memory, disk, uptime)
+- `POST /api/system/reboot|shutdown|update|cleanup` - System operations
+
+**Configuration:**
+- `GET /api/config` - List all config files
+- `GET /api/config/:module(*)` - Read config file
+- `PUT /api/config/:module(*)` - Update config file
+
+**Logs:**
+- `GET /api/logs` - List log files
+- `GET /api/logs/:module` - Read module logs with filtering
+
+**Monitoring:**
+- `GET /health` - Health check (no auth required)
+- `GET /api/monitoring/metrics` - Detailed metrics
+
+See `system/management-api/docs/API.md` for complete documentation with examples and schemas.
 
 ## Build, Test, and Validation
 

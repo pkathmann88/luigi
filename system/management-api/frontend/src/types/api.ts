@@ -1,3 +1,29 @@
+export interface ModuleRegistry {
+  module_path: string;
+  name: string;
+  version: string;
+  category: string;
+  description?: string;
+  installed_at: string;
+  updated_at: string;
+  installed_by: string;
+  install_method: string;
+  status: 'active' | 'installed' | 'failed' | 'removed';
+  capabilities?: string[];
+  dependencies?: string[];
+  apt_packages?: string[];
+  author?: string;
+  hardware?: {
+    gpio_pins?: number[];
+    sensors?: string[];
+  };
+  provides?: string[];
+  service_name?: string | null;
+  config_path?: string | null;
+  log_path?: string | null;
+  _registryFile?: string;
+}
+
 export interface Module {
   name: string;
   path: string;
@@ -9,6 +35,7 @@ export interface Module {
   pid?: number;
   uptime?: number;
   memory?: number;
+  registry?: ModuleRegistry | null;
 }
 
 export interface LogFile {

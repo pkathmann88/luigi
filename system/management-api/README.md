@@ -36,18 +36,23 @@ sudo ./setup.sh install
 ```
 
 The installer will:
-1. **Prompt for secure credentials** (username and password)
-2. Check prerequisites and install Node.js if needed
+1. Check prerequisites and install Node.js if needed
+2. Build frontend and backend with default credentials
 3. Copy application files to `~/luigi/system/management-api`
-4. **Detect pre-built artifacts** (from `build` command) or build if needed
-5. **Apply credentials to both frontend and backend automatically**
-6. Generate TLS certificates
-7. Configure and start the service
+4. Generate configuration with default credentials (admin/changeme123)
+5. Generate TLS certificates
+6. Configure and start the service
 
-**Important**: During installation, you'll be prompted to set credentials. These will be automatically applied to both the frontend (built into the application) and backend (stored in `/etc/luigi/system/management-api/.env`). **No manual synchronization needed!**
+**Important**: Default credentials are used during installation. **Change them immediately after installation!**
 
-**Pre-built Deployment:**
-If you've run `./setup.sh build` first, the installer will automatically detect and use the pre-built frontend/backend, making installation much faster (no rebuild needed).
+```bash
+# Change credentials after installation
+sudo nano /etc/luigi/system/management-api/.env
+# Update AUTH_USERNAME and AUTH_PASSWORD
+sudo systemctl restart management-api
+```
+
+**Note:** No frontend rebuild needed when changing credentials! The frontend validates credentials via backend API.
 
 ### Build Then Deploy Workflow (Recommended)
 
@@ -56,18 +61,19 @@ For the fastest installation, especially on slow hardware:
 ```bash
 # Step 1: Build in repository (development location)
 cd system/management-api
-sudo ./setup.sh build  # Prompts for credentials, builds in place
+sudo ./setup.sh build  # Builds with default credentials
 
 # Step 2: Deploy pre-built application
-sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api (uses same credentials)
+sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api
 ```
 
 **Benefits:**
-- Credentials prompted once during build, automatically applied to both frontend and backend
+- No credential prompts during build
 - Build once in your development location
 - Install copies pre-built artifacts (no rebuild, very fast)
 - Can build on faster machine, deploy on Raspberry Pi
 - CI/CD friendly
+- Change credentials after installation
 
 ### Build Only (Development)
 
@@ -81,20 +87,11 @@ sudo ./setup.sh build
 ./setup.sh build --skip-packages
 ```
 
-**You will be prompted for credentials during build:**
-```
-Configure Authentication Credentials
-Enter username [admin]: myuser  
-Enter password: ********
-Confirm password: ********
-✓ Credentials configured: myuser / ****
-```
-
 The build command:
-- **Prompts for credentials** and applies them to both frontend and backend
+- Uses default credentials (admin/changeme123)
 - **Builds in place** (in the repository directory, not in `~/luigi`)
 - Installs Node.js dependencies (backend and frontend)
-- Builds the React/TypeScript frontend with embedded credentials
+- Builds the React/TypeScript frontend
 - Skips: service installation, certificate generation
 
 **Key Difference from Install:**
@@ -156,7 +153,7 @@ The management API includes a modern, responsive web frontend for easy system ma
 
 ### Features
 
-- **Login Page** - Secure login with static credentials
+- **Login Page** - Secure login validated via backend API
 - **Dashboard** - Real-time system monitoring (CPU, memory, disk, uptime)
 - **Module Management** - Start, stop, restart modules with a click
 - **Log Viewer** - Browse and view logs from all modules
@@ -171,26 +168,27 @@ After installation, access the web interface at:
 https://<raspberry-pi-ip>:8443/
 ```
 
-**Login Credentials:**
+**Default Login Credentials:**
 
-Use the credentials you set during installation. If you need to change them:
+- Username: `admin`
+- Password: `changeme123`
 
-1. **Rebuild with new credentials:**
+**⚠️ IMPORTANT:** Change these default credentials immediately after installation!
+
+**To Change Credentials:**
+
+1. **Edit the configuration file:**
    ```bash
-   cd system/management-api
-   sudo ./setup.sh build  # Enter new credentials when prompted
+   sudo nano /etc/luigi/system/management-api/.env
+   # Update AUTH_USERNAME and AUTH_PASSWORD
    ```
-   
-   This automatically updates both frontend (rebuilt with new creds) and backend (.env file).
 
 2. **Restart service:**
    ```bash
    sudo systemctl restart management-api
    ```
 
-**Alternative (Manual Edit - Advanced Users):**
-
-If you only want to change backend credentials without rebuilding the frontend, you can manually edit `/etc/luigi/system/management-api/.env`. Note that this will cause authentication to fail if the frontend has different credentials embedded.
+**Note:** No frontend rebuild needed! The frontend validates credentials through the backend API, so changes to backend credentials take effect immediately after service restart.
 
 ### Building the Frontend
 

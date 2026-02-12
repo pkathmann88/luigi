@@ -2275,4 +2275,14 @@ See companion files in this directory:
 - `nodejs-patterns.md` - Advanced patterns and examples
 - `package-example.json` - Example package.json with all dependencies
 
+### Management-API Example:
+The Luigi management-api module is a production-ready implementation that follows all patterns in this skill:
+- **Location:** `system/management-api/`
+- **API Documentation:** `system/management-api/docs/API.md` - Complete REST API reference
+- **Features:** Module management, system operations, log access, configuration management, registry integration
+- **Security:** HTTP Basic Auth, rate limiting, input validation, audit logging
+- **Deployment:** systemd service, automated setup, credential management
+
+Use the management-api as a reference implementation for building similar backend APIs. The API documentation (`system/management-api/docs/API.md`) serves as the interface contract and demonstrates best practices for API design, authentication, error handling, and response formatting.
+
 Use this skill to build production-ready, **secure** Node.js backend applications for local network deployment on Raspberry Pi Zero W.
