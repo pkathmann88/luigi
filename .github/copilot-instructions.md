@@ -185,8 +185,38 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Build and deployment (Vite, PWA, Docker, nginx)
 - Complete React + TypeScript example application
 
+### Module Management Skill
+
+**Location:** `.github/skills/module-management/`
+
+**Use when:**
+- Installing new Luigi modules on a system
+- Updating existing modules to new versions
+- Removing or uninstalling modules
+- Managing module dependencies
+- Working with the centralized module registry (`/etc/luigi/modules/`)
+- Tracking module versions and deployment status
+- Querying which modules are installed on a system
+- Resolving module conflicts or issues
+- Implementing module management tools or APIs
+- Creating automated module deployment scripts
+
+**Provides:**
+- Centralized module registry architecture and design
+- Registry entry format and schema (`/etc/luigi/modules/*.json`)
+- Module lifecycle management (install, update, remove)
+- Dependency resolution algorithms
+- Version management and comparison
+- Module status tracking (active, installed, failed, removed)
+- Registry maintenance utilities
+- Integration patterns for management-api
+- Best practices for module management
+- Complete utility script examples
+- Migration guide for existing installations
+
 **Note:** These skills complement each other across the development lifecycle:
 - The `module-design` skill guides you through the **design phase** before implementation
+- The `module-management` skill shows **how to manage module lifecycles** (install, update, remove)
 - The `shell-scripting` skill provides **shell scripting standards** for setup scripts, CLI tools, and automation
 - The `raspi-zero-w` skill provides **hardware details** for wiring and GPIO during design and implementation
 - The `python-development` skill shows **code patterns** for implementing modules in Python
@@ -194,7 +224,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - The `web-frontend-development` skill shows **how to build modern web UIs** that interact with backend APIs
 - The `system-setup` skill helps create **deployment automation** for the finished module
 
-Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend + shell scripts) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
+Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend + shell scripts) → manage (install/update/track via registry) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
 
 ## Repository Structure
 
@@ -208,6 +238,10 @@ luigi/
 │       │   ├── hardware-design-checklist.md  # Hardware verification checklist
 │       │   ├── design-review-checklist.md    # Complete design review
 │       │   └── module-design-template.md     # Module design template
+│       ├── module-management/       # Module lifecycle management
+│       │   ├── SKILL.md             # Main management skill
+│       │   ├── registry-schema.md   # Registry entry format and schema
+│       │   └── utility-scripts.md   # Utility script examples
 │       ├── shell-scripting/         # Shell scripting standards and patterns
 │       │   ├── SKILL.md             # Main skill file
 │       │   ├── shell-scripting-patterns.md   # Advanced patterns
