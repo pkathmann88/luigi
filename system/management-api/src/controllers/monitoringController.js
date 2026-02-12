@@ -14,10 +14,9 @@ async function getMetrics(req, res, next) {
   try {
     const metrics = await systemService.getSystemMetrics();
     
-    res.json({
-      success: true,
-      metrics,
-    });
+    // Return metrics directly (not wrapped in 'metrics' field)
+    // Frontend expects the response structure to match SystemStatus type
+    res.json(metrics);
   } catch (error) {
     logger.error(`Error in getMetrics: ${error.message}`);
     next(error);
