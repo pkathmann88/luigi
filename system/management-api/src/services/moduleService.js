@@ -9,6 +9,7 @@ const logger = require('../utils/logger');
 const { executeCommand, executeCommandForOutput } = require('../utils/commandExecutor');
 const { validateModulePath } = require('../security/pathValidator');
 const config = require('../../config');
+const registryService = require('./registryService');
 
 /**
  * Get basic status info for a module service
@@ -123,14 +124,34 @@ async function listModules() {
       logger.warn(`No modules with setup.sh files found in ${modulesPath}. Each Luigi module must have a setup.sh file in its directory. Check MODULES_PATH configuration.`);
     }
     
-    // Enrich modules with status information
+    // Get registry entries
+    let registryEntries = [];
+    try {
+      registryEntries = await registryService.listRegistry();
+    } catch (err) {
+      logger.warn(`Failed to load registry data: ${err.message}`);
+    }
+    
+    // Create a map of registry entries by module_path
+    const registryMap = new Map();
+    registryEntries.forEach(entry => {
+      registryMap.set(entry.module_path, entry);
+    });
+    
+    // Enrich modules with status information and registry data
     const enrichedModules = await Promise.all(
       modules.map(async (module) => {
         const serviceStatus = await getServiceStatus(module.name);
+        
+        // Merge with registry data if available
+        const registryEntry = registryMap.get(module.path);
+        
         return {
           ...module,
           status: serviceStatus.status,
           pid: serviceStatus.pid,
+          // Add registry data if available
+          registry: registryEntry || null,
         };
       })
     );
