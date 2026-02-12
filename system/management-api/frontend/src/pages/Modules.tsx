@@ -74,15 +74,6 @@ export const Modules: React.FC = () => {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   if (loading && modules.length === 0) {
     return (
       <div className="modules">
