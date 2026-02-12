@@ -227,7 +227,7 @@ install() {
     log_info "Installing ${MODULE_NAME}..."
     
     # Check if management-api is installed (dependency)
-    if ! systemctl list-unit-files | grep -q "management-api.service"; then
+    if [ ! -f /etc/systemd/system/management-api.service ]; then
         log_warn "management-api.service not found"
         log_warn "The frontend requires management-api backend to be installed first"
         read -p "Continue anyway? (y/N): " -n 1 -r continue_choice
