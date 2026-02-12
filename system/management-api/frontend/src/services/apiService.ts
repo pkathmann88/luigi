@@ -1,5 +1,5 @@
 import { authService } from './authService';
-import { Module, SystemStatus, ApiResponse, LogFile, ConfigFile, ConfigContent } from '../types/api';
+import { Module, ModuleListItem, SystemStatus, ApiResponse, LogFile, ConfigFile, ConfigContent } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -81,14 +81,14 @@ class ApiService {
   // ============================================================================
 
   /**
-   * Get all modules
+   * Get all modules (minimal list data)
    */
-  async getModules(): Promise<ApiResponse<{ modules: Module[] }>> {
+  async getModules(): Promise<ApiResponse<{ modules: ModuleListItem[] }>> {
     return this.request('/api/modules');
   }
 
   /**
-   * Get specific module status
+   * Get specific module details (comprehensive data)
    */
   async getModule(name: string): Promise<ApiResponse<Module>> {
     return this.request(`/api/modules/${name}`);

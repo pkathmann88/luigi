@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/apiService';
-import { Module } from '../types/api';
+import { ModuleListItem } from '../types/api';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import './Modules.css';
 
 export const Modules: React.FC = () => {
   const navigate = useNavigate();
-  const [modules, setModules] = useState<Module[]>([]);
+  const [modules, setModules] = useState<ModuleListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -112,8 +112,7 @@ export const Modules: React.FC = () => {
 
       <div className="modules__grid">
         {modules.map((module) => {
-          const registry = module.registry;
-          const capabilities = registry?.capabilities || [];
+          const capabilities = module.capabilities || [];
 
           return (
             <Card 
@@ -127,9 +126,9 @@ export const Modules: React.FC = () => {
               </div>
 
               {/* Version */}
-              {registry?.version && (
+              {module.version && (
                 <div className="modules__version">
-                  Version: v{registry.version}
+                  Version: v{module.version}
                 </div>
               )}
 

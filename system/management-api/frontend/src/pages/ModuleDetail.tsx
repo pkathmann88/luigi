@@ -253,7 +253,7 @@ export const ModuleDetail: React.FC = () => {
                 </div>
               )}
 
-              {module.uptime !== undefined && (
+              {module.uptime !== undefined && module.uptime !== null && (
                 <div className="module-detail__info-item">
                   <span className="module-detail__info-label">Uptime:</span>
                   <span className="module-detail__info-value">
@@ -262,7 +262,7 @@ export const ModuleDetail: React.FC = () => {
                 </div>
               )}
 
-              {module.memory !== undefined && (
+              {module.memory !== undefined && module.memory !== null && (
                 <div className="module-detail__info-item">
                   <span className="module-detail__info-label">Memory:</span>
                   <span className="module-detail__info-value">
