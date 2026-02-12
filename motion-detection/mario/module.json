@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "description": "Mario-themed motion detection module using PIR sensors",
   "category": "motion-detection",
+  "capabilities": [
+    "service",
+    "hardware",
+    "sensor",
+    "config"
+  ],
   "dependencies": [
     "iot/ha-mqtt"
   ],

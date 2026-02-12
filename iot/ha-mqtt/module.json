@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "Home Assistant MQTT integration for Luigi sensor modules",
   "category": "iot",
+  "capabilities": [
+    "cli-tools",
+    "integration",
+    "config"
+  ],
   "dependencies": [],
   "apt_packages": [
     "mosquitto-clients",

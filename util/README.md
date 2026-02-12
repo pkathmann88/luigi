@@ -92,6 +92,104 @@ Shared functions for all Luigi module setup scripts. Eliminates duplicate code a
 #### Validation
 - `validate_required_files(file1 file2 ...)` - Verify all required files exist
 
+#### Module Registry Management
+- `update_module_registry(module_path, version, status)` - Update basic registry entry
+- `update_module_registry_full(module_path, module_json_file, status)` - Update registry with full metadata
+- `is_module_installed(module_path)` - Check if module is installed in registry
+- `get_installed_version(module_path)` - Get installed version from registry
+- `mark_module_removed(module_path)` - Mark module as removed in registry
+- `update_registry_service_status(module_path, status, enabled)` - Update service status
+- `get_registry_file(module_path)` - Get path to module's registry file
+
+## Module Management Utilities
+
+The `util/` directory also contains module management utilities for working with the centralized module registry:
+
+### list-modules.sh
+
+**List all installed Luigi modules from the centralized registry.**
+
+**Usage:**
+```bash
+./util/list-modules.sh [--format json|table|simple]
+```
+
+**Formats:**
+- `table` - Formatted table with columns (default)
+- `json` - JSON array of all registry entries
+- `simple` - Simple list of module paths only
+
+**Example:**
+```bash
+$ ./util/list-modules.sh
+MODULE PATH                              VERSION         STATUS
+---------------------------------------- --------------- ------------
+iot/ha-mqtt                             1.0.0           installed
+motion-detection/mario                  1.0.0           active
+system/management-api                   1.0.0           active
+system/optimization                     1.0.0           installed
+
+Total: 4 modules
+```
+
+### module-info.sh
+
+**Display detailed information about a specific module.**
+
+**Usage:**
+```bash
+./util/module-info.sh <module-path>
+```
+
+**Example:**
+```bash
+$ ./util/module-info.sh motion-detection/mario
+Module: motion-detection/mario
+========================================
+
+INSTALLATION STATUS: Installed
+
+Registry Information:
+---------------------
+{
+  "module_path": "motion-detection/mario",
+  "version": "1.0.0",
+  "status": "active",
+  ...
+}
+
+Service Status:
+---------------
+● mario.service - Mario Motion Detection
+   Loaded: loaded
+   Active: active (running)
+```
+
+### check-updates.sh
+
+**Check for available module updates by comparing registry and source versions.**
+
+**Usage:**
+```bash
+./util/check-updates.sh [module-path]
+```
+
+**Example:**
+```bash
+$ ./util/check-updates.sh
+Checking for module updates...
+
+✅ iot/ha-mqtt - Up to date (v1.0.0)
+🔄 motion-detection/mario - Update available: v1.0.0 → v1.1.0
+✅ system/optimization - Up to date (v1.0.0)
+
+Summary:
+--------
+Up to date:         2
+Updates available:  1
+Missing source:     0
+```
+
 ## Usage in Setup Scripts
 
 All Luigi module setup scripts should source this helper file at the beginning:
@@ -193,6 +291,33 @@ if prompt_yes_no "Overwrite existing config?"; then
 else
     log_info "Keeping existing config"
 fi
+```
+
+### Using Registry Functions
+
+```bash
+# Update registry after installation
+update_module_registry_full "motion-detection/mario" "$SCRIPT_DIR/module.json" "installed"
+
+# Check if module is already installed
+if is_module_installed "iot/ha-mqtt"; then
+    log_info "Dependency iot/ha-mqtt is already installed"
+else
+    log_info "Installing dependency iot/ha-mqtt..."
+fi
+
+# Get installed version
+installed_version=$(get_installed_version "motion-detection/mario")
+log_info "Currently installed version: $installed_version"
+
+# Update service status after starting service
+systemctl start mario.service
+if systemctl is-active mario.service &>/dev/null; then
+    update_registry_service_status "motion-detection/mario" "active" true
+fi
+
+# Mark as removed on uninstall
+mark_module_removed "motion-detection/mario"
 ```
 
 ## Module-Specific Customization

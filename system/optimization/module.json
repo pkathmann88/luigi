@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "System optimization for Raspberry Pi Zero W performance tuning",
   "category": "system",
+  "capabilities": [
+    "config"
+  ],
   "dependencies": [],
   "apt_packages": [
     "python3"

@@ -324,6 +324,19 @@ install() {
     install_service
     start_service
     
+    # Update module registry
+    log_step "Updating module registry..."
+    if [ -f "$SCRIPT_DIR/module.json" ]; then
+        update_module_registry_full "system/system-info" "$SCRIPT_DIR/module.json" "installed"
+        
+        # Update status to active if service is running
+        if systemctl is-active system-info.service >/dev/null 2>&1; then
+            update_registry_service_status "system/system-info" "active" true
+        fi
+    else
+        log_warn "module.json not found, skipping registry update"
+    fi
+    
     echo ""
     log_info "=== Installation Complete ==="
     log_info "Service: system-info.service"
@@ -468,6 +481,10 @@ uninstall() {
         log_info "Removing unused dependencies..."
         apt-get autoremove -y >/dev/null 2>&1
     fi
+    
+    # Mark module as removed in registry
+    log_step "Updating module registry..."
+    mark_module_removed "system/system-info"
     
     echo ""
     log_info "=== Uninstallation Complete ==="

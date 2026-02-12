@@ -225,6 +225,14 @@ install() {
     install_config
     install_script
     
+    # Update module registry
+    log_step "Updating module registry..."
+    if [ -f "$SCRIPT_DIR/module.json" ]; then
+        update_module_registry_full "system/optimization" "$SCRIPT_DIR/module.json" "installed"
+    else
+        log_warn "module.json not found, skipping registry update"
+    fi
+    
     echo ""
     log_info "============================================"
     log_info "System Optimization Module Installed"
@@ -338,6 +346,10 @@ uninstall() {
         # We don't actually remove python3 as it's a critical system package
         # This is intentional - python3 is too fundamental to remove automatically
     fi
+    
+    # Mark module as removed in registry
+    log_step "Updating module registry..."
+    mark_module_removed "system/optimization"
     
     echo ""
     log_info "Uninstall complete"

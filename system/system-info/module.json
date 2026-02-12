@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "description": "System information monitoring with MQTT publishing to Home Assistant",
   "category": "system",
+  "capabilities": [
+    "service",
+    "sensor",
+    "integration",
+    "config"
+  ],
   "dependencies": [
     "iot/ha-mqtt"
   ],
