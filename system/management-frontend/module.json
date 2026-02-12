@@ -1,0 +1,30 @@
+{
+  "name": "management-frontend",
+  "version": "1.0.0",
+  "description": "React-based web interface for Luigi system management",
+  "category": "system",
+  "capabilities": [
+    "service",
+    "frontend"
+  ],
+  "dependencies": [
+    "system/management-api"
+  ],
+  "apt_packages": [
+    "nginx-light",
+    "nodejs",
+    "npm"
+  ],
+  "author": "Luigi Project",
+  "provides": {
+    "ui": [
+      "/dashboard",
+      "/modules",
+      "/logs",
+      "/config"
+    ]
+  },
+  "requires": {
+    "node_version": ">=16.0.0"
+  }
+}
