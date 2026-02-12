@@ -61,6 +61,59 @@ if [ "$BUILD_USER" = "root" ]; then
 fi
 readonly BUILD_USER
 
+# Function to install packages
+install_packages() {
+    # Check if --skip-packages flag is set (use helper function)
+    if should_skip_packages; then
+        log_info "Skipping package installation (managed centrally)"
+        return 0
+    fi
+    
+    log_info "Installing required packages..."
+    
+    # Read packages from module.json using helper function
+    local module_json="$SCRIPT_DIR/module.json"
+    local packages=($(read_apt_packages "$module_json"))
+    
+    if [ ${#packages[@]} -eq 0 ]; then
+        # Fallback to hardcoded packages if module.json not available
+        log_warn "module.json not found or jq not available, using fallback package list"
+        packages=("nginx" "nodejs" "npm")
+    fi
+    
+    # Check if packages are needed
+    local to_install=()
+    for pkg in "${packages[@]}"; do
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+            log_success "$pkg already installed"
+        else
+            to_install+=("$pkg")
+        fi
+    done
+    
+    # Install packages if needed
+    if [ ${#to_install[@]} -gt 0 ]; then
+        # Update package list
+        if ! apt-get update >/dev/null 2>&1; then
+            log_error "Failed to update package list"
+            return 1
+        fi
+        
+        # Install each package
+        for pkg in "${to_install[@]}"; do
+            log_info "Installing $pkg..."
+            if apt-get install -y "$pkg" >/dev/null 2>&1; then
+                log_success "$pkg installed"
+            else
+                log_error "Failed to install $pkg"
+                return 1
+            fi
+        done
+    fi
+    
+    return 0
+}
+
 # Build function - builds frontend in source directory
 build() {
     log_info "Building frontend..."
@@ -187,7 +240,7 @@ install() {
     
     # 1. Install apt packages
     log_info "Installing system packages..."
-    install_packages_from_module_json "$SCRIPT_DIR/module.json"
+    install_packages
     
     # 2. Build frontend if not already built
     if [ ! -d "$SCRIPT_DIR/frontend/dist" ]; then
