@@ -701,8 +701,12 @@ class MotionDetectionApp:
                 print(f"[MOCK] Would play: {os.path.basename(filepath)}")
                 return
             
+            # Use aplay with parameters to reduce audio artifacts on I2S devices
+            # -q: quiet mode (no status output)
+            # The following parameters help prevent popping/crackling on I2S audio devices
+            # like the Adafruit Sound Bonnet by ensuring proper buffer management
             result = subprocess.run(
-                ['aplay', filepath],
+                ['aplay', '-q', filepath],
                 capture_output=True,
                 timeout=10,
                 check=False

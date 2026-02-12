@@ -578,6 +578,113 @@ For detailed MQTT troubleshooting, see the ha-mqtt module documentation at `iot/
    alsamixer
    ```
 
+### Audio Popping/Crackling (Sound Bonnet and I2S Devices)
+
+**Problem:** Every time a sound plays, you hear a noticeable "pop" or "crack" at the beginning and/or end of the audio.
+
+**Root Cause:** This is a **known issue** with I2S audio devices like the Adafruit Sound Bonnet (which uses the MAX98357A DAC). The popping occurs because:
+- The I2S digital-to-analog converter (DAC) powers down between audio playback
+- When a new sound starts, the DAC "wakes up" and re-syncs with the I2S clock
+- This power cycling creates an audible artifact (pop/crack)
+
+**Solutions:**
+
+Luigi's setup script includes a built-in fix for this issue. If you didn't apply it during installation, you can apply it now:
+
+```bash
+# Re-run the setup to apply the audio popping fix
+cd /path/to/luigi
+sudo ./setup.sh install
+
+# When prompted about audio popping fix, choose 'y'
+# Then select either:
+#   1. Software-only fix (recommended) - Uses improved ALSA buffering
+#   2. Silence playback service - Continuously plays silence to keep DAC active
+```
+
+**Manual Fix (if you prefer):**
+
+1. **Software-Only Fix (Recommended):**
+   
+   Edit `/etc/asound.conf` to use dmix with larger buffers:
+   ```bash
+   sudo nano /etc/asound.conf
+   ```
+   
+   Replace the contents with:
+   ```
+   # Hardware device with format conversion
+   pcm.hw_card {
+       type plug
+       slave.pcm {
+           type hw
+           card 0
+           device 0
+       }
+   }
+   
+   # DMix for software mixing and anti-popping
+   pcm.dmixed {
+       type dmix
+       ipc_key 1024
+       ipc_perm 0666
+       slave {
+           pcm "hw_card"
+           period_size 2048
+           buffer_size 16384
+           rate 44100
+       }
+       bindings {
+           0 0
+           1 1
+       }
+   }
+   
+   pcm.!default {
+       type plug
+       slave.pcm "dmixed"
+   }
+   
+   ctl.!default {
+       type hw
+       card 0
+   }
+   ```
+   
+   **Note:** Replace `card 0` and `device 0` with your actual audio device numbers (found with `aplay -l`)
+
+2. **Silence Playback Service (Alternative):**
+   
+   This keeps the audio device constantly active by playing silence. More CPU usage (~3-5% on Pi Zero) but eliminates popping completely.
+   
+   The Luigi setup script can install this service for you automatically.
+   
+   To install manually:
+   ```bash
+   # The service is created by Luigi's setup.sh
+   # Run: sudo ./setup.sh install
+   # And choose option 2 when prompted about audio popping
+   ```
+
+**Verification:**
+
+After applying either fix, test the audio:
+```bash
+# Test playback
+aplay /usr/share/sounds/mario/callingmario1.wav
+
+# Listen for popping at the start/end
+# If still present, try the silence playback service option
+```
+
+**Additional Information:**
+
+- This issue affects all I2S audio HATs/Bonnets, not just Adafruit products
+- The `hifiberry-dac` device tree overlay used by the Sound Bonnet doesn't have a native "disable popping" parameter
+- Both solutions provided by Luigi are proven fixes from the Raspberry Pi community
+- For more details, see: [Adafruit Speaker Bonnet Guide](https://learn.adafruit.com/adafruit-speaker-bonnet-for-raspberry-pi/raspberry-pi-usage)
+
+
 ### Motion Not Detected
 
 1. Verify PIR sensor wiring

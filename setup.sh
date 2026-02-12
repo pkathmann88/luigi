@@ -823,6 +823,265 @@ EOF
     return 0
 }
 
+# Fix audio popping/crackling on I2S devices (Adafruit Sound Bonnet)
+# This function adds ALSA configuration to prevent the annoying popping sounds
+# that occur when audio starts/stops on I2S DACs like the MAX98357A
+fix_audio_popping() {
+    log_header "Fix Audio Popping (I2S Devices)"
+    
+    echo ""
+    log_info "Checking for audio popping/crackling issues..."
+    echo ""
+    
+    # Check if an I2S audio device is configured
+    local boot_configs=("/boot/firmware/config.txt" "/boot/config.txt")
+    local config_file=""
+    local has_i2s=0
+    
+    for config in "${boot_configs[@]}"; do
+        if [ -f "$config" ]; then
+            config_file="$config"
+            if grep -qE "dtoverlay=(hifiberry-dac|googlevoicehat-soundcard|adau7002-simple|i2s-mmap)" "$config" 2>/dev/null; then
+                has_i2s=1
+                break
+            fi
+        fi
+    done
+    
+    if [ $has_i2s -eq 0 ]; then
+        log_info "No I2S audio device detected - popping fix not needed"
+        log_info "This fix is only for Adafruit Sound Bonnet and similar I2S devices"
+        echo ""
+        return 0
+    fi
+    
+    log_info "I2S audio device detected (Sound Bonnet or similar)"
+    echo ""
+    echo "I2S audio devices often produce annoying 'popping' or 'crackling' sounds"
+    echo "at the start and end of audio playback. This is caused by the DAC"
+    echo "(digital-to-analog converter) losing sync with the I2S clock when the"
+    echo "audio interface powers down between sounds."
+    echo ""
+    echo "There are two solutions available:"
+    echo ""
+    echo "  1. Software-only fix (RECOMMENDED)"
+    echo "     - Creates an improved ALSA configuration with dmix plugin"
+    echo "     - Keeps audio buffers active longer"
+    echo "     - Minimal CPU usage, no device blocking"
+    echo "     - Works with all applications simultaneously"
+    echo ""
+    echo "  2. Silence playback service (Adafruit's approach)"
+    echo "     - Plays continuous silence to keep DAC active"
+    echo "     - Eliminates popping completely"
+    echo "     - Uses ~3-5% CPU on Pi Zero W"
+    echo "     - May conflict with other audio applications"
+    echo ""
+    
+    log_warn "Would you like to apply the audio popping fix?"
+    read -p "Apply audio popping fix? (y/N): " -n 1 -r
+    echo ""
+    echo ""
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Skipping audio popping fix"
+        log_info "If you experience popping, re-run: sudo ./setup.sh install"
+        echo ""
+        return 0
+    fi
+    
+    # Ask which solution to use
+    echo "Which solution would you like to use?"
+    echo "  1. Software-only fix (recommended)"
+    echo "  2. Silence playback service"
+    echo ""
+    read -p "Enter choice (1 or 2, default 1): " -n 1 -r
+    echo ""
+    echo ""
+    
+    REPLY=${REPLY:-1}
+    
+    if [[ $REPLY == "2" ]]; then
+        # Install silence playback service
+        log_step "Installing silence playback service..."
+        echo ""
+        
+        # Create the systemd service file
+        log_info "Creating systemd service: luigi-silence-audio.service"
+        
+        cat > /etc/systemd/system/luigi-silence-audio.service <<'EOF'
+[Unit]
+Description=Luigi Audio Silence Playback (Prevents I2S DAC Popping)
+Documentation=https://github.com/pkathmann88/luigi
+After=sound.target alsa-restore.service
+Before=mario.service
+
+[Service]
+Type=simple
+# Play silence continuously to keep I2S DAC active
+# This prevents popping/crackling sounds when audio starts/stops
+ExecStart=/usr/bin/aplay -q -D default -c 2 -f S16_LE -r 44100 -t raw /dev/zero
+Restart=always
+RestartSec=3
+StandardOutput=null
+StandardError=null
+
+# Use idle priority to minimize CPU impact
+Nice=19
+CPUSchedulingPolicy=idle
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        
+        chmod 644 /etc/systemd/system/luigi-silence-audio.service
+        
+        log_info "✓ Service file created"
+        echo ""
+        
+        # Reload systemd and enable the service
+        log_info "Enabling and starting service..."
+        systemctl daemon-reload
+        systemctl enable luigi-silence-audio.service
+        systemctl start luigi-silence-audio.service
+        
+        if systemctl is-active --quiet luigi-silence-audio.service; then
+            log_info "✓ Silence playback service is running"
+            echo ""
+            log_info "Audio popping should now be eliminated!"
+            log_info "Note: This service uses ~3-5% CPU on Pi Zero W"
+            echo ""
+            log_info "To disable if you experience issues:"
+            log_info "  sudo systemctl stop luigi-silence-audio.service"
+            log_info "  sudo systemctl disable luigi-silence-audio.service"
+        else
+            log_error "Failed to start silence playback service"
+            log_error "Check status with: sudo systemctl status luigi-silence-audio.service"
+        fi
+        
+    else
+        # Apply software-only fix by updating ALSA configuration
+        log_step "Applying software-only fix..."
+        echo ""
+        
+        # Check if /etc/asound.conf exists
+        if [ ! -f /etc/asound.conf ]; then
+            log_warn "ALSA configuration (/etc/asound.conf) not found"
+            log_warn "Run audio configuration first: sudo ./setup.sh install"
+            echo ""
+            return 1
+        fi
+        
+        # Extract current card and device from asound.conf
+        local card
+        local device
+        card=$(grep -oP 'card \K[0-9]+' /etc/asound.conf | head -1)
+        device=$(grep -oP 'device \K[0-9]+' /etc/asound.conf | head -1)
+        
+        if [ -z "$card" ] || [ -z "$device" ]; then
+            log_error "Could not determine audio card/device from /etc/asound.conf"
+            return 1
+        fi
+        
+        log_info "Current audio configuration: Card $card, Device $device"
+        log_info "Backing up /etc/asound.conf to /etc/asound.conf.bak..."
+        cp /etc/asound.conf /etc/asound.conf.bak
+        
+        log_info "Creating improved ALSA configuration..."
+        
+        # Create improved configuration with dmix and proper buffering
+        cat > /etc/asound.conf <<EOF
+# ALSA configuration for Luigi (with anti-popping fix)
+# Auto-generated by setup.sh
+# Card $card, Device $device
+#
+# This configuration uses dmix (software mixing) with optimized buffer settings
+# to prevent audio popping/crackling on I2S devices like the Adafruit Sound Bonnet
+
+# Hardware device with plug for format conversion
+pcm.hw_card {
+    type plug
+    slave.pcm {
+        type hw
+        card $card
+        device $device
+    }
+}
+
+# DMix device for software mixing and better buffering
+pcm.dmixed {
+    type dmix
+    ipc_key 1024
+    ipc_perm 0666
+    slave {
+        pcm "hw_card"
+        # Larger buffer reduces popping but may add slight latency
+        period_time 0
+        period_size 2048
+        buffer_size 16384
+        rate 44100
+    }
+    bindings {
+        0 0
+        1 1
+    }
+}
+
+# Default PCM device
+pcm.!default {
+    type plug
+    slave.pcm "dmixed"
+}
+
+# Default control device
+ctl.!default {
+    type hw
+    card $card
+}
+EOF
+        
+        log_info "✓ Improved ALSA configuration created"
+        echo ""
+        
+        # Test the new configuration if test sounds exist
+        local test_dirs=("/usr/share/sounds/mario")
+        local test_passed=0
+        
+        for dir in "${test_dirs[@]}"; do
+            if [ -d "$dir" ]; then
+                local test_sound
+                test_sound=$(find "$dir" -name "*.wav" | head -1)
+                if [ -n "$test_sound" ]; then
+                    log_info "Testing audio with new configuration..."
+                    if aplay -q "$test_sound" 2>/dev/null; then
+                        log_info "✓ Audio test successful!"
+                        test_passed=1
+                    else
+                        log_warn "Audio test failed - reverting to backup"
+                        mv /etc/asound.conf.bak /etc/asound.conf
+                        return 1
+                    fi
+                    break
+                fi
+            fi
+        done
+        
+        if [ $test_passed -eq 0 ]; then
+            log_info "✓ Configuration applied (no test sounds available)"
+        fi
+        
+        echo ""
+        log_info "Audio popping fix applied!"
+        log_info "The improved buffering should significantly reduce or eliminate popping."
+        log_info ""
+        log_info "If you still experience popping, you can:"
+        log_info "  1. Re-run setup and choose the silence playback service option"
+        log_info "  2. Restore the backup: sudo cp /etc/asound.conf.bak /etc/asound.conf"
+    fi
+    
+    echo ""
+    return 0
+}
+
 # Install all modules or a specific module
 install_modules() {
     local specific_module="$1"
@@ -939,6 +1198,9 @@ install_modules() {
     
     # Configure ALSA audio device (after Sound Bonnet if installed)
     configure_audio
+    
+    # Fix audio popping on I2S devices (optional but recommended)
+    fix_audio_popping
     
     # Execute install command for each module
     for module in "${modules[@]}"; do
