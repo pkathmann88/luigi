@@ -13,7 +13,7 @@ const config = require('./config');
 const logger = require('./src/utils/logger');
 
 const PORT = config.port || 8443;
-const HOST = config.host || '0.0.0.0';
+const HOST = config.host || '127.0.0.1';
 const USE_HTTPS = config.useHttps;
 
 async function startServer() {

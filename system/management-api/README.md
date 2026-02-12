@@ -226,12 +226,18 @@ TLS_KEY_PATH=/etc/luigi/system/management-api/certs/server.key
 
 **Note:** Certificates are stored in `/etc/luigi/system/management-api/certs/`. The installer automatically creates and configures certificates with proper permissions.
 
+**Security:** By default, the API only listens on localhost (127.0.0.1). This means:
+- The API is only accessible from the same machine
+- The frontend (nginx) can access it via localhost proxy
+- To allow network access, set `HOST=0.0.0.0` in the configuration
+
 ### Optional Settings
 
 ```bash
 # Server
 PORT=8443                    # HTTPS port
-HOST=0.0.0.0                 # Bind address
+HOST=127.0.0.1               # Bind address (localhost only by default)
+                             # Set to 0.0.0.0 to allow network access
 
 # IP Whitelist (comma-separated, empty = allow all local network)
 ALLOWED_IPS=192.168.1.100,192.168.1.101
