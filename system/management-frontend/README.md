@@ -23,13 +23,14 @@ The management frontend is a standalone web application that communicates with t
 ```
 ┌─────────────────┐
 │   Web Browser   │
-│  (Port 80/443)  │
+│ (Port 80 → 443) │
 └────────┬────────┘
-         │ HTTP
+         │ HTTPS
          ▼
 ┌─────────────────┐
 │  Nginx Server   │  ← Static file serving
-│  Port 80        │  ← API proxy to backend
+│  Port 443 (TLS) │  ← API proxy to backend
+│  Port 80 → 443  │  ← HTTP redirect
 └────────┬────────┘
          │ HTTPS (proxied)
          ▼
@@ -40,9 +41,10 @@ The management frontend is a standalone web application that communicates with t
 ```
 
 **Separation of Concerns:**
-- **Frontend** - Static React SPA served by nginx on port 80
+- **Frontend** - Static React SPA served by nginx on port 443 (HTTPS)
 - **Backend** - Node.js REST API on port 8443 (HTTPS)
 - **Communication** - Frontend makes API calls, nginx proxies to backend
+- **Security** - All traffic encrypted via TLS, HTTP auto-redirects to HTTPS
 
 ## Prerequisites
 
@@ -74,21 +76,26 @@ The installation process will:
 2. Install nginx and Node.js
 3. Build the React frontend (if not already built)
 4. Deploy static files to `/var/lib/luigi-frontend/dist`
-5. Configure nginx to serve frontend and proxy API calls
-6. Create and start systemd service
-7. Register module in Luigi registry
+5. Check for existing TLS certificates or generate new ones
+6. Configure nginx to serve frontend via HTTPS and proxy API calls
+7. Create and start systemd service
+8. Register module in Luigi registry
 
 ### 3. Access the Interface
 
 Open your web browser:
-- **Local:** http://localhost/
-- **Network:** http://\<raspberry-pi-ip\>/
+- **Local:** https://localhost/
+- **Network:** https://\<raspberry-pi-ip\>/
+
+**Note:** HTTP requests (port 80) are automatically redirected to HTTPS (port 443)
 
 **Default Credentials:**
 - Username: `admin`
 - Password: `changeme123`
 
 ⚠️ **Change default credentials** in `/etc/luigi/system/management-api/.env`
+
+⚠️ **Certificate Warning:** The frontend uses a self-signed certificate, so your browser will show a security warning on first visit. This is expected - click "Advanced" and "Proceed" to continue.
 
 ## Frontend Build Process
 
@@ -127,11 +134,14 @@ sudo ./setup.sh build
 **Location:** `/etc/nginx/sites-available/luigi-frontend`
 
 Key settings:
-- **Port:** 80 (HTTP)
+- **Port 443:** HTTPS with TLS/SSL
+- **Port 80:** HTTP redirect to HTTPS
 - **Root:** `/var/lib/luigi-frontend/dist`
+- **Certificates:** Shared with backend at `/etc/luigi/system/management-api/certs/`
 - **API Proxy:** `/api/*` → `https://localhost:8443`
 - **Health Check:** `/health` → `https://localhost:8443`
 - **SPA Routing:** All routes serve `index.html`
+- **Security Headers:** HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection
 
 ### Frontend API Endpoint
 

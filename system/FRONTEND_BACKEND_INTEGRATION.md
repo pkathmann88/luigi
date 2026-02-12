@@ -10,16 +10,19 @@ This document explains how the `management-frontend` and `management-api` module
 │                      (Any Device on LAN)                     │
 └───────────────────────────┬─────────────────────────────────┘
                             │
-                            │ HTTP (Port 80)
+                            │ HTTPS (Port 443)
+                            │ HTTP (Port 80) → redirects to 443
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     Management Frontend                      │
-│              nginx serving React SPA (Port 80)               │
+│           nginx serving React SPA (Port 443 HTTPS)           │
 │                                                              │
 │  • Serves static files from /var/lib/luigi-frontend/dist    │
 │  • Proxies /api/* requests to backend                       │
 │  • Proxies /health requests to backend                      │
 │  • Handles SPA routing (all routes → index.html)            │
+│  • HTTP (port 80) redirects to HTTPS (port 443)             │
+│  • TLS certificates shared with backend                     │
 └───────────────────────────┬─────────────────────────────────┘
                             │
                             │ HTTPS (proxied to localhost:8443)
@@ -55,22 +58,30 @@ This document explains how the `management-frontend` and `management-api` module
    ```
    - Checks for backend dependency
    - Builds React application
-   - Configures nginx as reverse proxy
-   - Serves frontend on port 80
+   - Checks/generates TLS certificates (shared with backend)
+   - Configures nginx as reverse proxy with HTTPS
+   - Serves frontend on port 443 (HTTPS)
+   - Redirects port 80 (HTTP) to port 443
 
 ## Communication Flow
 
 ### 1. User Opens Browser
 
-User navigates to `http://<raspberry-pi-ip>/`
+User navigates to `http://<raspberry-pi-ip>/` or `https://<raspberry-pi-ip>/`
 
-### 2. Nginx Serves Frontend
+### 2. HTTP to HTTPS Redirect
 
-- Nginx serves `index.html` and static assets (JS, CSS, images)
+- If user accesses HTTP (port 80), nginx automatically redirects to HTTPS (port 443)
+- Browser establishes secure TLS connection
+- Certificate warning may appear (self-signed cert - this is expected)
+
+### 3. Nginx Serves Frontend
+
+- Nginx serves `index.html` and static assets (JS, CSS, images) over HTTPS
 - React SPA loads in browser
 - Client-side routing handles navigation
 
-### 3. Frontend Makes API Calls
+### 4. Frontend Makes API Calls
 
 When the frontend needs data:
 
@@ -81,7 +92,7 @@ const response = await fetch('/api/modules');
 
 **Note:** No hostname/port specified - uses same-origin (relative URL)
 
-### 4. Nginx Proxies to Backend
+### 5. Nginx Proxies to Backend
 
 Nginx intercepts `/api/*` requests:
 
@@ -94,13 +105,13 @@ location /api/ {
 }
 ```
 
-### 5. Backend Processes Request
+### 6. Backend Processes Request
 
 - Backend validates HTTP Basic Auth header
 - Processes API request
 - Returns JSON response
 
-### 6. Frontend Receives Response
+### 7. Frontend Receives Response
 
 - Data flows back through nginx to browser
 - React updates UI with new data
@@ -234,7 +245,8 @@ server: {
 
 4. **Verify:**
    - Backend: `curl -k -u admin:changeme123 https://localhost:8443/health`
-   - Frontend: `curl http://localhost/`
+   - Frontend HTTPS: `curl -k https://localhost/`
+   - Frontend HTTP redirect: `curl -I http://localhost/` (should show 301 redirect)
 
 ### Automated Deployment
 
@@ -323,28 +335,32 @@ sudo tail -f /var/log/nginx/access.log
 
 ## Port Reference
 
-- **80** - Frontend (nginx, HTTP)
+- **80** - HTTP redirect to HTTPS (nginx)
+- **443** - Frontend HTTPS (nginx, TLS)
 - **8443** - Backend API (Node.js, HTTPS)
 - **5173** - Frontend dev server (Vite, HTTP) - development only
 
 ## Security Considerations
 
-1. **Backend uses HTTPS** - All API traffic encrypted
-2. **Frontend uses HTTP** - No cert needed, served locally
-3. **Nginx proxies internally** - Backend not exposed externally
-4. **Local network only** - Backend rejects non-local IPs
-5. **Authentication required** - All API endpoints protected
-6. **Rate limiting** - Prevents brute force attacks
-7. **Input validation** - All user input sanitized
-8. **Audit logging** - All operations logged to `/var/log/luigi/`
+1. **Frontend uses HTTPS** - All traffic encrypted with TLS
+2. **Backend uses HTTPS** - All API traffic encrypted
+3. **Shared TLS certificates** - Both use same self-signed certs
+4. **HTTP auto-redirect** - Forces HTTPS for all connections
+5. **Nginx proxies internally** - Backend not exposed externally
+6. **Local network only** - Backend rejects non-local IPs
+7. **Authentication required** - All API endpoints protected
+8. **Rate limiting** - Prevents brute force attacks
+9. **Input validation** - All user input sanitized
+10. **Audit logging** - All operations logged to `/var/log/luigi/`
+11. **Security headers** - HSTS, X-Frame-Options, CSP, etc.
 
 ## Summary
 
 The frontend and backend are **completely decoupled**:
 
-- Frontend is a static SPA served by nginx
+- Frontend is a static SPA served by nginx over HTTPS
 - Backend is a REST API with HTTPS
-- Communication via HTTP/HTTPS only
+- Communication via HTTPS only (encrypted end-to-end)
 - No shared code or dependencies
 - Each can be deployed, updated, or scaled independently
 

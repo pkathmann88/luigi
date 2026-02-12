@@ -42,6 +42,11 @@ readonly NGINX_SITE_ENABLED="/etc/nginx/sites-enabled/luigi-frontend"
 readonly SERVICE_NAME="management-frontend.service"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
 
+# TLS certificate paths (shared with management-api backend)
+readonly CERTS_DIR="/etc/luigi/system/management-api/certs"
+readonly CERT_FILE="${CERTS_DIR}/server.crt"
+readonly KEY_FILE="${CERTS_DIR}/server.key"
+
 # Detect build user (for npm operations)
 BUILD_USER="${SUDO_USER:-$(whoami)}"
 if [ "$BUILD_USER" = "root" ]; then
@@ -107,6 +112,62 @@ build() {
     fi
 }
 
+# Check and generate TLS certificates if needed
+check_and_generate_certificates() {
+    log_info "Checking TLS certificates..."
+    
+    # Check if certificates already exist
+    if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
+        log_info "TLS certificates already exist at $CERTS_DIR"
+        
+        # Verify certificate is valid
+        if openssl x509 -checkend 86400 -noout -in "$CERT_FILE" >/dev/null 2>&1; then
+            log_success "Existing certificates are valid"
+            return 0
+        else
+            log_warn "Existing certificate is expired or invalid"
+            log_info "Regenerating certificates..."
+        fi
+    else
+        log_info "TLS certificates not found, generating new certificates..."
+    fi
+    
+    # Create certs directory if it doesn't exist
+    mkdir -p "$CERTS_DIR"
+    
+    # Generate self-signed certificate
+    log_info "Generating self-signed SSL certificate..."
+    cd "$CERTS_DIR"
+    
+    # Generate private key
+    openssl genrsa -out server.key 2048 2>/dev/null
+    
+    # Generate certificate signing request
+    openssl req -new -key server.key -out server.csr \
+        -subj "/C=US/ST=State/L=City/O=Luigi/CN=raspberrypi.local" 2>/dev/null
+    
+    # Generate self-signed certificate (valid for 365 days)
+    openssl x509 -req -days 365 -in server.csr \
+        -signkey server.key -out server.crt 2>/dev/null
+    
+    # Set proper permissions
+    # Private key: readable by owner and group
+    chmod 640 server.key
+    # Certificate: world-readable (public certificate)
+    chmod 644 server.crt
+    
+    # Set ownership - allow both nginx and management-api to read
+    # nginx typically runs as www-data, but we'll use root:root and rely on 644/640 perms
+    chown root:root server.key server.crt
+    
+    # Clean up CSR
+    rm -f server.csr
+    
+    log_success "TLS certificates generated successfully"
+    log_info "Certificate: $CERT_FILE"
+    log_info "Private key: $KEY_FILE"
+}
+
 # Install function
 install() {
     check_root
@@ -148,7 +209,10 @@ install() {
         exit 1
     fi
     
-    # 5. Configure nginx
+    # 5. Check and generate TLS certificates
+    check_and_generate_certificates
+    
+    # 6. Configure nginx
     log_info "Configuring nginx..."
     
     # Remove default nginx site if it exists
@@ -171,13 +235,13 @@ install() {
         exit 1
     fi
     
-    # 6. Install systemd service
+    # 7. Install systemd service
     log_info "Installing systemd service..."
     cp "$SCRIPT_DIR/$SERVICE_NAME" "$SERVICE_FILE"
     systemctl daemon-reload
     log_success "Systemd service installed"
     
-    # 7. Register module in Luigi registry
+    # 8. Register module in Luigi registry
     log_info "Registering module in Luigi registry..."
     register_module_in_registry \
         "$MODULE_CATEGORY/$MODULE_NAME" \
@@ -185,7 +249,7 @@ install() {
         "1.0.0" \
         "installed"
     
-    # 8. Enable and start services
+    # 9. Enable and start services
     log_info "Enabling and starting services..."
     
     # Ensure nginx is enabled and running
@@ -198,13 +262,15 @@ install() {
     
     log_success "Services started successfully"
     
-    # 9. Display status
+    # 10. Display status
     echo ""
     log_success "Installation complete!"
     echo ""
     echo "Frontend is now available at:"
-    echo "  http://$(hostname -I | awk '{print $1}')/"
-    echo "  http://localhost/"
+    echo "  https://$(hostname -I | awk '{print $1}')/"
+    echo "  https://localhost/"
+    echo ""
+    echo "Note: HTTP requests on port 80 are automatically redirected to HTTPS"
     echo ""
     echo "The frontend communicates with the backend API at https://localhost:8443"
     echo ""
