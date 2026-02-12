@@ -56,6 +56,7 @@ async function getSystemMetrics() {
 /**
  * Parse human-readable disk size to bytes
  * Converts strings like "7.2G" or "7.2g" to bytes
+ * Also handles plain numbers without units (e.g., "1024" returns 1024)
  */
 function parseBytes(sizeStr) {
   if (!sizeStr) return 0;
