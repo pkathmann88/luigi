@@ -27,6 +27,7 @@ sudo ./setup.sh install
 # During installation, you will be prompted to:
 # 1. Optionally install the Adafruit Sound Bonnet for audio modules
 # 2. Configure ALSA audio device (automatic device detection)
+# 3. Optionally fix audio popping/crackling on I2S audio devices
 
 # Check installation status
 ./setup.sh status
