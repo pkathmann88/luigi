@@ -30,13 +30,28 @@ Authorization: Basic <base64-encoded-credentials>
 ```
 
 **Credentials:**
-- Username and password are configured during setup
+- Username and password are configured during setup in backend .env file
+- Credentials are validated **only** on the backend (not in frontend)
 - Default development credentials: `admin` / `changeme123` (change in production!)
+- Frontend validates credentials by making authenticated API calls
+
+**Security Note:**
+- Credentials are validated using constant-time comparison to prevent timing attacks
+- All authentication attempts are logged for security auditing
+- Frontend does not contain hardcoded credentials
 
 **Example:**
 ```bash
 curl -u admin:changeme123 http://localhost:3000/api/modules
 ```
+
+**Login Flow:**
+1. User enters credentials in frontend
+2. Frontend stores credentials in localStorage
+3. Frontend makes authenticated API call (e.g., GET /api/system/status)
+4. Backend validates credentials via HTTP Basic Auth
+5. If valid (200 OK), user proceeds to dashboard
+6. If invalid (401 Unauthorized), error is shown and credentials are cleared
 
 ---
 
