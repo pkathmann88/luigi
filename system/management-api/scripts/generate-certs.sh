@@ -30,9 +30,8 @@ chmod 640 server.key
 chmod 644 server.crt
 
 # Set ownership to allow service user to read
-# Assume the service will run as 'pi' user
-# If service runs as different user, ownership will be set by setup script
-chown root:root server.key server.crt
+# Service will run as 'pi' user, so set group to 'pi' for key access
+chown root:pi server.key server.crt
 
 # Clean up CSR
 rm server.csr

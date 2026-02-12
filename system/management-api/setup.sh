@@ -336,21 +336,26 @@ install() {
         log_info "Generating self-signed TLS certificates..."
         bash "$SCRIPT_DIR/scripts/generate-certs.sh"
         
-        # Set ownership so service user can read certificates
-        # Private key needs to be readable by the service user
-        chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key"
+        # Ensure ownership is correct for service user
+        # The generate-certs.sh already sets this, but verify it here
+        chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key" "$CERTS_DIR/server.crt"
         chmod 640 "$CERTS_DIR/server.key"
+        chmod 644 "$CERTS_DIR/server.crt"
         
         log_success "Certificates generated and permissions set for user '${INSTALL_USER}'"
     else
         log_info "TLS certificates already exist"
         
-        # Ensure existing certificates have correct permissions
+        # Ensure existing certificates have correct permissions and ownership
         if [ -f "$CERTS_DIR/server.key" ]; then
             chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key"
             chmod 640 "$CERTS_DIR/server.key"
-            log_info "Updated certificate permissions for user '${INSTALL_USER}'"
         fi
+        if [ -f "$CERTS_DIR/server.crt" ]; then
+            chown root:"${INSTALL_USER}" "$CERTS_DIR/server.crt"
+            chmod 644 "$CERTS_DIR/server.crt"
+        fi
+        log_info "Updated certificate permissions for user '${INSTALL_USER}'"
     fi
     
     # 7. Deploy systemd service
