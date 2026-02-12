@@ -9,7 +9,6 @@ const config = require('../../config');
 
 // Allowed base directories
 const ALLOWED_DIRECTORIES = [
-  config.paths.modules,
   config.paths.config,
   config.paths.logs,
   '/etc/luigi/system/management-api/certs',
@@ -49,13 +48,6 @@ function validatePath(filePath, baseDir = null) {
 }
 
 /**
- * Validate module path is within Luigi modules directory
- */
-function validateModulePath(modulePath) {
-  return validatePath(path.join(config.paths.modules, modulePath), config.paths.modules);
-}
-
-/**
  * Validate config path is within Luigi config directory
  */
 function validateConfigPath(configPath) {
@@ -71,7 +63,6 @@ function validateLogPath(logPath) {
 
 module.exports = {
   validatePath,
-  validateModulePath,
   validateConfigPath,
   validateLogPath,
   ALLOWED_DIRECTORIES,

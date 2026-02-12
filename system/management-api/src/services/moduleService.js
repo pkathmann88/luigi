@@ -3,12 +3,8 @@
  * Business logic for Luigi module management operations
  */
 
-const fs = require('fs').promises;
-const path = require('path');
 const logger = require('../utils/logger');
 const { executeCommand, executeCommandForOutput } = require('../utils/commandExecutor');
-const { validateModulePath } = require('../security/pathValidator');
-const config = require('../../config');
 const registryService = require('./registryService');
 
 /**
@@ -54,142 +50,47 @@ async function getServiceStatus(moduleName) {
 }
 
 /**
- * Find all Luigi modules using the centralized registry as primary source
- * Falls back to filesystem scanning if registry is empty (development mode)
+ * Find all Luigi modules using the centralized registry
+ * Registry is the single source of truth for installed modules
  */
 async function listModules() {
   try {
-    // Get registry entries (primary source)
-    let registryEntries = [];
-    try {
-      registryEntries = await registryService.listRegistry();
-      logger.info(`Found ${registryEntries.length} modules in registry`);
-    } catch (err) {
-      logger.warn(`Failed to load registry data: ${err.message}`);
-    }
+    // Get registry entries
+    const registryEntries = await registryService.listRegistry();
+    logger.info(`Found ${registryEntries.length} modules in registry`);
     
-    // If registry has entries, use it as the primary source
-    if (registryEntries.length > 0) {
-      logger.info('Using registry as primary source for module list');
-      
-      // Build modules list from registry entries
-      const modules = await Promise.all(
-        registryEntries.map(async (registryEntry) => {
-          const modulePath = registryEntry.module_path;
-          const pathParts = modulePath.split('/');
-          const moduleName = pathParts[pathParts.length - 1];
-          const category = pathParts[0];
-          
-          // Get service status if module has service capability
-          let serviceStatus = { status: 'unknown', pid: null };
-          if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
-            serviceStatus = await getServiceStatus(moduleName);
-          }
-          
-          return {
-            name: moduleName,
-            path: modulePath,
-            category,
-            metadata: {
-              name: registryEntry.name,
-              version: registryEntry.version,
-              description: registryEntry.description,
-              capabilities: registryEntry.capabilities || [],
-            },
-            status: serviceStatus.status,
-            pid: serviceStatus.pid,
-            registry: registryEntry,
-          };
-        })
-      );
-      
-      return modules;
-    }
-    
-    // Fallback: scan filesystem if registry is empty (development mode)
-    logger.warn('Registry is empty, falling back to filesystem scan');
-    const modulesPath = config.paths.modules;
-    const modules = [];
-
-    // Check if modules directory exists
-    try {
-      await fs.access(modulesPath);
-    } catch (err) {
-      logger.error(`Modules directory not found: ${modulesPath}`);
-      return modules; // Return empty array if directory doesn't exist
-    }
-
-    // Helper function to search directories recursively
-    async function searchDirectory(dir, depth = 0) {
-      if (depth > 3) return; // Limit depth to prevent excessive scanning
-
-      try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
-
-        for (const entry of entries) {
-          if (entry.isDirectory()) {
-            const subPath = path.join(dir, entry.name);
-            
-            // Check if setup.sh exists in this directory
-            const setupPath = path.join(subPath, 'setup.sh');
-            try {
-              await fs.access(setupPath);
-              
-              // This is a module directory
-              const relativePath = path.relative(modulesPath, subPath);
-              const category = relativePath.split(path.sep)[0];
-              const moduleName = path.basename(subPath);
-
-              // Try to read module.json if it exists
-              let metadata = null;
-              try {
-                const moduleJsonPath = path.join(subPath, 'module.json');
-                const moduleJson = await fs.readFile(moduleJsonPath, 'utf8');
-                metadata = JSON.parse(moduleJson);
-              } catch (err) {
-                // module.json doesn't exist or is invalid
-              }
-
-              modules.push({
-                name: moduleName,
-                path: relativePath,
-                category,
-                fullPath: subPath,
-                metadata,
-              });
-            } catch (err) {
-              // setup.sh doesn't exist, search subdirectories
-              await searchDirectory(subPath, depth + 1);
-            }
-          }
+    // Build modules list from registry entries
+    const modules = await Promise.all(
+      registryEntries.map(async (registryEntry) => {
+        const modulePath = registryEntry.module_path;
+        const pathParts = modulePath.split('/');
+        const moduleName = pathParts[pathParts.length - 1];
+        const category = pathParts[0];
+        
+        // Get service status if module has service capability
+        let serviceStatus = { status: 'unknown', pid: null };
+        if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
+          serviceStatus = await getServiceStatus(moduleName);
         }
-      } catch (err) {
-        logger.warn(`Error reading directory ${dir}: ${err.message}`);
-      }
-    }
-
-    await searchDirectory(modulesPath);
-    
-    if (modules.length === 0) {
-      logger.warn(`No modules found. Registry is empty and no setup.sh files found in ${modulesPath}.`);
-      return modules;
-    }
-    
-    // Enrich modules with status information
-    const enrichedModules = await Promise.all(
-      modules.map(async (module) => {
-        const serviceStatus = await getServiceStatus(module.name);
         
         return {
-          ...module,
+          name: moduleName,
+          path: modulePath,
+          category,
+          metadata: {
+            name: registryEntry.name,
+            version: registryEntry.version,
+            description: registryEntry.description,
+            capabilities: registryEntry.capabilities || [],
+          },
           status: serviceStatus.status,
           pid: serviceStatus.pid,
-          registry: null, // No registry data in fallback mode
+          registry: registryEntry,
         };
       })
     );
     
-    return enrichedModules;
+    return modules;
   } catch (error) {
     logger.error(`Error listing modules: ${error.message}`);
     throw error;
