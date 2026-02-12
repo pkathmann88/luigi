@@ -307,7 +307,7 @@ def publish_sensor_value(sensor_id, value, is_binary=False, unit=None):
         result = subprocess.run(
             cmd,
             capture_output=True,
-            timeout=5,
+            timeout=10,  # Increased from 5 to 10 seconds for network startup delays
             check=True
         )
         

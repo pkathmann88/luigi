@@ -1,12 +1,17 @@
 [Unit]
 Description=System Info Monitor Service
 Documentation=https://github.com/pkathmann88/luigi
-After=network.target
+# Wait for network to be fully online (not just initialized)
+# This ensures DNS resolution and MQTT broker connectivity work
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
 ExecStartPre=/bin/mkdir -p /var/log/luigi
+# Brief delay to ensure network services are fully ready
+ExecStartPre=/bin/sleep 3
 ExecStart=/usr/bin/python3 /usr/local/bin/system-info.py
 Restart=on-failure
 RestartSec=10

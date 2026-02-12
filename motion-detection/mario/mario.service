@@ -1,7 +1,10 @@
 [Unit]
 Description=Mario Motion Detection Service
 Documentation=https://github.com/pkathmann88/luigi
-After=network.target
+# Wait for network to be fully online (not just initialized)
+# This ensures DNS resolution and MQTT broker connectivity work
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
