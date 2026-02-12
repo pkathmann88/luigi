@@ -1,0 +1,33 @@
+[Unit]
+Description=Luigi Management Frontend (Nginx)
+Documentation=https://github.com/pkathmann88/luigi
+After=network-online.target management-api.service
+Wants=network-online.target
+# Requires the management-api backend to be running
+Requires=management-api.service
+
+[Service]
+Type=forking
+# This is a wrapper service that ensures nginx is running with Luigi frontend config
+# Actual nginx service is managed by systemd, this just validates configuration
+
+# Pre-start validation
+ExecStartPre=/usr/sbin/nginx -t -c /etc/nginx/nginx.conf
+ExecStartPre=/bin/sh -c 'if [ ! -d /var/lib/luigi-frontend/dist ]; then echo "Frontend not built!"; exit 1; fi'
+
+# Reload nginx to pick up configuration changes
+ExecStart=/bin/systemctl reload-or-restart nginx.service
+
+# On stop, just log (nginx continues serving, managed independently)
+ExecStop=/bin/true
+
+# No restart needed - nginx service handles that
+Restart=no
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=management-frontend
+
+[Install]
+WantedBy=multi-user.target

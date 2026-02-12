@@ -26,7 +26,7 @@ const config = {
 
   // Server
   port: parseInt(process.env.PORT, 10) || 8443,
-  host: process.env.HOST || '0.0.0.0',
+  host: process.env.HOST || '127.0.0.1',
   useHttps: process.env.USE_HTTPS === 'true',
 
   // Authentication

@@ -1,14 +1,12 @@
 # Luigi Management API
 
-**Secure Node.js API server for Luigi system management and Raspberry Pi control**
+**Secure Node.js REST API server for Luigi system management and Raspberry Pi control**
 
-A RESTful HTTPS API that provides centralized management of Luigi modules, system operations, log viewing, and configuration management without requiring SSH access.
-
-**Includes a modern web-based frontend** for easy management through your browser.
+A RESTful HTTPS API that provides centralized management of Luigi modules, system operations, log viewing, and configuration management. This is the backend API server - install the `management-frontend` module for a web interface.
 
 ## Features
 
-- **Web Frontend** - Modern, responsive UI for managing Luigi system from any device
+- **REST API** - Complete RESTful API for system management
 - **Module Management** - Start, stop, restart, and monitor Luigi modules
 - **System Control** - Reboot, shutdown, update, and clean up the system
 - **Log Viewing** - Access and search logs from all modules
@@ -17,6 +15,16 @@ A RESTful HTTPS API that provides centralized management of Luigi modules, syste
 - **Secure Authentication** - HTTP Basic Authentication over HTTPS/TLS
 - **Comprehensive Security** - Rate limiting, input validation, audit logging, IP filtering
 - **Local Network Optimized** - Designed for secure local network deployment
+- **CORS Enabled** - Supports cross-origin requests from authorized frontend
+
+## Architecture
+
+This is a **backend-only** module. For a web interface, install the separate `management-frontend` module which serves the UI via nginx and communicates with this API.
+
+```
+Frontend (Port 80)  ──HTTPS──>  Backend API (Port 8443)
+  nginx serves UI              This module (REST API)
+```
 
 ## Prerequisites
 
@@ -37,8 +45,8 @@ sudo ./setup.sh install
 
 The installer will:
 1. Check prerequisites and install Node.js if needed
-2. Build frontend and backend with default credentials
-3. Copy application files to `~/luigi/system/management-api`
+2. Build backend with default credentials
+3. Deploy application files to `/var/lib/luigi-api/management-api`
 4. Generate configuration with default credentials (admin/changeme123)
 5. Generate TLS certificates
 6. Configure and start the service
@@ -52,7 +60,16 @@ sudo nano /etc/luigi/system/management-api/.env
 sudo systemctl restart management-api
 ```
 
-**Note:** No frontend rebuild needed when changing credentials! The frontend validates credentials via backend API.
+### Install Web Interface
+
+For a web-based UI, install the separate frontend module:
+
+```bash
+cd system/management-frontend
+sudo ./setup.sh install
+```
+
+The frontend will be available at `http://<raspberry-pi-ip>/`
 
 ### Build Then Deploy Workflow (Recommended)
 
@@ -64,7 +81,7 @@ cd system/management-api
 sudo ./setup.sh build  # Builds with default credentials
 
 # Step 2: Deploy pre-built application
-sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api
+sudo ./setup.sh install  # Copies to: /var/lib/luigi-api/management-api
 ```
 
 **Benefits:**
@@ -77,7 +94,7 @@ sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api
 
 ### Build Only (Development)
 
-To build the frontend and backend without full installation:
+To build the backend without full installation:
 
 ```bash
 cd system/management-api
@@ -89,14 +106,13 @@ sudo ./setup.sh build
 
 The build command:
 - Uses default credentials (admin/changeme123)
-- **Builds in place** (in the repository directory, not in `~/luigi`)
-- Installs Node.js dependencies (backend and frontend)
-- Builds the React/TypeScript frontend
+- **Builds in place** (in the repository directory)
+- Installs Node.js dependencies for backend
 - Skips: service installation, certificate generation
 
 **Key Difference from Install:**
 - `build` - Builds in your repository location (e.g., `~/repos/luigi/system/management-api`)
-- `install` - Copies to `~/luigi/system/management-api` and deploys as a service
+- `install` - Copies to `/var/lib/luigi-api/management-api` and deploys as a service
 
 This is useful for:
 - Development workflows (build where you code)
@@ -114,62 +130,52 @@ curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt-get install -y nodejs npm openssl curl
 
 # 2. Copy application files
-# Note: $USER and $HOME are environment variables that expand to your username and home directory
-sudo mkdir -p $HOME/luigi/system/management-api
-sudo cp -r ./* $HOME/luigi/system/management-api/
-sudo chown -R $USER:$USER $HOME/luigi/system/management-api
+sudo mkdir -p /var/lib/luigi-api/management-api
+sudo cp -r ./* /var/lib/luigi-api/management-api/
+sudo chown -R luigi-api:luigi-api /var/lib/luigi-api/management-api
 
 # 3. Install backend dependencies
-cd $HOME/luigi/system/management-api
+cd /var/lib/luigi-api/management-api
 npm install --production
 
-# 4. Build frontend
-cd $HOME/luigi/system/management-api/frontend
-npm install
-npm run build
-
-# 5. Create configuration
+# 4. Create configuration
 sudo mkdir -p /etc/luigi/system/management-api
 sudo cp .env.example /etc/luigi/system/management-api/.env
 sudo chmod 600 /etc/luigi/system/management-api/.env
 sudo nano /etc/luigi/system/management-api/.env  # Set AUTH_PASSWORD
 
-# 6. Generate TLS certificates
+# 5. Generate TLS certificates
 bash scripts/generate-certs.sh
 
-# 7. Install and start service
-# Edit management-api.service to set correct User, Group, and WorkingDirectory
+# 6. Install and start service
 sudo cp management-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable management-api
 sudo systemctl start management-api
 ```
 
-**Note:** The automated installer (`./setup.sh install`) handles user detection and path configuration automatically.
+**Note:** The automated installer (`./setup.sh install`) handles user creation and path configuration automatically.
 
-## Web Frontend
+## API Access
 
-The management API includes a modern, responsive web frontend for easy system management.
-
-### Features
-
-- **Login Page** - Secure login validated via backend API
-- **Dashboard** - Real-time system monitoring (CPU, memory, disk, uptime)
-- **Module Management** - Start, stop, restart modules with a click
-- **Log Viewer** - Browse and view logs from all modules
-- **Configuration Editor** - Edit module configurations directly
-- **Responsive Design** - Works on desktop, tablet, and mobile
-
-### Accessing the Frontend
-
-After installation, access the web interface at:
+After installation, the API is available at:
 
 ```
 https://<raspberry-pi-ip>:8443/
 ```
 
-**Default Login Credentials:**
+**Endpoints:**
+- `GET /health` - Health check (no auth required)
+- `GET /api/modules` - List all modules
+- `GET /api/modules/:name` - Get module details
+- `POST /api/modules/:name/start|stop|restart` - Control modules
+- `GET /api/system/status` - System metrics
+- `GET /api/logs` - List log files
+- `GET /api/config` - List config files
 
+See `docs/API.md` for complete API documentation.
+
+**Default Credentials:**
 - Username: `admin`
 - Password: `changeme123`
 
@@ -188,23 +194,18 @@ https://<raspberry-pi-ip>:8443/
    sudo systemctl restart management-api
    ```
 
-**Note:** No frontend rebuild needed! The frontend validates credentials through the backend API, so changes to backend credentials take effect immediately after service restart.
-
-### Building the Frontend
-
-The frontend is automatically built during installation by `setup.sh install`. 
-
-If you need to rebuild it manually:
+### Testing the API
 
 ```bash
-cd frontend
-npm install
-npm run build
+# Health check (no auth)
+curl -k https://localhost:8443/health
+
+# Get modules (with auth)
+curl -k -u admin:changeme123 https://localhost:8443/api/modules
+
+# Get system status
+curl -k -u admin:changeme123 https://localhost:8443/api/system/status
 ```
-
-The built files are automatically served by the backend at the root URL.
-
-For frontend development, see [frontend/README.md](frontend/README.md).
 
 ## Configuration
 
@@ -225,12 +226,18 @@ TLS_KEY_PATH=/etc/luigi/system/management-api/certs/server.key
 
 **Note:** Certificates are stored in `/etc/luigi/system/management-api/certs/`. The installer automatically creates and configures certificates with proper permissions.
 
+**Security:** By default, the API only listens on localhost (127.0.0.1). This means:
+- The API is only accessible from the same machine
+- The frontend (nginx) can access it via localhost proxy
+- To allow network access, set `HOST=0.0.0.0` in the configuration
+
 ### Optional Settings
 
 ```bash
 # Server
 PORT=8443                    # HTTPS port
-HOST=0.0.0.0                 # Bind address
+HOST=127.0.0.1               # Bind address (localhost only by default)
+                             # Set to 0.0.0.0 to allow network access
 
 # IP Whitelist (comma-separated, empty = allow all local network)
 ALLOWED_IPS=192.168.1.100,192.168.1.101
@@ -720,26 +727,6 @@ If you still see this error after updating:
    sudo nano /etc/luigi/system/management-api/.env
    sudo systemctl restart management-api
    ```
-
-### "Illegal instruction" Error During Frontend Build
-
-**Problem:** Installation fails with "Illegal instruction" error during `npm run build` in the frontend step.
-
-**Cause:** This occurs on Raspberry Pi Zero W (ARMv6 architecture) when using build tools with native binaries compiled for newer ARM architectures.
-
-**Solution:** The frontend build configuration automatically detects ARMv6 and uses appropriate tools:
-- **ARMv6 (Pi Zero W):** Uses Terser (pure JavaScript) for minification - slower but compatible
-- **Other architectures:** Uses esbuild (native binaries) for minification - faster
-
-The detection is automatic. No manual configuration needed.
-
-**Note:** If you still encounter this issue, verify you're using the latest version of the frontend configuration (`vite.config.ts` and `package.json`).
-
-### Frontend Build Takes Long Time
-
-**Expected:** Frontend build on Raspberry Pi Zero W can take 5-15 minutes due to limited CPU resources. This is normal. The build automatically uses pure JavaScript tools (Terser) on ARMv6 for compatibility, which are slower than native alternatives.
-
-On more modern systems (ARMv7, ARMv8, x86_64), the build uses faster esbuild and completes in 1-3 minutes.
 
 ## Dependencies
 
