@@ -54,10 +54,60 @@ async function getServiceStatus(moduleName) {
 }
 
 /**
- * Find all Luigi modules by looking for setup.sh files
+ * Find all Luigi modules using the centralized registry as primary source
+ * Falls back to filesystem scanning if registry is empty (development mode)
  */
 async function listModules() {
   try {
+    // Get registry entries (primary source)
+    let registryEntries = [];
+    try {
+      registryEntries = await registryService.listRegistry();
+      logger.info(`Found ${registryEntries.length} modules in registry`);
+    } catch (err) {
+      logger.warn(`Failed to load registry data: ${err.message}`);
+    }
+    
+    // If registry has entries, use it as the primary source
+    if (registryEntries.length > 0) {
+      logger.info('Using registry as primary source for module list');
+      
+      // Build modules list from registry entries
+      const modules = await Promise.all(
+        registryEntries.map(async (registryEntry) => {
+          const modulePath = registryEntry.module_path;
+          const pathParts = modulePath.split('/');
+          const moduleName = pathParts[pathParts.length - 1];
+          const category = pathParts[0];
+          
+          // Get service status if module has service capability
+          let serviceStatus = { status: 'unknown', pid: null };
+          if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
+            serviceStatus = await getServiceStatus(moduleName);
+          }
+          
+          return {
+            name: moduleName,
+            path: modulePath,
+            category,
+            metadata: {
+              name: registryEntry.name,
+              version: registryEntry.version,
+              description: registryEntry.description,
+              capabilities: registryEntry.capabilities || [],
+            },
+            status: serviceStatus.status,
+            pid: serviceStatus.pid,
+            registry: registryEntry,
+          };
+        })
+      );
+      
+      return modules;
+    }
+    
+    // Fallback: scan filesystem if registry is empty (development mode)
+    logger.warn('Registry is empty, falling back to filesystem scan');
     const modulesPath = config.paths.modules;
     const modules = [];
 
@@ -121,37 +171,20 @@ async function listModules() {
     await searchDirectory(modulesPath);
     
     if (modules.length === 0) {
-      logger.warn(`No modules with setup.sh files found in ${modulesPath}. Each Luigi module must have a setup.sh file in its directory. Check MODULES_PATH configuration.`);
+      logger.warn(`No modules found. Registry is empty and no setup.sh files found in ${modulesPath}.`);
+      return modules;
     }
     
-    // Get registry entries
-    let registryEntries = [];
-    try {
-      registryEntries = await registryService.listRegistry();
-    } catch (err) {
-      logger.warn(`Failed to load registry data: ${err.message}`);
-    }
-    
-    // Create a map of registry entries by module_path
-    const registryMap = new Map();
-    registryEntries.forEach(entry => {
-      registryMap.set(entry.module_path, entry);
-    });
-    
-    // Enrich modules with status information and registry data
+    // Enrich modules with status information
     const enrichedModules = await Promise.all(
       modules.map(async (module) => {
         const serviceStatus = await getServiceStatus(module.name);
-        
-        // Merge with registry data if available
-        const registryEntry = registryMap.get(module.path);
         
         return {
           ...module,
           status: serviceStatus.status,
           pid: serviceStatus.pid,
-          // Add registry data if available
-          registry: registryEntry || null,
+          registry: null, // No registry data in fallback mode
         };
       })
     );
