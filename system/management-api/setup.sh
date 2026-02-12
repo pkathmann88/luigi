@@ -209,7 +209,7 @@ build_frontend_in_source() {
     if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
         if [ "$prompt_user" = "true" ]; then
             log_info "Frontend build already exists in $SCRIPT_DIR/frontend/dist"
-            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
+            read -p "Do you want to rebuild the frontend? (y/N): " -n 1 -r rebuild_choice
             echo
             if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
                 log_info "Skipping frontend rebuild (using existing build)"
