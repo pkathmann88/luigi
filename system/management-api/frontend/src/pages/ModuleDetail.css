@@ -249,6 +249,12 @@
   margin-bottom: 0;
 }
 
+.module-detail__hardware-section--compact {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
 .module-detail__hardware-label {
   font-size: 0.875rem;
   font-weight: 600;

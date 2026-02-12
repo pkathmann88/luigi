@@ -4,6 +4,7 @@ import { apiService } from '../services/apiService';
 import { Module } from '../types/api';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { GpioPinDiagram } from '../components/GpioPinDiagram';
 import './ModuleDetail.css';
 
 export const ModuleDetail: React.FC = () => {
@@ -359,9 +360,20 @@ export const ModuleDetail: React.FC = () => {
           <Card className="module-detail__card">
             <h2 className="module-detail__section-title">Hardware Configuration</h2>
             
+            {/* GPIO Pin Diagram */}
             {registry.hardware.gpio_pins && registry.hardware.gpio_pins.length > 0 && (
               <div className="module-detail__hardware-section">
-                <div className="module-detail__hardware-label">GPIO Pins:</div>
+                <GpioPinDiagram 
+                  gpioPins={registry.hardware.gpio_pins}
+                  sensors={registry.hardware.sensors}
+                />
+              </div>
+            )}
+            
+            {/* Original text-based display as fallback/summary */}
+            {registry.hardware.gpio_pins && registry.hardware.gpio_pins.length > 0 && (
+              <div className="module-detail__hardware-section module-detail__hardware-section--compact">
+                <div className="module-detail__hardware-label">GPIO Pins Used:</div>
                 <div className="module-detail__gpio-list">
                   {registry.hardware.gpio_pins.map((pin) => (
                     <span key={pin} className="module-detail__gpio-pin">
