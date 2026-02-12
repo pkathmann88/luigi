@@ -18,6 +18,14 @@ async function listModules() {
     const modulesPath = config.paths.modules;
     const modules = [];
 
+    // Check if modules directory exists
+    try {
+      await fs.access(modulesPath);
+    } catch (err) {
+      logger.error(`Modules directory not found: ${modulesPath}`);
+      return modules; // Return empty array if directory doesn't exist
+    }
+
     // Helper function to search directories recursively
     async function searchDirectory(dir, depth = 0) {
       if (depth > 3) return; // Limit depth to prevent excessive scanning
@@ -68,6 +76,11 @@ async function listModules() {
     }
 
     await searchDirectory(modulesPath);
+    
+    if (modules.length === 0) {
+      logger.warn(`No modules found in ${modulesPath}. Check MODULES_PATH configuration.`);
+    }
+    
     return modules;
   } catch (error) {
     logger.error(`Error listing modules: ${error.message}`);

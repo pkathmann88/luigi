@@ -53,22 +53,27 @@ const systemOperationValidation = {
 
 /**
  * Log file validation
+ * Allows module names or log filenames (with .log extension)
  */
 const logFileValidation = param('module')
   .trim()
-  .matches(/^[a-zA-Z0-9_-]+$/)
-  .withMessage('Invalid module name')
+  .matches(/^[a-zA-Z0-9_.-]+$/)
+  .withMessage('Invalid module or log file name')
   .isLength({ min: 1, max: 100 })
   .withMessage('Module name must be 1-100 characters');
 
 /**
  * Configuration validation
+ * Allows paths with slashes and file extensions
+ * Blocks path traversal attempts
  */
 const configValidation = {
   module: param('module')
     .trim()
-    .matches(/^[a-zA-Z0-9_/-]+$/)
-    .withMessage('Invalid module path')
+    .matches(/^[a-zA-Z0-9_/.-]+$/)
+    .withMessage('Invalid module or config path')
+    .not().matches(/\.\./)
+    .withMessage('Path traversal not allowed')
     .isLength({ min: 1, max: 200 })
     .withMessage('Module path must be 1-200 characters'),
   
