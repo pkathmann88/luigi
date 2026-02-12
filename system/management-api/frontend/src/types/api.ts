@@ -1,10 +1,38 @@
 export interface Module {
   name: string;
-  status: 'active' | 'inactive' | 'failed' | 'unknown';
-  enabled: boolean;
+  path: string;
+  category: string;
+  fullPath: string;
+  metadata?: Record<string, unknown> | null;
+  status?: 'active' | 'inactive' | 'failed' | 'unknown';
+  enabled?: boolean;
   pid?: number;
   uptime?: number;
   memory?: number;
+}
+
+export interface LogFile {
+  name: string;
+  path: string;
+  fullPath: string;
+  size: number;
+  modified: string;
+}
+
+export interface ConfigFile {
+  name: string;
+  path: string;
+  fullPath: string;
+  size: number;
+  modified: string;
+}
+
+export interface ConfigContent {
+  file: string;
+  path: string;
+  content: string;
+  parsed: Record<string, unknown> | null;
+  format: string;
 }
 
 export interface SystemStatus {

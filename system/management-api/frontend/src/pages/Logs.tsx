@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../services/apiService';
+import { LogFile } from '../types/api';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import './Logs.css';
 
 export const Logs: React.FC = () => {
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<LogFile[]>([]);
   const [selectedLog, setSelectedLog] = useState<string>('');
   const [logContent, setLogContent] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,7 @@ export const Logs: React.FC = () => {
     const response = await apiService.getLogs();
     
     if (response.success && response.data) {
-      setLogs(response.data.logs || []);
+      setLogs(response.data.files || []);
     } else {
       setError(response.error || 'Failed to fetch logs');
     }
@@ -34,7 +35,7 @@ export const Logs: React.FC = () => {
     const response = await apiService.getModuleLogs(logName, 100);
     
     if (response.success && response.data) {
-      setLogContent(response.data.logs || []);
+      setLogContent(response.data.lines || []);
     } else {
       setError(response.error || 'Failed to fetch log content');
       setLogContent([]);
@@ -64,14 +65,14 @@ export const Logs: React.FC = () => {
           ) : (
             <ul className="logs__list">
               {logs.map((log) => (
-                <li key={log}>
+                <li key={log.path}>
                   <button
                     className={`logs__item ${
-                      selectedLog === log ? 'logs__item--active' : ''
+                      selectedLog === log.name ? 'logs__item--active' : ''
                     }`}
-                    onClick={() => fetchLogContent(log)}
+                    onClick={() => fetchLogContent(log.name)}
                   >
-                    {log}
+                    {log.name}
                   </button>
                 </li>
               ))}
