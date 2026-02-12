@@ -68,7 +68,7 @@ async function listModules() {
         const category = pathParts[0];
         
         // Get service status if module has service capability
-        let serviceStatus = { status: 'unknown', pid: null };
+        let serviceStatus = { status: 'installed', pid: null };
         if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
           serviceStatus = await getServiceStatus(moduleName);
         }
