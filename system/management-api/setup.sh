@@ -338,6 +338,7 @@ install() {
     sed -e "s|User=pi|User=${INSTALL_USER}|g" \
         -e "s|Group=pi|Group=${INSTALL_USER}|g" \
         -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
+        -e "s|ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
         "$APP_DIR/management-api.service" > "$SERVICE_FILE"
     
     chmod 644 "$SERVICE_FILE"
