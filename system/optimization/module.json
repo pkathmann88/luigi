@@ -4,7 +4,6 @@
   "description": "System optimization for Raspberry Pi Zero W performance tuning",
   "category": "system",
   "capabilities": [
-    "service",
     "config"
   ],
   "dependencies": [],
