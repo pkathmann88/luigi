@@ -674,8 +674,24 @@ Security:
    ```bash
    sudo nano /etc/luigi/system/management-api/.env
    # Change MODULES_PATH to your installation directory
+   # For development: MODULES_PATH=/home/runner/work/luigi/luigi
+   # For production: MODULES_PATH=/home/pi/luigi
    sudo systemctl restart management-api
    ```
+
+**Note for Development:** If running from a repository clone without installation, set `MODULES_PATH` to your repository directory where modules are located (e.g., `/path/to/luigi-repo`).
+
+### Config Routes Return "Route Not Found"
+
+**Problem:** Config API returns errors like: `"Route GET /api/config/iot/ha-mqtt/ha-mqtt.conf not found"`
+
+**Cause:** Routes with multiple path segments (containing slashes) were not matched correctly in earlier versions.
+
+**Solution:** This is fixed in the current version. The route definitions now use wildcard parameters `/:module(*)` to properly match multi-segment config paths like `iot/ha-mqtt/ha-mqtt.conf`.
+
+If you still see this error after updating:
+1. Restart the service: `sudo systemctl restart management-api`
+2. Check the logs: `journalctl -u management-api -n 50`
 
 ### Config or Log Files Return 404 Not Found
 
