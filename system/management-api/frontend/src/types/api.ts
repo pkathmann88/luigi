@@ -30,7 +30,7 @@ export interface Module {
   category: string;
   fullPath: string;
   metadata?: Record<string, unknown> | null;
-  status?: 'active' | 'inactive' | 'failed' | 'unknown';
+  status?: 'active' | 'inactive' | 'failed' | 'installed' | 'unknown';
   enabled?: boolean;
   pid?: number;
   uptime?: number;
