@@ -13,25 +13,37 @@ const { executeCommand, executeCommandForOutput } = require('../utils/commandExe
  */
 async function getSystemMetrics() {
   try {
+    const cpuUsage = await getCpuUsage();
+    const diskUsage = await getDiskUsage();
+    const temperature = await getCpuTemperature();
+    
     const metrics = {
       timestamp: new Date().toISOString(),
       uptime: os.uptime(),
-      hostname: os.hostname(),
-      platform: os.platform(),
-      arch: os.arch(),
       cpu: {
-        model: os.cpus()[0].model,
-        cores: os.cpus().length,
-        usage: await getCpuUsage(),
+        usage: cpuUsage !== null ? cpuUsage : 0,
+        // Extract temperature from temperature object if available
+        temperature: temperature ? temperature.celsius : undefined,
       },
       memory: {
         total: os.totalmem(),
         free: os.freemem(),
         used: os.totalmem() - os.freemem(),
-        percentUsed: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100),
+        // Frontend expects 'percent', not 'percentUsed'
+        percent: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100),
       },
-      disk: await getDiskUsage(),
-      temperature: await getCpuTemperature(),
+      disk: diskUsage ? {
+        total: parseBytes(diskUsage.size),
+        used: parseBytes(diskUsage.used),
+        free: parseBytes(diskUsage.available),
+        // Map percentUsed from getDiskUsage() to 'percent' for frontend compatibility
+        percent: diskUsage.percentUsed,
+      } : {
+        total: 0,
+        used: 0,
+        free: 0,
+        percent: 0,
+      },
     };
 
     return metrics;
@@ -39,6 +51,31 @@ async function getSystemMetrics() {
     logger.error(`Error getting system metrics: ${error.message}`);
     throw error;
   }
+}
+
+/**
+ * Parse human-readable disk size to bytes
+ * Converts strings like "7.2G" or "7.2g" to bytes
+ * Also handles plain numbers without units (e.g., "1024" returns 1024)
+ */
+function parseBytes(sizeStr) {
+  if (!sizeStr) return 0;
+  
+  const units = {
+    'K': 1024,
+    'M': 1024 ** 2,
+    'G': 1024 ** 3,
+    'T': 1024 ** 4,
+  };
+  
+  // Match with case-insensitive flag to handle both 'G' and 'g'
+  const match = sizeStr.match(/^([\d.]+)([KMGT]?)$/i);
+  if (!match) return 0;
+  
+  const value = parseFloat(match[1]);
+  const unit = match[2].toUpperCase();
+  
+  return unit ? Math.round(value * units[unit]) : value;
 }
 
 /**
