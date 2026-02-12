@@ -131,7 +131,7 @@ sudo apt-get install -y nodejs npm openssl curl
 
 # 2. Copy application files
 sudo mkdir -p /var/lib/luigi-api/management-api
-sudo cp -r ./!(frontend) /var/lib/luigi-api/management-api/
+sudo cp -r ./* /var/lib/luigi-api/management-api/
 sudo chown -R luigi-api:luigi-api /var/lib/luigi-api/management-api
 
 # 3. Install backend dependencies
@@ -721,26 +721,6 @@ If you still see this error after updating:
    sudo nano /etc/luigi/system/management-api/.env
    sudo systemctl restart management-api
    ```
-
-### "Illegal instruction" Error During Frontend Build
-
-**Problem:** Installation fails with "Illegal instruction" error during `npm run build` in the frontend step.
-
-**Cause:** This occurs on Raspberry Pi Zero W (ARMv6 architecture) when using build tools with native binaries compiled for newer ARM architectures.
-
-**Solution:** The frontend build configuration automatically detects ARMv6 and uses appropriate tools:
-- **ARMv6 (Pi Zero W):** Uses Terser (pure JavaScript) for minification - slower but compatible
-- **Other architectures:** Uses esbuild (native binaries) for minification - faster
-
-The detection is automatic. No manual configuration needed.
-
-**Note:** If you still encounter this issue, verify you're using the latest version of the frontend configuration (`vite.config.ts` and `package.json`).
-
-### Frontend Build Takes Long Time
-
-**Expected:** Frontend build on Raspberry Pi Zero W can take 5-15 minutes due to limited CPU resources. This is normal. The build automatically uses pure JavaScript tools (Terser) on ARMv6 for compatibility, which are slower than native alternatives.
-
-On more modern systems (ARMv7, ARMv8, x86_64), the build uses faster esbuild and completes in 1-3 minutes.
 
 ## Dependencies
 

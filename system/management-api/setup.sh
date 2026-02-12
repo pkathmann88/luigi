@@ -117,9 +117,8 @@ prompt_credentials() {
     
     log_header "Configure Authentication Credentials"
     echo ""
-    log_info "These credentials will be used for both:"
-    log_info "  1. Frontend login page"
-    log_info "  2. Backend API authentication"
+    log_info "These credentials will be used for:"
+    log_info "  Backend API authentication (HTTP Basic Auth)"
     echo ""
     log_warn "Choose a strong password (minimum 12 characters recommended)"
     echo ""
@@ -346,11 +345,9 @@ install() {
     log_info ""
     log_info "✓ Installation complete!"
     log_info ""
-    log_info "Access the Web Frontend at: https://<raspberry-pi-ip>:8443"
     log_info "API endpoint: https://<raspberry-pi-ip>:8443/api"
     log_info "Health check: https://<raspberry-pi-ip>:8443/health"
     log_info "API documentation: $APP_DIR/README.md"
-    log_info "Frontend documentation: $APP_DIR/frontend/README.md"
     log_info ""
     log_warn "SECURITY: Change default credentials immediately!"
     log_info "Default credentials:"
@@ -371,7 +368,7 @@ install() {
     log_info ""
 }
 
-# Build function - builds frontend and backend without full installation
+# Build function - builds backend without full installation
 # Builds in place (in the repository directory) for development workflows
 build() {
     log_info "Building ${MODULE_NAME} in place..."
@@ -654,11 +651,6 @@ status() {
         echo "✗ TLS certificates not found"
     fi
     
-    if [ -d "$APP_DIR/frontend/dist" ]; then
-        echo "✓ Frontend built: $APP_DIR/frontend/dist"
-    else
-        echo "✗ Frontend not built (run: cd $APP_DIR/frontend && npm run build)"
-    fi
     echo ""
     
     # API health check
@@ -681,7 +673,6 @@ status() {
     
     # Access information
     echo "=== Access Information ==="
-    echo "Web Frontend: https://<raspberry-pi-ip>:8443"
     echo "API endpoint: https://<raspberry-pi-ip>:8443/api"
     echo "Health check: https://<raspberry-pi-ip>:8443/health"
     echo "Configuration: $CONFIG_DIR/.env"
