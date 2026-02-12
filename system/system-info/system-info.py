@@ -183,38 +183,68 @@ def publish_sensor_value(sensor_id, value, unit=None):
     Returns:
         bool: True if published successfully, False otherwise
     """
+    cmd = None
     try:
         cmd = ['/usr/local/bin/luigi-publish', '--sensor', sensor_id, '--value', str(value)]
         
         if unit:
             cmd.extend(['--unit', unit])
         
+        logging.debug(f"Executing MQTT publish command: {' '.join(cmd)}")
+        
         result = subprocess.run(
             cmd,
             capture_output=True,
             timeout=10,  # Increased from 5 to 10 seconds for network startup delays
-            check=True
+            check=True,
+            text=True  # Decode output automatically
         )
+        
+        # Log output if present (for debugging)
+        if result.stdout:
+            logging.debug(f"luigi-publish stdout: {result.stdout.strip()}")
+        if result.stderr:
+            logging.debug(f"luigi-publish stderr: {result.stderr.strip()}")
         
         logging.debug(f"Published {sensor_id}={value} {unit or ''} to MQTT")
         return True
         
-    except subprocess.TimeoutExpired:
-        logging.warning(f"MQTT publish timeout for {sensor_id}")
+    except subprocess.TimeoutExpired as e:
+        # Enhanced timeout logging
+        logging.error(f"MQTT publish TIMEOUT for {sensor_id} after 10 seconds")
+        logging.error(f"Command: {' '.join(cmd) if cmd else 'unknown'}")
+        
+        # Log any partial output captured before timeout
+        if e.stdout:
+            stdout_preview = e.stdout.decode('utf-8', errors='replace')[:500]
+            logging.error(f"Partial stdout before timeout: {stdout_preview}")
+        if e.stderr:
+            stderr_preview = e.stderr.decode('utf-8', errors='replace')[:500]
+            logging.error(f"Partial stderr before timeout: {stderr_preview}")
+        
+        logging.error("This indicates luigi-publish is hanging - likely MQTT broker connectivity issue")
         return False
         
     except subprocess.CalledProcessError as e:
-        stderr_msg = e.stderr.decode('utf-8', errors='replace') if e.stderr else 'no output'
-        logging.warning(f"MQTT publish failed for {sensor_id}: {stderr_msg}")
+        # Enhanced error logging with full details
+        stderr_msg = e.stderr if e.stderr else 'no stderr'
+        stdout_msg = e.stdout if e.stdout else 'no stdout'
+        
+        logging.error(f"MQTT publish FAILED for {sensor_id}")
+        logging.error(f"Command: {' '.join(cmd) if cmd else 'unknown'}")
+        logging.error(f"Exit code: {e.returncode}")
+        logging.error(f"Stderr: {stderr_msg}")
+        logging.error(f"Stdout: {stdout_msg}")
         return False
         
     except FileNotFoundError:
         # ha-mqtt not installed - this is OK, module should work standalone
-        logging.debug("ha-mqtt not available, skipping MQTT publish")
+        logging.debug("ha-mqtt not available (luigi-publish not found), skipping MQTT publish")
         return False
         
     except Exception as e:
-        logging.error(f"Unexpected error publishing to MQTT: {e}")
+        logging.error(f"Unexpected error publishing {sensor_id} to MQTT: {type(e).__name__}: {e}")
+        logging.error(f"Command: {' '.join(cmd) if cmd else 'unknown'}")
         return False
 
 
@@ -352,12 +382,7 @@ class SystemInfoMonitor:
         self.running = False
     
     def collect_and_publish_metrics(self):
-        """
-        Collect all system metrics and publish to MQTT.
-        
-        Returns:
-            int: Number of metrics successfully published
-        """
+        """Collect all system metrics and publish to MQTT."""
         logging.info("Collecting system metrics...")
         
         metrics_collected = 0
@@ -407,8 +432,6 @@ class SystemInfoMonitor:
         
         # Update last publish time
         self.last_publish_time = time.time()
-        
-        return metrics_published
     
     def should_publish(self):
         """
@@ -429,35 +452,12 @@ class SystemInfoMonitor:
         
         logging.info("System Info Monitor starting...")
         
-        # Publish metrics on startup with retry logic
-        # Network may not be fully ready even after network-online.target
-        max_retries = 5
-        retry_delay = 5  # Start with 5 seconds
-        
-        for attempt in range(1, max_retries + 1):
-            try:
-                logging.info(f"Initial metrics publish attempt {attempt}/{max_retries}...")
-                published_count = self.collect_and_publish_metrics()
-                
-                # If at least one metric was published successfully, consider it a success
-                if published_count > 0:
-                    logging.info(f"Initial metrics published successfully ({published_count} metrics)")
-                    break
-                else:
-                    # No metrics were published, network might not be ready
-                    if attempt < max_retries:
-                        logging.warning(f"No metrics published (network not ready?), retrying in {retry_delay} seconds...")
-                        time.sleep(retry_delay)
-                        retry_delay = min(retry_delay * 2, 60)  # Exponential backoff, max 60s
-                    else:
-                        logging.warning("All retry attempts exhausted, continuing with main loop")
-                        logging.warning("MQTT broker may not be reachable - will retry on next interval")
-                        
-            except Exception as e:
-                logging.error(f"Error during initial metrics collection (attempt {attempt}): {e}")
-                if attempt < max_retries:
-                    time.sleep(retry_delay)
-                    retry_delay = min(retry_delay * 2, 60)
+        # Publish metrics immediately on startup
+        try:
+            logging.info("Publishing initial metrics...")
+            self.collect_and_publish_metrics()
+        except Exception as e:
+            logging.error(f"Error during initial metrics collection: {e}")
         
         # Main loop
         while self.running:
