@@ -350,3 +350,276 @@ validate_required_files() {
 
 # Note: Functions are available when this file is sourced
 # No need to export for typical usage in setup scripts
+
+################################################################################
+# Module Registry Helpers
+################################################################################
+
+# Registry path constant
+LUIGI_REGISTRY_PATH="/etc/luigi/modules"
+
+# Update module registry entry
+# Usage: update_module_registry "motion-detection/mario" "1.0.0" "installed"
+# Returns: 0 on success, 1 on failure
+update_module_registry() {
+    local module_path="$1"
+    local version="$2"
+    local status="${3:-installed}"
+    
+    if [ -z "$module_path" ] || [ -z "$version" ]; then
+        log_error "update_module_registry: module_path and version are required"
+        return 1
+    fi
+    
+    local name
+    name=$(basename "$module_path")
+    local category
+    category=$(dirname "$module_path")
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+    
+    # Preserve installed_at if exists
+    local installed_at="$timestamp"
+    if [ -f "$registry_file" ]; then
+        if command_exists jq; then
+            installed_at=$(jq -r '.installed_at' "$registry_file" 2>/dev/null || echo "$timestamp")
+        fi
+    fi
+    
+    # Create registry directory if needed
+    if ! create_directory "$LUIGI_REGISTRY_PATH" "Registry directory"; then
+        return 1
+    fi
+    
+    # Create registry entry
+    cat > "$registry_file" <<EOF
+{
+  "module_path": "$module_path",
+  "name": "$name",
+  "version": "$version",
+  "category": "$category",
+  "installed_at": "$installed_at",
+  "updated_at": "$timestamp",
+  "installed_by": "setup.sh",
+  "install_method": "manual",
+  "status": "$status"
+}
+EOF
+    
+    if [ $? -eq 0 ]; then
+        log_info "Updated module registry: $registry_file"
+        return 0
+    else
+        log_error "Failed to update module registry: $registry_file"
+        return 1
+    fi
+}
+
+# Update full module registry entry with metadata from module.json
+# Usage: update_module_registry_full "motion-detection/mario" "$SCRIPT_DIR/module.json" "active"
+# Returns: 0 on success, 1 on failure
+update_module_registry_full() {
+    local module_path="$1"
+    local module_json_file="$2"
+    local status="${3:-installed}"
+    
+    if [ -z "$module_path" ] || [ ! -f "$module_json_file" ]; then
+        log_error "update_module_registry_full: module_path and module.json file are required"
+        return 1
+    fi
+    
+    if ! command_exists jq; then
+        log_warn "jq not available, falling back to basic registry update"
+        local version
+        version=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$module_json_file" 2>/dev/null || echo "0.0.0")
+        update_module_registry "$module_path" "$version" "$status"
+        return $?
+    fi
+    
+    local name
+    name=$(basename "$module_path")
+    local category
+    category=$(dirname "$module_path")
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+    
+    # Preserve installed_at if exists
+    local installed_at="$timestamp"
+    if [ -f "$registry_file" ]; then
+        installed_at=$(jq -r '.installed_at' "$registry_file" 2>/dev/null || echo "$timestamp")
+    fi
+    
+    # Create registry directory if needed
+    if ! create_directory "$LUIGI_REGISTRY_PATH" "Registry directory"; then
+        return 1
+    fi
+    
+    # Read metadata from module.json
+    local metadata
+    metadata=$(cat "$module_json_file")
+    
+    # Extract fields with jq
+    local version
+    version=$(echo "$metadata" | jq -r '.version // "0.0.0"')
+    local description
+    description=$(echo "$metadata" | jq -r '.description // ""' | jq -R .)
+    local author
+    author=$(echo "$metadata" | jq -r '.author // ""' | jq -R .)
+    local dependencies
+    dependencies=$(echo "$metadata" | jq -c '.dependencies // []')
+    local apt_packages
+    apt_packages=$(echo "$metadata" | jq -c '.apt_packages // []')
+    local hardware
+    hardware=$(echo "$metadata" | jq -c '.hardware // null')
+    local provides
+    provides=$(echo "$metadata" | jq -c '.provides // []')
+    
+    # Create full registry entry
+    cat > "$registry_file" <<EOF
+{
+  "module_path": "$module_path",
+  "name": "$name",
+  "version": "$version",
+  "category": "$category",
+  "description": $description,
+  "installed_at": "$installed_at",
+  "updated_at": "$timestamp",
+  "installed_by": "setup.sh",
+  "install_method": "manual",
+  "status": "$status",
+  "dependencies": $dependencies,
+  "apt_packages": $apt_packages,
+  "author": $author,
+  "hardware": $hardware,
+  "provides": $provides,
+  "service_name": "$name.service",
+  "config_path": "/etc/luigi/$module_path",
+  "log_path": "/var/log/luigi/$name.log"
+}
+EOF
+    
+    if [ $? -eq 0 ]; then
+        log_info "Updated module registry with full metadata: $registry_file"
+        return 0
+    else
+        log_error "Failed to update module registry: $registry_file"
+        return 1
+    fi
+}
+
+# Check if module is installed
+# Usage: if is_module_installed "motion-detection/mario"; then ... fi
+# Returns: 0 if module is installed, 1 otherwise
+is_module_installed() {
+    local module_path="$1"
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    
+    if [ ! -f "$registry_file" ]; then
+        return 1
+    fi
+    
+    if command_exists jq; then
+        local status
+        status=$(jq -r '.status' "$registry_file" 2>/dev/null)
+        [ "$status" != "removed" ]
+    else
+        # If jq not available, assume installed if file exists
+        return 0
+    fi
+}
+
+# Get installed module version
+# Usage: version=$(get_installed_version "motion-detection/mario")
+# Returns: Version string or "0.0.0" if not installed
+get_installed_version() {
+    local module_path="$1"
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    
+    if [ ! -f "$registry_file" ]; then
+        echo "0.0.0"
+        return
+    fi
+    
+    if command_exists jq; then
+        jq -r '.version' "$registry_file" 2>/dev/null || echo "0.0.0"
+    else
+        # Try to extract version without jq
+        grep -oP '"version"\s*:\s*"\K[^"]+' "$registry_file" 2>/dev/null || echo "0.0.0"
+    fi
+}
+
+# Mark module as removed in registry
+# Usage: mark_module_removed "motion-detection/mario"
+# Returns: 0 on success, 1 on failure
+mark_module_removed() {
+    local module_path="$1"
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    
+    if [ ! -f "$registry_file" ]; then
+        log_warn "Registry entry not found for $module_path"
+        return 1
+    fi
+    
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+    
+    if command_exists jq; then
+        jq ".status = \"removed\" | .updated_at = \"$timestamp\" | .service_enabled = false" \
+            "$registry_file" > /tmp/registry.json
+        if mv /tmp/registry.json "$registry_file"; then
+            log_info "Marked module as removed in registry: $module_path"
+            return 0
+        else
+            log_error "Failed to update registry for $module_path"
+            return 1
+        fi
+    else
+        log_warn "jq not available, cannot update registry"
+        return 1
+    fi
+}
+
+# Update registry service status
+# Usage: update_registry_service_status "motion-detection/mario" "active" true
+# Returns: 0 on success, 1 on failure
+update_registry_service_status() {
+    local module_path="$1"
+    local status="$2"
+    local enabled="${3:-false}"
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    
+    if [ ! -f "$registry_file" ]; then
+        log_warn "Registry entry not found for $module_path"
+        return 1
+    fi
+    
+    if ! command_exists jq; then
+        log_warn "jq not available, cannot update service status"
+        return 1
+    fi
+    
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+    
+    jq ".status = \"$status\" | .service_enabled = $enabled | .updated_at = \"$timestamp\"" \
+        "$registry_file" > /tmp/registry.json
+    
+    if mv /tmp/registry.json "$registry_file"; then
+        log_info "Updated service status in registry: $module_path ($status)"
+        return 0
+    else
+        log_error "Failed to update registry for $module_path"
+        return 1
+    fi
+}
+
+# Get registry file path for a module
+# Usage: registry_file=$(get_registry_file "motion-detection/mario")
+# Returns: Path to registry file
+get_registry_file() {
+    local module_path="$1"
+    echo "$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+}
+
