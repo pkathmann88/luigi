@@ -737,6 +737,10 @@ uninstall() {
         apt-get autoremove -y >/dev/null 2>&1
     fi
     
+    # Mark module as removed in registry
+    log_step "Updating module registry..."
+    mark_module_removed "motion-detection/mario"
+    
     log_info "Uninstall completed"
 }
 
@@ -799,6 +803,19 @@ install() {
     verify_installation
     echo "====================================="
     echo ""
+    
+    # Update module registry
+    log_step "Updating module registry..."
+    if [ -f "$SCRIPT_DIR/module.json" ]; then
+        update_module_registry_full "motion-detection/mario" "$SCRIPT_DIR/module.json" "installed"
+        
+        # Update status to active if service is running
+        if systemctl is-active mario.service >/dev/null 2>&1; then
+            update_registry_service_status "motion-detection/mario" "active" true
+        fi
+    else
+        log_warn "module.json not found, skipping registry update"
+    fi
     
     log_info "Installation completed successfully!"
     echo ""

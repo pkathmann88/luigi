@@ -395,6 +395,14 @@ install_module() {
         log_warn "Some installation tests failed"
     fi
     
+    # Update module registry
+    log_step "Updating module registry..."
+    if [ -f "$SCRIPT_DIR/module.json" ]; then
+        update_module_registry_full "iot/ha-mqtt" "$SCRIPT_DIR/module.json" "installed"
+    else
+        log_warn "module.json not found, skipping registry update"
+    fi
+    
     echo ""
     echo "========================================="
     log_success "Installation complete!"
@@ -527,6 +535,10 @@ uninstall_module() {
         log_info "Removing unused dependencies..."
         apt-get autoremove -y >/dev/null 2>&1
     fi
+    
+    # Mark module as removed in registry
+    log_step "Updating module registry..."
+    mark_module_removed "iot/ha-mqtt"
     
     echo ""
     log_success "Uninstallation complete!"

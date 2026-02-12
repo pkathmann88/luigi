@@ -377,6 +377,19 @@ install() {
         exit 1
     fi
     
+    # Update module registry
+    log_step "Updating module registry..."
+    if [ -f "$SCRIPT_DIR/module.json" ]; then
+        update_module_registry_full "system/management-api" "$SCRIPT_DIR/module.json" "installed"
+        
+        # Update status to active if service is running
+        if systemctl is-active "$SERVICE_NAME" >/dev/null 2>&1; then
+            update_registry_service_status "system/management-api" "active" true
+        fi
+    else
+        log_warn "module.json not found, skipping registry update"
+    fi
+    
     # Display access information
     log_info ""
     log_info "✓ Installation complete!"
@@ -639,6 +652,10 @@ uninstall() {
         log_info "Removing unused dependencies..."
         apt-get autoremove -y >/dev/null 2>&1
     fi
+    
+    # Mark module as removed in registry
+    log_step "Updating module registry..."
+    mark_module_removed "system/management-api"
     
     log_info "✓ Uninstall complete!"
 }
