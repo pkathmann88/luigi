@@ -51,6 +51,7 @@ async function getServiceStatus(moduleName) {
 
 /**
  * Find all Luigi modules using the centralized registry
+ * Returns minimal data for list view (name, status, version, capabilities)
  * Registry is the single source of truth for installed modules
  */
 async function listModules() {
@@ -59,33 +60,26 @@ async function listModules() {
     const registryEntries = await registryService.listRegistry();
     logger.info(`Found ${registryEntries.length} modules in registry`);
     
-    // Build modules list from registry entries
+    // Build minimal modules list from registry entries
     const modules = await Promise.all(
       registryEntries.map(async (registryEntry) => {
         const modulePath = registryEntry.module_path;
         const pathParts = modulePath.split('/');
         const moduleName = pathParts[pathParts.length - 1];
-        const category = pathParts[0];
         
         // Get service status if module has service capability
-        let serviceStatus = { status: 'installed', pid: null };
+        let status = 'installed';
         if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
-          serviceStatus = await getServiceStatus(moduleName);
+          const serviceStatus = await getServiceStatus(moduleName);
+          status = serviceStatus.status;
         }
         
+        // Return minimal data for list view
         return {
           name: moduleName,
-          path: modulePath,
-          category,
-          metadata: {
-            name: registryEntry.name,
-            version: registryEntry.version,
-            description: registryEntry.description,
-            capabilities: registryEntry.capabilities || [],
-          },
-          status: serviceStatus.status,
-          pid: serviceStatus.pid,
-          registry: registryEntry,
+          status,
+          version: registryEntry.version,
+          capabilities: registryEntry.capabilities || [],
         };
       })
     );
@@ -98,55 +92,87 @@ async function listModules() {
 }
 
 /**
- * Get status of a specific module
+ * Get comprehensive details of a specific module
+ * Returns all data including registry, status, runtime info
  */
 async function getModuleStatus(moduleName) {
   try {
-    // Find the module
-    const modules = await listModules();
-    const module = modules.find(m => m.name === moduleName);
+    // Get registry entries
+    const registryEntries = await registryService.listRegistry();
+    
+    // Find the module's registry entry
+    const registryEntry = registryEntries.find(entry => {
+      const pathParts = entry.module_path.split('/');
+      const name = pathParts[pathParts.length - 1];
+      return name === moduleName;
+    });
 
-    if (!module) {
+    if (!registryEntry) {
       throw new Error(`Module '${moduleName}' not found`);
     }
 
-    // Try to get systemd service status
-    // Service name might be the module name or have .service suffix
-    let serviceName = moduleName;
-    if (!serviceName.endsWith('.service')) {
-      serviceName += '.service';
-    }
-
-    try {
-      const result = await executeCommand('systemctl', ['status', serviceName], { timeout: 10000 });
+    const modulePath = registryEntry.module_path;
+    const pathParts = modulePath.split('/');
+    const category = pathParts[0];
+    
+    // Get service status if module has service capability
+    let status = 'installed';
+    let pid = null;
+    let uptime = null;
+    let memory = null;
+    
+    if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
+      const serviceStatus = await getServiceStatus(moduleName);
+      status = serviceStatus.status;
+      pid = serviceStatus.pid;
       
-      return {
-        module: module.name,
-        category: module.category,
-        path: module.path,
-        service: {
-          name: serviceName,
-          active: result.stdout.includes('Active: active'),
-          enabled: result.stdout.includes('Loaded:') && result.stdout.includes('enabled'),
-          status: result.stdout,
-        },
-        metadata: module.metadata,
-      };
-    } catch (error) {
-      // Service might not exist
-      return {
-        module: module.name,
-        category: module.category,
-        path: module.path,
-        service: {
-          name: serviceName,
-          active: false,
-          enabled: false,
-          status: 'Service not found or not installed',
-        },
-        metadata: module.metadata,
-      };
+      // If service is active, try to get additional runtime info
+      if (status === 'active' && pid) {
+        try {
+          // Get uptime from systemctl show
+          const uptimeResult = await executeCommand('systemctl', ['show', `${moduleName}.service`, '--property=ActiveEnterTimestamp'], { timeout: 5000 });
+          if (uptimeResult.stdout) {
+            const timestampMatch = uptimeResult.stdout.match(/ActiveEnterTimestamp=(.+)/);
+            if (timestampMatch && timestampMatch[1] !== 'n/a') {
+              const startTime = new Date(timestampMatch[1]);
+              uptime = Math.floor((Date.now() - startTime.getTime()) / 1000); // seconds
+            }
+          }
+          
+          // Get memory usage from /proc if PID exists
+          const memResult = await executeCommand('cat', [`/proc/${pid}/status`], { timeout: 5000 });
+          if (memResult.stdout) {
+            const memMatch = memResult.stdout.match(/VmRSS:\s+(\d+)\s+kB/);
+            if (memMatch) {
+              memory = parseInt(memMatch[1], 10); // KB
+            }
+          }
+        } catch (error) {
+          // Non-critical - runtime info is optional
+          logger.debug(`Could not get runtime info for ${moduleName}: ${error.message}`);
+        }
+      }
     }
+    
+    // Return comprehensive module data
+    return {
+      name: moduleName,
+      path: modulePath,
+      category,
+      fullPath: `/home/pi/luigi/${modulePath}`, // Construct full path
+      metadata: {
+        name: registryEntry.name,
+        version: registryEntry.version,
+        description: registryEntry.description,
+        capabilities: registryEntry.capabilities || [],
+      },
+      status,
+      enabled: true, // All registry modules are considered enabled
+      pid,
+      uptime,
+      memory,
+      registry: registryEntry,
+    };
   } catch (error) {
     logger.error(`Error getting module status: ${error.message}`);
     throw error;

@@ -24,17 +24,31 @@ export interface ModuleRegistry {
   _registryFile?: string;
 }
 
+// Minimal module data returned by GET /api/modules (list view)
+export interface ModuleListItem {
+  name: string;
+  status: 'active' | 'inactive' | 'failed' | 'installed' | 'unknown';
+  version: string;
+  capabilities: string[];
+}
+
+// Full module data returned by GET /api/modules/:name (detail view)
 export interface Module {
   name: string;
   path: string;
   category: string;
   fullPath: string;
-  metadata?: Record<string, unknown> | null;
-  status?: 'active' | 'inactive' | 'failed' | 'installed' | 'unknown';
+  metadata?: {
+    name: string;
+    version: string;
+    description?: string;
+    capabilities?: string[];
+  } | null;
+  status: 'active' | 'inactive' | 'failed' | 'installed' | 'unknown';
   enabled?: boolean;
-  pid?: number;
-  uptime?: number;
-  memory?: number;
+  pid?: number | null;
+  uptime?: number | null;
+  memory?: number | null;
   registry?: ModuleRegistry | null;
 }
 

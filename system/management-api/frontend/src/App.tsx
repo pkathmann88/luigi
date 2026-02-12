@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Modules } from './pages/Modules';
+import { ModuleDetail } from './pages/ModuleDetail';
 import { Logs } from './pages/Logs';
 import { Config } from './pages/Config';
 import './styles/globals.css';
@@ -39,6 +40,14 @@ export const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Modules />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/modules/:moduleName"
+          element={
+            <PrivateRoute>
+              <ModuleDetail />
             </PrivateRoute>
           }
         />

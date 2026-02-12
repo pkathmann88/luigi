@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/apiService';
-import { Module } from '../types/api';
+import { ModuleListItem } from '../types/api';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import './Modules.css';
 
 export const Modules: React.FC = () => {
-  const [modules, setModules] = useState<Module[]>([]);
+  const navigate = useNavigate();
+  const [modules, setModules] = useState<ModuleListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchModules = async () => {
     setLoading(true);
@@ -30,33 +31,8 @@ export const Modules: React.FC = () => {
     fetchModules();
   }, []);
 
-  const handleAction = async (
-    moduleName: string,
-    action: 'start' | 'stop' | 'restart'
-  ) => {
-    setActionLoading(`${moduleName}-${action}`);
-    
-    let response;
-    switch (action) {
-      case 'start':
-        response = await apiService.startModule(moduleName);
-        break;
-      case 'stop':
-        response = await apiService.stopModule(moduleName);
-        break;
-      case 'restart':
-        response = await apiService.restartModule(moduleName);
-        break;
-    }
-    
-    if (response.success) {
-      // Refresh modules list after action
-      await fetchModules();
-    } else {
-      setError(response.error || `Failed to ${action} module`);
-    }
-    
-    setActionLoading(null);
+  const handleModuleClick = (moduleName: string) => {
+    navigate(`/modules/${moduleName}`);
   };
 
   const getStatusBadge = (status?: string) => {
@@ -98,23 +74,6 @@ export const Modules: React.FC = () => {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const hasServiceCapability = (module: Module) => {
-    const registryCaps = module.registry?.capabilities;
-    const metadataCaps = module.metadata?.capabilities;
-    
-    return registryCaps?.includes('service') || 
-           (Array.isArray(metadataCaps) && metadataCaps.includes('service'));
-  };
-
   if (loading && modules.length === 0) {
     return (
       <div className="modules">
@@ -153,21 +112,23 @@ export const Modules: React.FC = () => {
 
       <div className="modules__grid">
         {modules.map((module) => {
-          const registry = module.registry;
-          const capabilities = registry?.capabilities || [];
-          const hasService = hasServiceCapability(module);
+          const capabilities = module.capabilities || [];
 
           return (
-            <Card key={module.name} className="modules__card">
+            <Card 
+              key={module.name} 
+              className="modules__card modules__card--clickable"
+              onClick={() => handleModuleClick(module.name)}
+            >
               <div className="modules__card-header">
                 <h3 className="modules__module-name">{module.name}</h3>
                 {getStatusBadge(module.status)}
               </div>
 
-              {/* Description */}
-              {registry?.description && (
-                <div className="modules__description">
-                  {registry.description}
+              {/* Version */}
+              {module.version && (
+                <div className="modules__version">
+                  Version: v{module.version}
                 </div>
               )}
 
@@ -178,99 +139,9 @@ export const Modules: React.FC = () => {
                 </div>
               )}
 
-              <div className="modules__card-info">
-                {/* Category */}
-                {module.category && (
-                  <div className="modules__info-item">
-                    <span className="modules__info-label">Category:</span>
-                    <span className="modules__info-value">{module.category}</span>
-                  </div>
-                )}
-                
-                {/* Version */}
-                {registry?.version && (
-                  <div className="modules__info-item">
-                    <span className="modules__info-label">Version:</span>
-                    <span className="modules__info-value">v{registry.version}</span>
-                  </div>
-                )}
-
-                {/* PID */}
-                {module.pid && (
-                  <div className="modules__info-item">
-                    <span className="modules__info-label">PID:</span>
-                    <span className="modules__info-value">{module.pid}</span>
-                  </div>
-                )}
-
-                {/* Dependencies */}
-                {registry?.dependencies && registry.dependencies.length > 0 && (
-                  <div className="modules__dependencies">
-                    <div className="modules__dependencies-title">Dependencies:</div>
-                    <div className="modules__dependency-list">
-                      {registry.dependencies.map((dep) => (
-                        <div key={dep}>→ {dep}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="modules__click-hint">
+                Click for details →
               </div>
-
-              {/* Registry Info */}
-              {registry ? (
-                <div className="modules__registry-info">
-                  Installed {formatDate(registry.installed_at)}
-                  {registry.updated_at !== registry.installed_at && 
-                    ` • Updated ${formatDate(registry.updated_at)}`
-                  }
-                </div>
-              ) : (
-                <div className="modules__not-registered">
-                  Not registered in module registry
-                </div>
-              )}
-
-              {/* Actions - Only show for service modules */}
-              {hasService && (
-                <div className="modules__card-actions">
-                  <Button
-                    size="small"
-                    variant="success"
-                    onClick={() => handleAction(module.name, 'start')}
-                    disabled={
-                      module.status === 'active' ||
-                      actionLoading === `${module.name}-start`
-                    }
-                    loading={actionLoading === `${module.name}-start`}
-                  >
-                    Start
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="secondary"
-                    onClick={() => handleAction(module.name, 'restart')}
-                    disabled={
-                      module.status !== 'active' ||
-                      actionLoading === `${module.name}-restart`
-                    }
-                    loading={actionLoading === `${module.name}-restart`}
-                  >
-                    Restart
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="danger"
-                    onClick={() => handleAction(module.name, 'stop')}
-                    disabled={
-                      module.status !== 'active' ||
-                      actionLoading === `${module.name}-stop`
-                    }
-                    loading={actionLoading === `${module.name}-stop`}
-                  >
-                    Stop
-                  </Button>
-                </div>
-              )}
             </Card>
           );
         })}
