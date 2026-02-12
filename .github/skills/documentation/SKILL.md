@@ -355,6 +355,50 @@ For complex topics that don't fit in module READMEs, create standalone guides:
 - Link from relevant READMEs
 - Keep focused on single topic
 
+## Documentation Hygiene
+
+### Avoiding Documentation Sprawl
+
+Documentation can accumulate over time, leading to confusion and maintenance burden. Follow these practices to keep documentation clean:
+
+**Delete Obsolete Files:**
+- Remove design documents after implementation is complete
+- Delete implementation plans, summaries, and progress notes
+- Remove fix/patch notes that have been integrated into main documentation
+- Consolidate multiple similar documents into one authoritative source
+
+**Types of Files to Remove:**
+- `DESIGN_ANALYSIS.md`, `IMPLEMENTATION_PLAN.md` - These belong in issues/PRs, not main branch
+- `FIX_SUMMARY.md`, `ENHANCEMENT_SUMMARY.md` - Integrate into troubleshooting or changelog
+- `PR_DESCRIPTION.md` - This belongs in the actual PR, not the repository
+- Multiple summary/update/guide files covering the same topic
+
+**When to Keep Separate Documents:**
+- Technical references that are rarely updated (e.g., `MODULE_SCHEMA.md`)
+- Operational procedures that need emphasis (e.g., `UNINSTALL_GUIDE.md`)
+- Integration guides for complex scenarios (in `examples/` subdirectory)
+- Test documentation (in `tests/` subdirectory)
+
+**Regular Cleanup:**
+- Review markdown files quarterly
+- Delete files that are outdated or have been superseded
+- Consolidate redundant information
+- Update main READMEs instead of creating new summary files
+
+**Current Luigi Structure (14 markdown files):**
+```
+Root (3): README.md, MODULE_SCHEMA.md, UNINSTALL_GUIDE.md
+Modules (8): 
+  - motion-detection/mario/README.md
+  - iot/ha-mqtt/README.md + examples/integration-guide.md + examples/sensors.d/README.md + tests/README.md
+  - system/management-api/README.md + frontend/README.md + docs/API.md
+  - system/system-info/README.md
+  - system/optimization/README.md
+Utilities (1): util/README.md
+```
+
+This is a healthy documentation structure. More files often indicate documentation sprawl that needs cleanup.
+
 ## Documentation Writing Style
 
 ### Tone and Voice
