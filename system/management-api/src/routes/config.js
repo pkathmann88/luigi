@@ -20,14 +20,14 @@ router.use(operationLimiter);
 // GET /api/config - List all configs
 router.get('/', configController.listConfigs);
 
-// GET /api/config/:module - Read config
-router.get('/:module', [
+// GET /api/config/:module(*) - Read config (supports multi-segment paths)
+router.get('/:module(*)', [
   configValidation.module,
   handleValidationErrors,
 ], configController.readConfig);
 
-// PUT /api/config/:module - Update config
-router.put('/:module', [
+// PUT /api/config/:module(*) - Update config (supports multi-segment paths)
+router.put('/:module(*)', [
   configValidation.module,
   configValidation.update,
   handleValidationErrors,

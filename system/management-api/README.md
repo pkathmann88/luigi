@@ -645,6 +645,84 @@ Security:
 
 ## Troubleshooting
 
+### API Returns Empty Modules List
+
+**Problem:** `/api/modules` returns `{"success":true,"count":0,"modules":[]}` even though modules are installed.
+
+**Cause:** The API cannot find the Luigi modules directory.
+
+**Solution:**
+1. Check that modules are installed with `setup.sh`:
+   ```bash
+   ls -la ~/luigi/
+   # Should show directories like: motion-detection/, iot/, system/
+   ```
+
+2. Verify each module has a `setup.sh` file:
+   ```bash
+   find ~/luigi -name "setup.sh" -type f
+   # Should list setup.sh files for each module
+   ```
+
+3. Check the `MODULES_PATH` configuration:
+   ```bash
+   sudo cat /etc/luigi/system/management-api/.env | grep MODULES_PATH
+   # Should show: MODULES_PATH=/home/pi/luigi
+   ```
+
+4. If your Luigi installation is in a different location, update the path:
+   ```bash
+   sudo nano /etc/luigi/system/management-api/.env
+   # Change MODULES_PATH to your installation directory
+   # For development: MODULES_PATH=/home/runner/work/luigi/luigi
+   # For production: MODULES_PATH=/home/pi/luigi
+   sudo systemctl restart management-api
+   ```
+
+**Note for Development:** If running from a repository clone without installation, set `MODULES_PATH` to your repository directory where modules are located (e.g., `/path/to/luigi-repo`).
+
+### Config Routes Return "Route Not Found"
+
+**Problem:** Config API returns errors like: `"Route GET /api/config/iot/ha-mqtt/ha-mqtt.conf not found"`
+
+**Cause:** Routes with multiple path segments (containing slashes) were not matched correctly in earlier versions.
+
+**Solution:** This is fixed in the current version. The route definitions now use wildcard parameters `/:module(*)` to properly match multi-segment config paths like `iot/ha-mqtt/ha-mqtt.conf`.
+
+If you still see this error after updating:
+1. Restart the service: `sudo systemctl restart management-api`
+2. Check the logs: `journalctl -u management-api -n 50`
+
+### Config or Log Files Return 404 Not Found
+
+**Problem:** Clicking a config file shows "Config file not found" or log files cannot be displayed.
+
+**Cause:** Path configuration may be incorrect, or files are in unexpected locations.
+
+**Solution:**
+1. Check config and log paths:
+   ```bash
+   sudo cat /etc/luigi/system/management-api/.env | grep -E "CONFIG_PATH|LOGS_PATH"
+   # Should show:
+   # CONFIG_PATH=/etc/luigi
+   # LOGS_PATH=/var/log
+   ```
+
+2. Verify files exist in expected locations:
+   ```bash
+   # Check configs
+   ls -la /etc/luigi/
+   
+   # Check logs
+   ls -la /var/log/luigi/
+   ```
+
+3. Update paths if needed and restart:
+   ```bash
+   sudo nano /etc/luigi/system/management-api/.env
+   sudo systemctl restart management-api
+   ```
+
 ### "Illegal instruction" Error During Frontend Build
 
 **Problem:** Installation fails with "Illegal instruction" error during `npm run build` in the frontend step.

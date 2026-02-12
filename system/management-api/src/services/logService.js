@@ -118,15 +118,20 @@ async function getModuleLogs(moduleName, options = {}) {
   try {
     const { lines = 100 } = options;
 
-    // Try to read from /var/log/{module}.log
-    const logFile = path.join(config.paths.logs, `${moduleName}.log`);
+    // Strip .log extension if provided (frontend might send filename with extension)
+    const moduleNameWithoutExt = moduleName.endsWith('.log') 
+      ? moduleName.slice(0, -4) 
+      : moduleName;
+
+    // Construct relative path for readLogFile (which will validate and add base path)
+    const logFile = `${moduleNameWithoutExt}.log`;
 
     try {
       return await readLogFile(logFile, { lines });
     } catch (err) {
       // Log file doesn't exist, try journalctl
       try {
-        const serviceName = moduleName.endsWith('.service') ? moduleName : `${moduleName}.service`;
+        const serviceName = moduleNameWithoutExt.endsWith('.service') ? moduleNameWithoutExt : `${moduleNameWithoutExt}.service`;
         const content = await executeCommandForOutput('journalctl', ['-u', serviceName, '-n', String(lines), '--no-pager'], { timeout: 30000 });
         
         const logLines = content.split('\n').filter(line => line.trim());

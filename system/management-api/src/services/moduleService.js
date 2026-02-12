@@ -11,12 +11,62 @@ const { validateModulePath } = require('../security/pathValidator');
 const config = require('../../config');
 
 /**
+ * Get basic status info for a module service
+ * Returns null if service doesn't exist or can't be queried
+ */
+async function getServiceStatus(moduleName) {
+  try {
+    let serviceName = moduleName;
+    if (!serviceName.endsWith('.service')) {
+      serviceName += '.service';
+    }
+
+    const result = await executeCommand('systemctl', ['status', serviceName], { timeout: 5000 });
+    const stdout = result.stdout || '';
+    
+    // Parse status
+    const isActive = stdout.includes('Active: active');
+    const isInactive = stdout.includes('Active: inactive');
+    const isFailed = stdout.includes('Active: failed');
+    
+    let status = 'unknown';
+    if (isActive) {
+      status = 'active';
+    } else if (isInactive) {
+      status = 'inactive';
+    } else if (isFailed) {
+      status = 'failed';
+    }
+    
+    // Try to extract PID from Main PID line
+    let pid = null;
+    const pidMatch = stdout.match(/Main PID: (\d+)/);
+    if (pidMatch) {
+      pid = parseInt(pidMatch[1], 10);
+    }
+    
+    return { status, pid };
+  } catch (error) {
+    // Service doesn't exist or systemctl failed
+    return { status: 'unknown', pid: null };
+  }
+}
+
+/**
  * Find all Luigi modules by looking for setup.sh files
  */
 async function listModules() {
   try {
     const modulesPath = config.paths.modules;
     const modules = [];
+
+    // Check if modules directory exists
+    try {
+      await fs.access(modulesPath);
+    } catch (err) {
+      logger.error(`Modules directory not found: ${modulesPath}`);
+      return modules; // Return empty array if directory doesn't exist
+    }
 
     // Helper function to search directories recursively
     async function searchDirectory(dir, depth = 0) {
@@ -68,7 +118,24 @@ async function listModules() {
     }
 
     await searchDirectory(modulesPath);
-    return modules;
+    
+    if (modules.length === 0) {
+      logger.warn(`No modules with setup.sh files found in ${modulesPath}. Each Luigi module must have a setup.sh file in its directory. Check MODULES_PATH configuration.`);
+    }
+    
+    // Enrich modules with status information
+    const enrichedModules = await Promise.all(
+      modules.map(async (module) => {
+        const serviceStatus = await getServiceStatus(module.name);
+        return {
+          ...module,
+          status: serviceStatus.status,
+          pid: serviceStatus.pid,
+        };
+      })
+    );
+    
+    return enrichedModules;
   } catch (error) {
     logger.error(`Error listing modules: ${error.message}`);
     throw error;
