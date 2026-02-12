@@ -12,7 +12,7 @@ Luigi makes it easy to build, deploy, and manage hardware-integrated application
 - **Hardware Abstraction** - Clean separation between hardware control and application logic
 - **Security Hardened** - Command injection prevention, path validation, and log sanitization
 - **Mock GPIO Support** - Develop and test without physical hardware
-- **Agent Skills** - Built-in Copilot guidance for hardware, Python development, and deployment
+- **Agent Skills** - Built-in Copilot guidance for documentation, hardware, Python development, and deployment
 
 ## Quick Start
 
@@ -51,6 +51,7 @@ Luigi currently includes the following modules. See each module's README for det
 |--------|----------|-------------|
 | [Mario Motion Detection](motion-detection/mario/) | motion-detection | Plays random Mario-themed sounds when motion is detected via PIR sensor |
 | [Home Assistant MQTT](iot/ha-mqtt/) | iot | Zero-touch MQTT bridge connecting Luigi sensors to Home Assistant for centralized monitoring and automation |
+| [Management API](system/management-api/) | system | Web-based management interface with REST API for monitoring and controlling Luigi modules |
 | [System Info](system/system-info/) | system | Monitors and publishes system metrics (uptime, CPU temp, memory, disk) to Home Assistant every 5 minutes |
 | [System Optimization](system/optimization/) | system | Optimizes Raspberry Pi performance by disabling services and tuning boot config |
 
@@ -202,6 +203,7 @@ sudo ./setup.sh install category/your-module
 
 Luigi includes Copilot Agent Skills for development assistance:
 
+- **`.github/skills/documentation/`** - Documentation standards, module README templates, API documentation
 - **`.github/skills/python-development/`** - Python patterns, testing, hardware abstraction
 - **`.github/skills/raspi-zero-w/`** - GPIO pinout, wiring diagrams, hardware setup
 - **`.github/skills/system-setup/`** - Deployment scripts, service configuration
@@ -258,6 +260,7 @@ luigi/
 ├── .github/
 │   ├── copilot-instructions.md    # Agent instructions
 │   └── skills/                    # Copilot Agent Skills
+│       ├── documentation/         # Documentation standards and templates
 │       ├── python-development/    # Python patterns and testing
 │       ├── raspi-zero-w/         # Hardware and GPIO reference
 │       └── system-setup/         # Deployment automation

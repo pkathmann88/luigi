@@ -185,6 +185,44 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Build and deployment (Vite, PWA, Docker, nginx)
 - Complete React + TypeScript example application
 
+### Documentation Skill
+
+**Location:** `.github/skills/documentation/`
+
+**Use when:**
+- Creating documentation for a new Luigi module
+- Updating existing module documentation
+- Updating the main project README to include new modules
+- Creating API documentation for backend services
+- Writing technical guides or troubleshooting documentation
+- Establishing documentation structure for new features
+- Reviewing documentation for completeness and clarity
+
+**Provides:**
+- Luigi documentation philosophy and standards
+- Main project README structure and best practices
+- Module README template and structure
+- API documentation patterns (interface contracts)
+- Hardware documentation examples (wiring, GPIO, components)
+- Configuration documentation patterns
+- Troubleshooting section templates
+- Integration documentation (MQTT, Home Assistant)
+- Service management documentation
+- Complete examples and patterns for all documentation types
+- Documentation review checklist
+
+**Key Principles:**
+- **Single Source of Truth** - Each module has ONE primary README
+- **Self-Contained** - Module READMEs should be complete and standalone
+- **User-Focused** - Write for end users installing and using the system
+- **Examples-First** - Show practical examples before explaining theory
+- **Maintenance-Friendly** - Keep documentation close to code it describes
+
+**Special Cases:**
+- **API Documentation** - Separate `docs/API.md` for backend/frontend interface contracts
+- **Technical Guides** - Standalone documents for complex topics (e.g., `UNINSTALL_GUIDE.md`)
+- **Category READMEs** - Optional overviews for module categories
+
 ### Module Management Skill
 
 **Location:** `.github/skills/module-management/`
@@ -217,6 +255,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 **Note:** These skills complement each other across the development lifecycle:
 - The `module-design` skill guides you through the **design phase** before implementation
 - The `module-management` skill shows **how to manage module lifecycles** (install, update, remove)
+- The `documentation` skill defines **documentation standards** for all modules and the main README
 - The `shell-scripting` skill provides **shell scripting standards** for setup scripts, CLI tools, and automation
 - The `raspi-zero-w` skill provides **hardware details** for wiring and GPIO during design and implementation
 - The `python-development` skill shows **code patterns** for implementing modules in Python
@@ -224,7 +263,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - The `web-frontend-development` skill shows **how to build modern web UIs** that interact with backend APIs
 - The `system-setup` skill helps create **deployment automation** for the finished module
 
-Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend + shell scripts) → manage (install/update/track via registry) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
+Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend + shell scripts) → document (module READMEs + main README updates) → manage (install/update/track via registry) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
 
 ## Repository Structure
 
@@ -233,6 +272,11 @@ luigi/
 ├── .github/
 │   ├── copilot-instructions.md     # This file
 │   └── skills/                      # Agent Skills for specialized guidance
+│       ├── documentation/           # Documentation standards and templates
+│       │   ├── SKILL.md             # Main documentation skill
+│       │   ├── documentation-patterns.md  # Detailed examples and patterns
+│       │   ├── module-readme-template.md  # Module README template
+│       │   └── README.md            # Skill overview
 │       ├── module-design/           # Module design guidance (PRE-implementation)
 │       │   ├── SKILL.md             # Main design skill
 │       │   ├── hardware-design-checklist.md  # Hardware verification checklist
@@ -725,6 +769,7 @@ For most code changes, **syntax validation is sufficient**. Save exploration tim
 ### When to Use Agent Skills
 
 **Copilot will automatically load relevant skills** based on your task, but you can also reference them directly:
+- For module documentation → Use `.github/skills/documentation/`
 - For hardware setup and wiring questions → Use `.github/skills/raspi-zero-w/`
 - For Python code development patterns → Use `.github/skills/python-development/`
 
