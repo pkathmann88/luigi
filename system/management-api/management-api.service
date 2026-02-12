@@ -10,9 +10,10 @@ Group=luigi-api
 WorkingDirectory=/home/pi/luigi/system/management-api
 
 # Create log directory before starting
-ExecStartPre=/bin/mkdir -p /var/log/luigi
+# Use + prefix to run with elevated privileges and skip WorkingDirectory restriction
+ExecStartPre=+/bin/mkdir -p /var/log/luigi
 # Validate configuration and certificates before starting
-ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh
+ExecStartPre=+/home/pi/luigi/system/management-api/scripts/pre-start-check.sh
 
 # Environment
 Environment="NODE_ENV=production"
