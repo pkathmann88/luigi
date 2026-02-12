@@ -296,10 +296,9 @@ install() {
     
     # 8. Register module in Luigi registry
     log_info "Registering module in Luigi registry..."
-    register_module_in_registry \
+    update_module_registry_full \
         "$MODULE_CATEGORY/$MODULE_NAME" \
-        "$SCRIPT_DIR" \
-        "1.0.0" \
+        "$SCRIPT_DIR/module.json" \
         "installed"
     
     # 9. Enable and start services
