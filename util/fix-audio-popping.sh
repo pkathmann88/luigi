@@ -267,7 +267,7 @@ pcm.dmixed {
     ipc_key 1024
     ipc_perm 0666
     slave {
-        pcm "hw_card"
+        pcm "hw:$card,$device"
         # Larger buffer reduces popping but may add slight latency
         period_time 0
         period_size 2048
