@@ -85,13 +85,18 @@ load_config() {
         return 0
     fi
     
-    # Check config file permissions (should be 600 for security)
+    # Check config file permissions
+    # Acceptable permissions:
+    #   600 = owner read/write only (legacy, most secure)
+    #   640 = owner read/write, group read (recommended for luigi group access)
+    #   400 = owner read only (very restrictive)
     local perms
     perms=$(stat -c "%a" "$config_file" 2>/dev/null)
-    if [ "$perms" != "600" ] && [ "$perms" != "400" ]; then
+    if [ "$perms" != "600" ] && [ "$perms" != "640" ] && [ "$perms" != "400" ]; then
         >&2 echo "Warning: Config file $config_file has insecure permissions ($perms)"
-        >&2 echo "         Should be 600 (owner read/write only)"
-        >&2 echo "         Run: sudo chmod 600 $config_file"
+        >&2 echo "         Recommended: 640 (root:luigi group-based access)"
+        >&2 echo "         Alternative: 600 (owner read/write only)"
+        >&2 echo "         Run: sudo chmod 640 $config_file && sudo chown root:luigi $config_file"
     fi
     
     # Parse INI file
