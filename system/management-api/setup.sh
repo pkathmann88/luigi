@@ -337,7 +337,7 @@ install() {
         bash "$SCRIPT_DIR/scripts/generate-certs.sh"
         
         # Ensure ownership is correct for service user
-        # The generate-certs.sh already sets this, but verify it here
+        # Generate-certs.sh sets this, but we enforce it here in case of any issues
         chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key" "$CERTS_DIR/server.crt"
         chmod 640 "$CERTS_DIR/server.key"
         chmod 644 "$CERTS_DIR/server.crt"
