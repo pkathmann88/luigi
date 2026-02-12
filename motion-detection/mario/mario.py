@@ -569,6 +569,7 @@ class MotionDetectionApp:
         self.sensor = None
         self.running = False
         self.last_trigger_time = 0
+        # OFF-timer state (thread-safe access via timer_lock)
         self.off_timer = None  # Timer for delayed OFF message
         self.timer_lock = threading.Lock()  # Thread-safe timer access
     
@@ -640,12 +641,17 @@ class MotionDetectionApp:
             logging.debug(f"OFF timer started ({self.config.MQTT_OFF_DELAY}s)")
     
     def _publish_off_message(self):
-        """Publish OFF message to MQTT (called by timer)."""
+        """
+        Publish OFF message to MQTT (called by timer thread).
+        
+        This method runs in the timer's thread context. The timer reference
+        is cleared to maintain explicit state (off_timer=None means no active timer).
+        """
         try:
             logging.info("Publishing OFF to MQTT (motion timer expired)")
             publish_sensor_value('mario_motion', 'OFF', is_binary=True)
             
-            # Clear timer reference
+            # Clear timer reference for explicit state management
             with self.timer_lock:
                 self.off_timer = None
                 
