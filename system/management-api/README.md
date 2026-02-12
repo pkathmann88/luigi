@@ -219,11 +219,11 @@ AUTH_PASSWORD=your-secure-password-here  # Minimum 12 characters
 
 # HTTPS (Required for security)
 USE_HTTPS=true
-TLS_CERT_PATH=$HOME/certs/server.crt
-TLS_KEY_PATH=$HOME/certs/server.key
+TLS_CERT_PATH=/etc/luigi/system/management-api/certs/server.crt
+TLS_KEY_PATH=/etc/luigi/system/management-api/certs/server.key
 ```
 
-**Note:** Default paths use `$HOME/certs/`. The installer creates certificates at this location for the user running the script.
+**Note:** Certificates are stored in `/etc/luigi/system/management-api/certs/`. The installer automatically creates and configures certificates with proper permissions.
 
 ### Optional Settings
 

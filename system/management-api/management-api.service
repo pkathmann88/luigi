@@ -7,21 +7,22 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/home/pi/luigi/system/management-api
+User=luigi-api
+Group=luigi-api
+WorkingDirectory=/var/lib/luigi-api/management-api
 
 # Create log directory before starting
-ExecStartPre=/bin/mkdir -p /var/log/luigi
+# Use + prefix to run with elevated privileges and skip WorkingDirectory restriction
+ExecStartPre=+/bin/mkdir -p /var/log/luigi
 # Validate configuration and certificates before starting
-ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh
+ExecStartPre=+/var/lib/luigi-api/management-api/scripts/pre-start-check.sh
 
 # Environment
 Environment="NODE_ENV=production"
 EnvironmentFile=/etc/luigi/system/management-api/.env
 
 # Execute
-ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js
+ExecStart=/usr/bin/node /var/lib/luigi-api/management-api/server.js
 
 # Restart policy
 Restart=always
@@ -38,6 +39,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/var/log/luigi
+ReadOnlyPaths=/etc/luigi/system/management-api/certs
 
 # Resource limits (Raspberry Pi Zero W constraints)
 LimitNOFILE=1024

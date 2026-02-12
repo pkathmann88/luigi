@@ -64,6 +64,7 @@ export const Modules: React.FC = () => {
       active: { label: 'Active', className: 'modules__status--active' },
       inactive: { label: 'Inactive', className: 'modules__status--inactive' },
       failed: { label: 'Failed', className: 'modules__status--failed' },
+      installed: { label: 'Installed', className: 'modules__status--installed' },
       unknown: { label: 'Unknown', className: 'modules__status--unknown' },
     };
 

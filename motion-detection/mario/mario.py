@@ -33,6 +33,7 @@ import logging
 import random
 import subprocess
 import configparser
+import threading
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
@@ -88,6 +89,7 @@ class Config:
     DEFAULT_LOG_FILE = "/var/log/luigi/mario.log"
     DEFAULT_COOLDOWN_SECONDS = 1800  # 30 minutes
     DEFAULT_MAIN_LOOP_SLEEP = 100    # seconds
+    DEFAULT_MQTT_OFF_DELAY = 5       # seconds to wait before sending OFF to MQTT
     DEFAULT_LOG_LEVEL = "INFO"
     DEFAULT_LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
     DEFAULT_LOG_BACKUP_COUNT = 5
@@ -123,6 +125,8 @@ class Config:
                                                       fallback=self.DEFAULT_COOLDOWN_SECONDS)
                 self.MAIN_LOOP_SLEEP = parser.getint('Timing', 'MAIN_LOOP_SLEEP',
                                                      fallback=self.DEFAULT_MAIN_LOOP_SLEEP)
+                self.MQTT_OFF_DELAY = parser.getint('Timing', 'MQTT_OFF_DELAY',
+                                                    fallback=self.DEFAULT_MQTT_OFF_DELAY)
                 
                 # File Paths
                 self.SOUND_DIR = parser.get('Files', 'SOUND_DIR',
@@ -161,6 +165,7 @@ class Config:
         self.LOG_FILE = self.DEFAULT_LOG_FILE
         self.COOLDOWN_SECONDS = self.DEFAULT_COOLDOWN_SECONDS
         self.MAIN_LOOP_SLEEP = self.DEFAULT_MAIN_LOOP_SLEEP
+        self.MQTT_OFF_DELAY = self.DEFAULT_MQTT_OFF_DELAY
         self.LOG_LEVEL = self._parse_log_level(self.DEFAULT_LOG_LEVEL)
         self.LOG_MAX_BYTES = self.DEFAULT_LOG_MAX_BYTES
         self.LOG_BACKUP_COUNT = self.DEFAULT_LOG_BACKUP_COUNT
@@ -564,6 +569,9 @@ class MotionDetectionApp:
         self.sensor = None
         self.running = False
         self.last_trigger_time = 0
+        # OFF-timer state (thread-safe access via timer_lock)
+        self.off_timer = None  # Timer for delayed OFF message
+        self.timer_lock = threading.Lock()  # Thread-safe timer access
     
     def initialize(self):
         """Initialize application components."""
@@ -606,12 +614,56 @@ class MotionDetectionApp:
         else:
             logging.info(f"Found {len(sound_files)} sound file(s) in {self.config.SOUND_DIR}")
     
+    def _cancel_off_timer(self):
+        """Cancel any pending OFF timer (thread-safe)."""
+        with self.timer_lock:
+            if self.off_timer is not None:
+                self.off_timer.cancel()
+                self.off_timer = None
+                logging.debug("OFF timer cancelled")
+    
+    def _start_off_timer(self):
+        """Start or reset the OFF timer (thread-safe)."""
+        # Cancel any existing timer first
+        self._cancel_off_timer()
+        
+        # Only start timer if MQTT_OFF_DELAY is configured (> 0)
+        if self.config.MQTT_OFF_DELAY <= 0:
+            return
+        
+        # Start new timer
+        with self.timer_lock:
+            self.off_timer = threading.Timer(
+                self.config.MQTT_OFF_DELAY,
+                self._publish_off_message
+            )
+            self.off_timer.start()
+            logging.debug(f"OFF timer started ({self.config.MQTT_OFF_DELAY}s)")
+    
+    def _publish_off_message(self):
+        """
+        Publish OFF message to MQTT (called by timer thread).
+        
+        This method runs in the timer's thread context. The timer reference
+        is cleared BEFORE publishing to ensure proper state even if publish fails.
+        """
+        # Clear timer reference first (timer has fired, so it's no longer active)
+        with self.timer_lock:
+            self.off_timer = None
+        
+        try:
+            logging.info("Publishing OFF to MQTT (motion timer expired)")
+            publish_sensor_value('mario_motion', 'OFF', is_binary=True)
+        except Exception as e:
+            logging.error(f"Error publishing OFF message: {e}")
+    
     def on_motion_detected(self, channel):
         """
         Callback for motion detection events.
         
         All motion events are logged and published to MQTT/Home Assistant.
         Sound playback respects cooldown period to prevent spam.
+        OFF message is sent to MQTT after configured delay (if no new motion).
         
         Args:
             channel: GPIO channel that triggered the event
@@ -623,8 +675,11 @@ class MotionDetectionApp:
             # Always log motion detection
             logging.info(f"Motion detected on GPIO{channel}")
             
-            # Always publish to MQTT (Home Assistant tracks all motion)
+            # Always publish ON to MQTT (Home Assistant tracks all motion)
             publish_sensor_value('mario_motion', 'ON', is_binary=True)
+            
+            # Start/reset OFF timer (publishes OFF after delay if no new motion)
+            self._start_off_timer()
             
             # Check cooldown for sound playback only
             if time_since_last < self.config.COOLDOWN_SECONDS:
@@ -749,6 +804,9 @@ class MotionDetectionApp:
         
         logging.info("Stopping motion detection service...")
         self.running = False
+        
+        # Cancel any pending OFF timer
+        self._cancel_off_timer()
         
         # Stop sensor monitoring
         if self.sensor:

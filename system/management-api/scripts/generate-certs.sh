@@ -3,7 +3,7 @@
 
 set -e
 
-CERTS_DIR="/home/pi/certs"
+CERTS_DIR="/etc/luigi/system/management-api/certs"
 DAYS_VALID=365
 
 echo "Generating self-signed SSL certificate..."
@@ -24,8 +24,14 @@ openssl x509 -req -days $DAYS_VALID -in server.csr \
   -signkey server.key -out server.crt
 
 # Set proper permissions
-chmod 600 server.key
+# Private key: readable by owner and group (service user needs access)
+chmod 640 server.key
+# Certificate: world-readable (public certificate)
 chmod 644 server.crt
+
+# Set ownership to allow service user to read
+# Service will run as 'luigi-api' user, so set group to 'luigi-api' for key access
+chown root:luigi-api server.key server.crt
 
 # Clean up CSR
 rm server.csr

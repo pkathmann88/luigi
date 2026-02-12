@@ -3,12 +3,8 @@
  * Business logic for Luigi module management operations
  */
 
-const fs = require('fs').promises;
-const path = require('path');
 const logger = require('../utils/logger');
 const { executeCommand, executeCommandForOutput } = require('../utils/commandExecutor');
-const { validateModulePath } = require('../security/pathValidator');
-const config = require('../../config');
 const registryService = require('./registryService');
 
 /**
@@ -54,109 +50,47 @@ async function getServiceStatus(moduleName) {
 }
 
 /**
- * Find all Luigi modules by looking for setup.sh files
+ * Find all Luigi modules using the centralized registry
+ * Registry is the single source of truth for installed modules
  */
 async function listModules() {
   try {
-    const modulesPath = config.paths.modules;
-    const modules = [];
-
-    // Check if modules directory exists
-    try {
-      await fs.access(modulesPath);
-    } catch (err) {
-      logger.error(`Modules directory not found: ${modulesPath}`);
-      return modules; // Return empty array if directory doesn't exist
-    }
-
-    // Helper function to search directories recursively
-    async function searchDirectory(dir, depth = 0) {
-      if (depth > 3) return; // Limit depth to prevent excessive scanning
-
-      try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
-
-        for (const entry of entries) {
-          if (entry.isDirectory()) {
-            const subPath = path.join(dir, entry.name);
-            
-            // Check if setup.sh exists in this directory
-            const setupPath = path.join(subPath, 'setup.sh');
-            try {
-              await fs.access(setupPath);
-              
-              // This is a module directory
-              const relativePath = path.relative(modulesPath, subPath);
-              const category = relativePath.split(path.sep)[0];
-              const moduleName = path.basename(subPath);
-
-              // Try to read module.json if it exists
-              let metadata = null;
-              try {
-                const moduleJsonPath = path.join(subPath, 'module.json');
-                const moduleJson = await fs.readFile(moduleJsonPath, 'utf8');
-                metadata = JSON.parse(moduleJson);
-              } catch (err) {
-                // module.json doesn't exist or is invalid
-              }
-
-              modules.push({
-                name: moduleName,
-                path: relativePath,
-                category,
-                fullPath: subPath,
-                metadata,
-              });
-            } catch (err) {
-              // setup.sh doesn't exist, search subdirectories
-              await searchDirectory(subPath, depth + 1);
-            }
-          }
-        }
-      } catch (err) {
-        logger.warn(`Error reading directory ${dir}: ${err.message}`);
-      }
-    }
-
-    await searchDirectory(modulesPath);
-    
-    if (modules.length === 0) {
-      logger.warn(`No modules with setup.sh files found in ${modulesPath}. Each Luigi module must have a setup.sh file in its directory. Check MODULES_PATH configuration.`);
-    }
-    
     // Get registry entries
-    let registryEntries = [];
-    try {
-      registryEntries = await registryService.listRegistry();
-    } catch (err) {
-      logger.warn(`Failed to load registry data: ${err.message}`);
-    }
+    const registryEntries = await registryService.listRegistry();
+    logger.info(`Found ${registryEntries.length} modules in registry`);
     
-    // Create a map of registry entries by module_path
-    const registryMap = new Map();
-    registryEntries.forEach(entry => {
-      registryMap.set(entry.module_path, entry);
-    });
-    
-    // Enrich modules with status information and registry data
-    const enrichedModules = await Promise.all(
-      modules.map(async (module) => {
-        const serviceStatus = await getServiceStatus(module.name);
+    // Build modules list from registry entries
+    const modules = await Promise.all(
+      registryEntries.map(async (registryEntry) => {
+        const modulePath = registryEntry.module_path;
+        const pathParts = modulePath.split('/');
+        const moduleName = pathParts[pathParts.length - 1];
+        const category = pathParts[0];
         
-        // Merge with registry data if available
-        const registryEntry = registryMap.get(module.path);
+        // Get service status if module has service capability
+        let serviceStatus = { status: 'installed', pid: null };
+        if (registryEntry.capabilities && registryEntry.capabilities.includes('service')) {
+          serviceStatus = await getServiceStatus(moduleName);
+        }
         
         return {
-          ...module,
+          name: moduleName,
+          path: modulePath,
+          category,
+          metadata: {
+            name: registryEntry.name,
+            version: registryEntry.version,
+            description: registryEntry.description,
+            capabilities: registryEntry.capabilities || [],
+          },
           status: serviceStatus.status,
           pid: serviceStatus.pid,
-          // Add registry data if available
-          registry: registryEntry || null,
+          registry: registryEntry,
         };
       })
     );
     
-    return enrichedModules;
+    return modules;
   } catch (error) {
     logger.error(`Error listing modules: ${error.message}`);
     throw error;

@@ -37,8 +37,8 @@ const config = {
 
   // TLS
   tls: {
-    certPath: process.env.TLS_CERT_PATH || '/home/pi/certs/server.crt',
-    keyPath: process.env.TLS_KEY_PATH || '/home/pi/certs/server.key',
+    certPath: process.env.TLS_CERT_PATH || '/etc/luigi/system/management-api/certs/server.crt',
+    keyPath: process.env.TLS_KEY_PATH || '/etc/luigi/system/management-api/certs/server.key',
   },
 
   // Rate Limiting
@@ -61,7 +61,6 @@ const config = {
 
   // System Paths
   paths: {
-    modules: process.env.MODULES_PATH || '/home/pi/luigi',
     config: process.env.CONFIG_PATH || '/etc/luigi',
     logs: process.env.LOGS_PATH || '/var/log',
     registry: process.env.REGISTRY_PATH || '/etc/luigi/modules',
@@ -112,7 +111,6 @@ console.log(`Node Environment: ${config.env}`);
 console.log(`Port: ${config.port}`);
 console.log(`Host: ${config.host}`);
 console.log(`HTTPS Enabled: ${config.useHttps}`);
-console.log(`Modules Path: ${config.paths.modules}`);
 console.log(`Config Path: ${config.paths.config}`);
 console.log(`Registry Path: ${config.paths.registry}`);
 console.log(`Log File: ${config.logging.file}`);
