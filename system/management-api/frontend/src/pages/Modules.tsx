@@ -59,7 +59,7 @@ export const Modules: React.FC = () => {
     setActionLoading(null);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status?: string) => {
     const statusMap: Record<string, { label: string; className: string }> = {
       active: { label: 'Active', className: 'modules__status--active' },
       inactive: { label: 'Inactive', className: 'modules__status--inactive' },
@@ -67,7 +67,7 @@ export const Modules: React.FC = () => {
       unknown: { label: 'Unknown', className: 'modules__status--unknown' },
     };
 
-    const statusInfo = statusMap[status] || statusMap.unknown;
+    const statusInfo = statusMap[status || 'unknown'] || statusMap.unknown;
 
     return (
       <span className={`modules__status ${statusInfo.className}`}>
@@ -121,6 +121,12 @@ export const Modules: React.FC = () => {
             </div>
 
             <div className="modules__card-info">
+              {module.category && (
+                <div className="modules__info-item">
+                  <span className="modules__info-label">Category:</span>
+                  <span className="modules__info-value">{module.category}</span>
+                </div>
+              )}
               {module.pid && (
                 <div className="modules__info-item">
                   <span className="modules__info-label">PID:</span>

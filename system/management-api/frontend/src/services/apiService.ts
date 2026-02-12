@@ -1,5 +1,5 @@
 import { authService } from './authService';
-import { Module, SystemStatus, ApiResponse } from '../types/api';
+import { Module, SystemStatus, ApiResponse, LogFile, ConfigFile, ConfigContent } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -174,7 +174,7 @@ class ApiService {
   /**
    * List all log files
    */
-  async getLogs(): Promise<ApiResponse<{ logs: string[] }>> {
+  async getLogs(): Promise<ApiResponse<{ files: LogFile[] }>> {
     return this.request('/api/logs');
   }
 
@@ -185,7 +185,7 @@ class ApiService {
     module: string,
     lines: number = 100,
     search?: string
-  ): Promise<ApiResponse<{ logs: string[] }>> {
+  ): Promise<ApiResponse<{ lines: string[]; file: string; count: number }>> {
     const params = new URLSearchParams({ lines: lines.toString() });
     if (search) {
       params.append('search', search);
@@ -200,14 +200,14 @@ class ApiService {
   /**
    * List all configurations
    */
-  async getConfigs(): Promise<ApiResponse<{ configs: string[] }>> {
+  async getConfigs(): Promise<ApiResponse<{ configs: ConfigFile[] }>> {
     return this.request('/api/config');
   }
 
   /**
    * Get configuration for a module
    */
-  async getConfig(module: string): Promise<ApiResponse<Record<string, string>>> {
+  async getConfig(module: string): Promise<ApiResponse<ConfigContent>> {
     return this.request(`/api/config/${module}`);
   }
 

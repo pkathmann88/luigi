@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../services/apiService';
+import { ConfigFile } from '../types/api';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import './Config.css';
 
 export const Config: React.FC = () => {
-  const [configs, setConfigs] = useState<string[]>([]);
+  const [configs, setConfigs] = useState<ConfigFile[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<string>('');
   const [configContent, setConfigContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -27,16 +28,34 @@ export const Config: React.FC = () => {
     setLoading(false);
   };
 
-  const fetchConfigContent = async (configName: string) => {
+  const fetchConfigContent = async (configPath: string) => {
     setLoading(true);
     setError('');
     setSaveSuccess(false);
-    setSelectedConfig(configName);
+    setSelectedConfig(configPath);
     
-    const response = await apiService.getConfig(configName);
+    const response = await apiService.getConfig(configPath);
     
     if (response.success && response.data) {
-      setConfigContent(response.data);
+      // Extract key-value pairs from parsed config data
+      const parsed = response.data.parsed;
+      if (parsed && typeof parsed === 'object') {
+        // Flatten parsed config (handles INI sections and simple key-value)
+        const flat: Record<string, string> = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === 'object' && value !== null) {
+            // INI section: prefix keys with section name
+            for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
+              flat[key === 'default' ? subKey : `${key}.${subKey}`] = String(subValue);
+            }
+          } else {
+            flat[key] = String(value);
+          }
+        }
+        setConfigContent(flat);
+      } else {
+        setConfigContent({});
+      }
     } else {
       setError(response.error || 'Failed to fetch config content');
       setConfigContent({});
@@ -89,14 +108,14 @@ export const Config: React.FC = () => {
           ) : (
             <ul className="config__list">
               {configs.map((config) => (
-                <li key={config}>
+                <li key={config.path}>
                   <button
                     className={`config__item ${
-                      selectedConfig === config ? 'config__item--active' : ''
+                      selectedConfig === config.path ? 'config__item--active' : ''
                     }`}
-                    onClick={() => fetchConfigContent(config)}
+                    onClick={() => fetchConfigContent(config.path)}
                   >
-                    {config}
+                    {config.name}
                   </button>
                 </li>
               ))}
