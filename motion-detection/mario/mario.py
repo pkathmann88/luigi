@@ -624,12 +624,12 @@ class MotionDetectionApp:
     
     def _start_off_timer(self):
         """Start or reset the OFF timer (thread-safe)."""
+        # Cancel any existing timer first
+        self._cancel_off_timer()
+        
         # Only start timer if MQTT_OFF_DELAY is configured (> 0)
         if self.config.MQTT_OFF_DELAY <= 0:
             return
-        
-        # Cancel any existing timer
-        self._cancel_off_timer()
         
         # Start new timer
         with self.timer_lock:
@@ -645,16 +645,15 @@ class MotionDetectionApp:
         Publish OFF message to MQTT (called by timer thread).
         
         This method runs in the timer's thread context. The timer reference
-        is cleared to maintain explicit state (off_timer=None means no active timer).
+        is cleared BEFORE publishing to ensure proper state even if publish fails.
         """
+        # Clear timer reference first (timer has fired, so it's no longer active)
+        with self.timer_lock:
+            self.off_timer = None
+        
         try:
             logging.info("Publishing OFF to MQTT (motion timer expired)")
             publish_sensor_value('mario_motion', 'OFF', is_binary=True)
-            
-            # Clear timer reference for explicit state management
-            with self.timer_lock:
-                self.off_timer = None
-                
         except Exception as e:
             logging.error(f"Error publishing OFF message: {e}")
     
