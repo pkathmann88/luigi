@@ -65,15 +65,27 @@ const logFileValidation = param('module')
 /**
  * Configuration validation
  * Allows paths with slashes and file extensions
- * Blocks path traversal attempts
+ * Blocks path traversal attempts (including URL-encoded variants)
  */
 const configValidation = {
   module: param('module')
     .trim()
+    .customSanitizer((value) => {
+      // Normalize path and ensure no encoded traversal attempts
+      return decodeURIComponent(value);
+    })
     .matches(/^[a-zA-Z0-9_/.-]+$/)
     .withMessage('Invalid module or config path')
     .not().matches(/\.\./)
     .withMessage('Path traversal not allowed')
+    .custom((value) => {
+      // Additional check: no path traversal in normalized form
+      const normalized = require('path').normalize(value);
+      if (normalized.includes('..')) {
+        throw new Error('Path traversal not allowed');
+      }
+      return true;
+    })
     .isLength({ min: 1, max: 200 })
     .withMessage('Module path must be 1-200 characters'),
   

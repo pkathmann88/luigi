@@ -78,7 +78,7 @@ async function listModules() {
     await searchDirectory(modulesPath);
     
     if (modules.length === 0) {
-      logger.warn(`No modules found in ${modulesPath}. Check MODULES_PATH configuration.`);
+      logger.warn(`No modules with setup.sh files found in ${modulesPath}. Each Luigi module must have a setup.sh file in its directory. Check MODULES_PATH configuration.`);
     }
     
     return modules;
