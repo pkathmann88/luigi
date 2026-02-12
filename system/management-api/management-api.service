@@ -11,13 +11,15 @@ WorkingDirectory=/home/pi/luigi/system/management-api
 
 # Create log directory before starting
 ExecStartPre=/bin/mkdir -p /var/log/luigi
+# Validate configuration and certificates before starting
+ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh
 
 # Environment
 Environment="NODE_ENV=production"
 EnvironmentFile=/etc/luigi/system/management-api/.env
 
 # Execute
-ExecStart=/usr/bin/node server.js
+ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js
 
 # Restart policy
 Restart=always

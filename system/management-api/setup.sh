@@ -48,7 +48,9 @@ readonly INSTALL_USER
 INSTALL_USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
 readonly INSTALL_USER_HOME
 
-readonly APP_DIR="${INSTALL_USER_HOME}/luigi/system/management-api"
+# Use the actual script directory as the application directory
+# This allows the installation to work regardless of where the repo is cloned
+readonly APP_DIR="${SCRIPT_DIR}"
 readonly CONFIG_DIR="/etc/luigi/system/management-api"
 readonly SERVICE_NAME="management-api.service"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
@@ -268,49 +270,55 @@ install() {
     
     # 2. Create directory structure for deployment
     log_info "Creating deployment directories..."
-    mkdir -p "$APP_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$AUDIT_LOG_DIR"
     mkdir -p "$CERTS_DIR"
     
-    # 3. Copy application files
-    log_info "Copying production files to deployment location..."
-    
-    # Core application files
-    cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
-    cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
-    cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
-    cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
-    cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
-    
-    # Copy directories
-    cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
-    cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
-    cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
-    
-    # Copy backend dependencies (built by build() function)
-    log_info "Copying built node_modules..."
-    cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
-    
-    # Handle frontend - copy only necessary files
-    if [ -d "$SCRIPT_DIR/frontend" ]; then
-        mkdir -p "$APP_DIR/frontend"
+    # 3. Copy application files (only if deploying to a different location)
+    if [ "$APP_DIR" != "$SCRIPT_DIR" ]; then
+        log_info "Copying production files to deployment location..."
+        mkdir -p "$APP_DIR"
         
-        # Always copy only built frontend assets (source is never copied)
-        # Frontend is built in source before this point
-        log_info "Copying built frontend dist..."
-        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-            cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
-            # Copy package.json for reference
-            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
-        else
-            log_error "Frontend dist directory not found - frontend should have been built"
-            exit 1
+        # Core application files
+        cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
+        cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
+        cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
+        cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
+        cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
+        
+        # Copy directories
+        cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
+        cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
+        cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
+        
+        # Copy backend dependencies (built by build() function)
+        log_info "Copying built node_modules..."
+        cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
+        
+        # Handle frontend - copy only necessary files
+        if [ -d "$SCRIPT_DIR/frontend" ]; then
+            mkdir -p "$APP_DIR/frontend"
+            
+            # Always copy only built frontend assets (source is never copied)
+            # Frontend is built in source before this point
+            log_info "Copying built frontend dist..."
+            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+                cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
+                # Copy package.json for reference
+                cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
+            else
+                log_error "Frontend dist directory not found - frontend should have been built"
+                exit 1
+            fi
         fi
+        
+        # Set ownership
+        chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
+    else
+        log_info "Running in-place (APP_DIR equals SCRIPT_DIR), skipping file copy..."
+        # Ensure the script directory has correct ownership
+        chown -R "${INSTALL_USER}:${INSTALL_USER}" "$SCRIPT_DIR"
     fi
-    
-    # Set ownership
-    chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
     
     # 4. Deploy configuration
     log_info "Deploying configuration..."
@@ -326,7 +334,7 @@ install() {
     log_info "Checking TLS certificates..."
     if [ ! -f "$CERTS_DIR/server.crt" ] || [ ! -f "$CERTS_DIR/server.key" ]; then
         log_info "Generating self-signed TLS certificates..."
-        bash "$APP_DIR/scripts/generate-certs.sh"
+        bash "$SCRIPT_DIR/scripts/generate-certs.sh"
     else
         log_info "TLS certificates already exist"
     fi
@@ -335,10 +343,13 @@ install() {
     log_info "Installing systemd service..."
     
     # Generate service file with correct user and paths
+    # Always read template from SCRIPT_DIR (source), write to system location
     sed -e "s|User=pi|User=${INSTALL_USER}|g" \
         -e "s|Group=pi|Group=${INSTALL_USER}|g" \
         -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
-        "$APP_DIR/management-api.service" > "$SERVICE_FILE"
+        -e "s|ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
+        -e "s|ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh|ExecStartPre=${APP_DIR}/scripts/pre-start-check.sh|g" \
+        "$SCRIPT_DIR/management-api.service" > "$SERVICE_FILE"
     
     chmod 644 "$SERVICE_FILE"
     systemctl daemon-reload
