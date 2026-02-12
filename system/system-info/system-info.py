@@ -183,38 +183,68 @@ def publish_sensor_value(sensor_id, value, unit=None):
     Returns:
         bool: True if published successfully, False otherwise
     """
+    cmd = None
     try:
         cmd = ['/usr/local/bin/luigi-publish', '--sensor', sensor_id, '--value', str(value)]
         
         if unit:
             cmd.extend(['--unit', unit])
         
+        logging.debug(f"Executing MQTT publish command: {' '.join(cmd)}")
+        
         result = subprocess.run(
             cmd,
             capture_output=True,
-            timeout=5,
-            check=True
+            timeout=10,  # Increased from 5 to 10 seconds for network startup delays
+            check=True,
+            text=True  # Decode output automatically
         )
+        
+        # Log output if present (for debugging)
+        if result.stdout:
+            logging.debug(f"luigi-publish stdout: {result.stdout.strip()}")
+        if result.stderr:
+            logging.debug(f"luigi-publish stderr: {result.stderr.strip()}")
         
         logging.debug(f"Published {sensor_id}={value} {unit or ''} to MQTT")
         return True
         
-    except subprocess.TimeoutExpired:
-        logging.warning(f"MQTT publish timeout for {sensor_id}")
+    except subprocess.TimeoutExpired as e:
+        # Enhanced timeout logging
+        logging.error(f"MQTT publish TIMEOUT for {sensor_id} after 10 seconds")
+        logging.error(f"Command: {' '.join(cmd) if cmd else 'unknown'}")
+        
+        # Log any partial output captured before timeout
+        if e.stdout:
+            stdout_preview = e.stdout.decode('utf-8', errors='replace')[:500]
+            logging.error(f"Partial stdout before timeout: {stdout_preview}")
+        if e.stderr:
+            stderr_preview = e.stderr.decode('utf-8', errors='replace')[:500]
+            logging.error(f"Partial stderr before timeout: {stderr_preview}")
+        
+        logging.error("This indicates luigi-publish is hanging - likely MQTT broker connectivity issue")
         return False
         
     except subprocess.CalledProcessError as e:
-        stderr_msg = e.stderr.decode('utf-8', errors='replace') if e.stderr else 'no output'
-        logging.warning(f"MQTT publish failed for {sensor_id}: {stderr_msg}")
+        # Enhanced error logging with full details
+        stderr_msg = e.stderr if e.stderr else 'no stderr'
+        stdout_msg = e.stdout if e.stdout else 'no stdout'
+        
+        logging.error(f"MQTT publish FAILED for {sensor_id}")
+        logging.error(f"Command: {' '.join(cmd) if cmd else 'unknown'}")
+        logging.error(f"Exit code: {e.returncode}")
+        logging.error(f"Stderr: {stderr_msg}")
+        logging.error(f"Stdout: {stdout_msg}")
         return False
         
     except FileNotFoundError:
         # ha-mqtt not installed - this is OK, module should work standalone
-        logging.debug("ha-mqtt not available, skipping MQTT publish")
+        logging.debug("ha-mqtt not available (luigi-publish not found), skipping MQTT publish")
         return False
         
     except Exception as e:
-        logging.error(f"Unexpected error publishing to MQTT: {e}")
+        logging.error(f"Unexpected error publishing {sensor_id} to MQTT: {type(e).__name__}: {e}")
+        logging.error(f"Command: {' '.join(cmd) if cmd else 'unknown'}")
         return False
 
 
@@ -424,6 +454,7 @@ class SystemInfoMonitor:
         
         # Publish metrics immediately on startup
         try:
+            logging.info("Publishing initial metrics...")
             self.collect_and_publish_metrics()
         except Exception as e:
             logging.error(f"Error during initial metrics collection: {e}")
