@@ -217,6 +217,19 @@ deploy_ha_mqtt_descriptors() {
         return 0
     fi
     
+    # Ensure service can access MQTT config by adding user to luigi group
+    # Note: service runs as root by default, so this is for future non-root operation
+    log_info "Checking MQTT access permissions..."
+    if getent group luigi >/dev/null 2>&1; then
+        log_success "luigi group exists - MQTT config is group-accessible"
+        # Note: service currently runs as root, which can always read the config
+        # If changing to non-root user in future, add that user to luigi group here
+    else
+        log_warn "luigi group not found - MQTT config requires root access"
+        log_info "Service runs as root, so MQTT publishing will work"
+        log_info "For better security, install ha-mqtt module to create luigi group"
+    fi
+    
     # Copy all sensor descriptors
     local descriptor_count=0
     for sensor_file in "$SENSOR_UPTIME" "$SENSOR_CPU_TEMP" "$SENSOR_MEMORY" "$SENSOR_DISK" "$SENSOR_CPU_USAGE"; do

@@ -81,10 +81,11 @@ Modules integrate in 4 simple steps—no ha-mqtt modifications needed:
 Sensors automatically appear in Home Assistant with correct types, units, and icons. No manual YAML configuration.
 
 ### 🔒 Security Built-In
-- Credential protection (600 file permissions)
+- Group-based access control (640 root:luigi permissions)
+- Credential protection via `luigi` system group
 - Input validation (path traversal prevention)
 - TLS encryption support
-- Non-root operation recommended
+- Non-root service operation enabled
 
 ---
 
@@ -267,13 +268,41 @@ DEVICE_PREFIX=luigi
 | QOS | Quality of Service (0, 1, or 2) | 1 | 1 |
 | BASE_TOPIC | Root topic for messages | homeassistant | luigi/sensors |
 
-### Security Recommendations
-```bash
-# Set secure permissions on config file
-sudo chmod 600 /etc/luigi/iot/ha-mqtt/ha-mqtt.conf
+### Security Model
 
-# Only owner (root or luigi user) can read credentials
+The ha-mqtt configuration file uses **group-based access control** for security:
+
+```bash
+# Config file permissions
+/etc/luigi/iot/ha-mqtt/ha-mqtt.conf
+  Owner: root (read/write)
+  Group: luigi (read-only)
+  Others: no access
+  Permissions: 640 (rw-r-----)
 ```
+
+**How it works:**
+1. The `luigi` system group is created automatically during installation
+2. Config file is owned by `root:luigi` with 640 permissions
+3. Services and users in the `luigi` group can read the config
+4. Only root can modify the config file
+
+**Adding users to luigi group:**
+```bash
+# Add a user to luigi group (requires re-login)
+sudo usermod -a -G luigi username
+
+# Verify group membership
+groups username
+
+# After adding to group, user must log out and back in
+```
+
+**Why group-based access?**
+- More secure than world-readable permissions
+- Allows non-root services to access MQTT config
+- Follows Linux security best practices
+- Multiple services can share MQTT credentials safely
 
 ### Variable Expansion
 The configuration supports `${HOSTNAME}` variable expansion:

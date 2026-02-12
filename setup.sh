@@ -71,6 +71,40 @@ check_root() {
     fi
 }
 
+# Create luigi system group for shared resource access
+# Used by multiple modules (ha-mqtt, system-info, etc.) to share config access
+create_luigi_group() {
+    log_step "Setting up luigi system group..."
+    
+    # Check if luigi group exists
+    if getent group luigi >/dev/null 2>&1; then
+        log_info "✓ luigi group already exists"
+        return 0
+    fi
+    
+    # Create luigi system group
+    if groupadd --system luigi; then
+        log_info "✓ Created luigi system group"
+    else
+        log_error "Failed to create luigi group"
+        return 1
+    fi
+    
+    # Add current user to luigi group if not root
+    local current_user="${SUDO_USER:-$(whoami)}"
+    if [ "$current_user" != "root" ]; then
+        if usermod -a -G luigi "$current_user"; then
+            log_info "✓ Added $current_user to luigi group"
+            log_warn "Note: $current_user must log out and back in for group membership to take effect"
+        else
+            log_warn "Failed to add $current_user to luigi group"
+        fi
+    fi
+    
+    echo ""
+    return 0
+}
+
 # Check and install required dependencies for setup script
 check_and_install_dependencies() {
     local missing_deps=()
@@ -1094,6 +1128,13 @@ install_modules() {
     # Check and install required dependencies first
     if ! check_and_install_dependencies; then
         log_error "Failed to install required dependencies"
+        log_error "Cannot proceed with module installation"
+        return 1
+    fi
+    
+    # Create luigi system group (used by multiple modules for shared resource access)
+    if ! create_luigi_group; then
+        log_error "Failed to create luigi system group"
         log_error "Cannot proceed with module installation"
         return 1
     fi

@@ -259,6 +259,13 @@ deploy_configuration() {
     # Only copy if config doesn't exist (don't overwrite existing)
     if [ -f "$config_dst" ]; then
         log_warn "Config already exists, not overwriting: $config_dst"
+        # Update permissions on existing file to use luigi group
+        log_info "Updating permissions on existing config file..."
+        if chown root:luigi "$config_dst" && chmod 640 "$config_dst"; then
+            log_success "Updated config permissions: root:luigi 640"
+        else
+            log_warn "Failed to update config permissions"
+        fi
         return 0
     fi
     
@@ -277,10 +284,13 @@ deploy_configuration() {
     sed -i "s/^USERNAME=.*/USERNAME=${MQTT_USERNAME}/" "$config_dst"
     sed -i "s/^PASSWORD=.*/PASSWORD=${MQTT_PASSWORD}/" "$config_dst"
     
-    # Set secure permissions
-    if chmod 600 "$config_dst"; then
-        log_success "Deployed: ha-mqtt.conf (600)"
+    # Set secure group-based permissions
+    # Owner: root (read/write), Group: luigi (read-only), Others: no access
+    # Note: luigi group is created by root setup.sh during installation
+    if chown root:luigi "$config_dst" && chmod 640 "$config_dst"; then
+        log_success "Deployed: ha-mqtt.conf (root:luigi 640)"
         log_success "MQTT configuration saved to $config_dst"
+        log_info "Config is readable by root and members of luigi group"
     else
         log_error "Failed to set permissions on config file"
         return 1
@@ -368,6 +378,9 @@ install_module() {
         log_error "Failed to create directory structure"
         exit 1
     fi
+    
+    # Note: luigi group is created by root setup.sh during installation
+    # This ensures group-based access control for MQTT config file
     
     # Deploy files
     if ! deploy_scripts; then
