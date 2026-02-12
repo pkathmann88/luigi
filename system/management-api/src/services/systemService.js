@@ -36,7 +36,7 @@ async function getSystemMetrics() {
         total: parseBytes(diskUsage.size),
         used: parseBytes(diskUsage.used),
         free: parseBytes(diskUsage.available),
-        // Frontend expects 'percent', not 'percentUsed'
+        // Map percentUsed from getDiskUsage() to 'percent' for frontend compatibility
         percent: diskUsage.percentUsed,
       } : {
         total: 0,
@@ -55,7 +55,7 @@ async function getSystemMetrics() {
 
 /**
  * Parse human-readable disk size to bytes
- * Converts strings like "7.2G" to bytes
+ * Converts strings like "7.2G" or "7.2g" to bytes
  */
 function parseBytes(sizeStr) {
   if (!sizeStr) return 0;
@@ -67,11 +67,12 @@ function parseBytes(sizeStr) {
     'T': 1024 ** 4,
   };
   
-  const match = sizeStr.match(/^([\d.]+)([KMGT]?)$/);
+  // Match with case-insensitive flag to handle both 'G' and 'g'
+  const match = sizeStr.match(/^([\d.]+)([KMGT]?)$/i);
   if (!match) return 0;
   
   const value = parseFloat(match[1]);
-  const unit = match[2];
+  const unit = match[2].toUpperCase();
   
   return unit ? Math.round(value * units[unit]) : value;
 }
