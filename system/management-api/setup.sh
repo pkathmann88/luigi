@@ -348,6 +348,7 @@ install() {
         -e "s|Group=pi|Group=${INSTALL_USER}|g" \
         -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
         -e "s|ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
+        -e "s|ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh|ExecStartPre=${APP_DIR}/scripts/pre-start-check.sh|g" \
         "$SCRIPT_DIR/management-api.service" > "$SERVICE_FILE"
     
     chmod 644 "$SERVICE_FILE"
