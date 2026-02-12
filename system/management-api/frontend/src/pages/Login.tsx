@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { apiService } from '../services/apiService';
 import { Button } from '../components/Button';
 import './Login.css';
 
@@ -17,15 +18,24 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const success = authService.login(username, password);
+      // Store credentials temporarily for the health check
+      authService.login(username, password);
       
-      if (success) {
+      // Verify credentials by making an authenticated API call
+      const response = await apiService.getSystemStatus();
+      
+      if (response.success) {
+        // Backend validated credentials - proceed to dashboard
         navigate('/dashboard');
       } else {
+        // Backend rejected credentials
+        authService.logout();
         setError('Invalid username or password');
       }
-    } catch (_err) {
-      setError('Login failed. Please try again.');
+    } catch (err) {
+      // Network or other error
+      authService.logout();
+      setError('Login failed. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -90,7 +100,7 @@ export const Login: React.FC = () => {
 
         <div className="login__footer">
           <p className="login__hint">
-            Default credentials: <code>admin</code> / <code>changeme123</code>
+            Contact your system administrator for credentials
           </p>
         </div>
       </div>

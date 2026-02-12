@@ -4,12 +4,12 @@ const CREDENTIALS_STORAGE_KEY = 'luigi_credentials';
 
 /**
  * Authentication Service
- * Handles login/logout and credential validation against static credentials file
+ * Handles login/logout and credential storage
  * 
  * SECURITY WARNINGS:
  * - This is a SIMPLE authentication system for local network use ONLY
  * - Credentials are stored in localStorage (vulnerable to XSS attacks)
- * - Credentials are hardcoded in client code (visible to anyone)
+ * - Credentials are validated ONLY on the backend (frontend just stores them)
  * - In production, use proper authentication:
  *   - Server-side session management
  *   - httpOnly cookies
@@ -19,38 +19,9 @@ const CREDENTIALS_STORAGE_KEY = 'luigi_credentials';
  */
 class AuthService {
   private credentials: Credentials | null = null;
-  private staticCredentials: Map<string, string> = new Map();
 
   constructor() {
-    this.loadStaticCredentials();
     this.loadStoredCredentials();
-  }
-
-  /**
-   * Load static credentials from environment variables
-   * 
-   * Credentials are injected at build time via Vite environment variables:
-   * - VITE_AUTH_USERNAME: Username (default: admin)
-   * - VITE_AUTH_PASSWORD: Password (default: changeme123)
-   * 
-   * These are set during setup.sh build/install from user prompts.
-   * Falls back to defaults if not set (development mode).
-   * 
-   * SECURITY NOTE: In production, these should be set during build.
-   * For development without setup, defaults are used but will fail backend auth.
-   */
-  private loadStaticCredentials() {
-    // Read from environment variables (set at build time)
-    // Fall back to defaults for development
-    const username = import.meta.env.VITE_AUTH_USERNAME || 'admin';
-    const password = import.meta.env.VITE_AUTH_PASSWORD || 'changeme123';
-    
-    this.staticCredentials.set(username, password);
-    
-    // Log warning if using defaults (development mode)
-    if (!import.meta.env.VITE_AUTH_USERNAME || !import.meta.env.VITE_AUTH_PASSWORD) {
-      console.warn('[Auth] Using default credentials - ensure backend .env matches for development');
-    }
   }
 
   /**
@@ -71,23 +42,12 @@ class AuthService {
   }
 
   /**
-   * Validate credentials against static credentials
+   * Store credentials after successful backend authentication
+   * This method should only be called after backend validates credentials
    */
-  validateCredentials(username: string, password: string): boolean {
-    const validPassword = this.staticCredentials.get(username);
-    return validPassword === password;
-  }
-
-  /**
-   * Login with username and password
-   */
-  login(username: string, password: string): boolean {
-    if (this.validateCredentials(username, password)) {
-      this.credentials = { username, password };
-      localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(this.credentials));
-      return true;
-    }
-    return false;
+  login(username: string, password: string): void {
+    this.credentials = { username, password };
+    localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(this.credentials));
   }
 
   /**
