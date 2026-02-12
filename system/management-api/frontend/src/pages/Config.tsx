@@ -5,6 +5,8 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import './Config.css';
 
+const DEFAULT_INI_SECTION = 'default';
+
 export const Config: React.FC = () => {
   const [configs, setConfigs] = useState<ConfigFile[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<string>('');
@@ -43,13 +45,14 @@ export const Config: React.FC = () => {
         // Flatten parsed config (handles INI sections and simple key-value)
         const flat: Record<string, string> = {};
         for (const [key, value] of Object.entries(parsed)) {
-          if (typeof value === 'object' && value !== null) {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
             // INI section: prefix keys with section name
             for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
-              flat[key === 'default' ? subKey : `${key}.${subKey}`] = String(subValue);
+              const prefix = key === DEFAULT_INI_SECTION ? '' : `${key}.`;
+              flat[`${prefix}${subKey}`] = String(subValue ?? '');
             }
           } else {
-            flat[key] = String(value);
+            flat[key] = String(value ?? '');
           }
         }
         setConfigContent(flat);
