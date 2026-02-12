@@ -4,6 +4,45 @@ This directory contains shared utility scripts and helper functions used across 
 
 ## Files
 
+### fix-audio-popping.sh
+
+**Standalone utility to fix audio popping/crackling on I2S audio devices (Adafruit Sound Bonnet and similar).**
+
+This script provides an easy way to apply the audio popping fix without running a full Luigi installation.
+
+**Features:**
+- Automatically detects I2S audio devices in boot configuration
+- Offers two solutions:
+  1. Software-only fix with improved ALSA buffering (recommended)
+  2. Silence playback systemd service for complete elimination
+- Backs up existing configuration before making changes
+- Tests audio playback to verify the fix
+- Can be run independently at any time
+
+**Usage:**
+```bash
+sudo ./util/fix-audio-popping.sh
+```
+
+**When to use:**
+- You're experiencing popping/crackling sounds at the start/end of audio playback
+- You have an Adafruit Sound Bonnet or similar I2S audio device
+- You want to fix the issue without running `sudo ./setup.sh install`
+- You've already installed Luigi but didn't apply the audio fix
+
+**What it does:**
+1. Checks for I2S device tree overlay in boot config
+2. Explains the root cause of audio popping
+3. Prompts user to select a fix method
+4. Applies the selected fix (software config or systemd service)
+5. Tests audio playback if test files are available
+6. Provides rollback instructions if needed
+
+**Requirements:**
+- Must be run as root (uses sudo)
+- I2S audio device must be configured (hifiberry-dac overlay or similar)
+- For software fix: `/etc/asound.conf` must exist (created by Luigi audio configuration)
+
 ### setup-helpers.sh
 
 Shared functions for all Luigi module setup scripts. Eliminates duplicate code across setup scripts and ensures consistency.
