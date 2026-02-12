@@ -28,25 +28,53 @@ log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 log_warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
 log_debug() { echo -e "\033[0;34m[DEBUG]\033[0m $1"; }
 
-# Detect the user who invoked sudo (fallback to current user if not using sudo)
-INSTALL_USER="${SUDO_USER:-$(whoami)}"
-if [ "$INSTALL_USER" = "root" ]; then
-    # If running directly as root (not via sudo), try to use 'pi' if it exists
-    # This handles Raspberry Pi where 'pi' is the default user
-    if id -u pi >/dev/null 2>&1; then
-        INSTALL_USER="pi"
-        log_warn "Running as root without sudo. Defaulting to user 'pi'"
+# Dedicated service user for management-api
+readonly SERVICE_USER="luigi-api"
+readonly SERVICE_GROUP="luigi-api"
+
+# Function to create service user if it doesn't exist
+create_service_user() {
+    if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
+        log_info "Creating dedicated service user: $SERVICE_USER"
+        
+        # Create system user with no home directory and no login shell
+        if useradd --system --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER" 2>/dev/null; then
+            log_success "Created system user: $SERVICE_USER"
+        else
+            log_error "Failed to create user: $SERVICE_USER"
+            exit 1
+        fi
     else
-        log_error "Cannot determine non-root user for installation."
+        log_info "Service user already exists: $SERVICE_USER"
+    fi
+}
+
+# Detect the user who invoked sudo (for build operations)
+# Note: Service will run as SERVICE_USER, this is for build/npm operations
+BUILD_USER="${SUDO_USER:-$(whoami)}"
+if [ "$BUILD_USER" = "root" ]; then
+    # If running directly as root (not via sudo), try to use 'pi' if it exists
+    # Otherwise use the service user for building
+    if id -u pi >/dev/null 2>&1; then
+        BUILD_USER="pi"
+        log_warn "Running as root without sudo. Using 'pi' for build operations"
+    elif id -u "$SERVICE_USER" >/dev/null 2>&1; then
+        BUILD_USER="$SERVICE_USER"
+        log_info "Using service user '$SERVICE_USER' for build operations"
+    else
+        log_error "Cannot determine user for build operations."
         log_error "Please run this script with sudo as a regular user: sudo ./setup.sh install"
         exit 1
     fi
 fi
-readonly INSTALL_USER
+readonly BUILD_USER
 
-# Get user's home directory
-INSTALL_USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
-readonly INSTALL_USER_HOME
+# Get build user's home directory (may not exist for system users)
+if BUILD_USER_HOME=$(getent passwd "$BUILD_USER" | cut -d: -f6 2>/dev/null); then
+    readonly BUILD_USER_HOME
+else
+    readonly BUILD_USER_HOME="/tmp"
+fi
 
 # Use the actual script directory as the application directory
 # This allows the installation to work regardless of where the repo is cloned
@@ -181,7 +209,7 @@ generate_backend_env() {
     fi
     
     chmod 600 "$env_file"
-    chown "${INSTALL_USER}:${INSTALL_USER}" "$env_file"
+    chown "${SERVICE_USER}:${SERVICE_GROUP}" "$env_file"
     
     if [ "$username" = "admin" ] && [ "$password" = "changeme123" ]; then
         log_warn "Using default credentials (admin/changeme123)"
@@ -232,8 +260,8 @@ build_frontend_in_source() {
             local build_user="$USER"
             local use_sudo=""
             if [ -n "${SUDO_USER:-}" ]; then
-                build_user="$INSTALL_USER"
-                use_sudo="sudo -u $INSTALL_USER"
+                build_user="$BUILD_USER"
+                use_sudo="sudo -u $BUILD_USER"
             fi
             
             # Install frontend dependencies
@@ -263,6 +291,9 @@ build_frontend_in_source() {
 install() {
     check_root
     log_info "Installing ${MODULE_NAME}..."
+    
+    # 0. Create dedicated service user
+    create_service_user
     
     # 1. Build everything (backend + frontend) in source directory
     log_info "Building application first..."
@@ -312,12 +343,12 @@ install() {
             fi
         fi
         
-        # Set ownership
-        chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
+        # Set ownership to service user
+        chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "$APP_DIR"
     else
         log_info "Running in-place (APP_DIR equals SCRIPT_DIR), skipping file copy..."
-        # Ensure the script directory has correct ownership
-        chown -R "${INSTALL_USER}:${INSTALL_USER}" "$SCRIPT_DIR"
+        # For in-place installation, set ownership to service user
+        chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "$SCRIPT_DIR"
     fi
     
     # 4. Deploy configuration
@@ -338,24 +369,24 @@ install() {
         
         # Ensure ownership is correct for service user
         # Generate-certs.sh sets this, but we enforce it here in case of any issues
-        chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key" "$CERTS_DIR/server.crt"
+        chown root:"${SERVICE_GROUP}" "$CERTS_DIR/server.key" "$CERTS_DIR/server.crt"
         chmod 640 "$CERTS_DIR/server.key"
         chmod 644 "$CERTS_DIR/server.crt"
         
-        log_success "Certificates generated and permissions set for user '${INSTALL_USER}'"
+        log_success "Certificates generated and permissions set for service user '${SERVICE_USER}'"
     else
         log_info "TLS certificates already exist"
         
         # Ensure existing certificates have correct permissions and ownership
         if [ -f "$CERTS_DIR/server.key" ]; then
-            chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key"
+            chown root:"${SERVICE_GROUP}" "$CERTS_DIR/server.key"
             chmod 640 "$CERTS_DIR/server.key"
         fi
         if [ -f "$CERTS_DIR/server.crt" ]; then
-            chown root:"${INSTALL_USER}" "$CERTS_DIR/server.crt"
+            chown root:"${SERVICE_GROUP}" "$CERTS_DIR/server.crt"
             chmod 644 "$CERTS_DIR/server.crt"
         fi
-        log_info "Updated certificate permissions for user '${INSTALL_USER}'"
+        log_info "Updated certificate permissions for service user '${SERVICE_USER}'"
     fi
     
     # 7. Deploy systemd service
@@ -363,8 +394,8 @@ install() {
     
     # Generate service file with correct user and paths
     # Always read template from SCRIPT_DIR (source), write to system location
-    sed -e "s|User=pi|User=${INSTALL_USER}|g" \
-        -e "s|Group=pi|Group=${INSTALL_USER}|g" \
+    sed -e "s|User=pi|User=${SERVICE_USER}|g" \
+        -e "s|Group=pi|Group=${SERVICE_GROUP}|g" \
         -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
         -e "s|ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
         -e "s|ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh|ExecStartPre=${APP_DIR}/scripts/pre-start-check.sh|g" \
@@ -447,12 +478,12 @@ build() {
     log_info "Building ${MODULE_NAME} in place..."
     
     # For build command, check if we're running with sudo
-    # If so, we'll use INSTALL_USER; otherwise use current user
+    # If so, we'll use BUILD_USER; otherwise use current user
     local build_user="$USER"
     local use_sudo=""
     if [ -n "${SUDO_USER:-}" ]; then
-        build_user="$INSTALL_USER"
-        use_sudo="sudo -u $INSTALL_USER"
+        build_user="$BUILD_USER"
+        use_sudo="sudo -u $BUILD_USER"
         log_info "Running as sudo, will build as user: $build_user"
     else
         log_info "Running as user: $build_user"

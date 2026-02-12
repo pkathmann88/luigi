@@ -30,8 +30,8 @@ chmod 640 server.key
 chmod 644 server.crt
 
 # Set ownership to allow service user to read
-# Service will run as 'pi' user, so set group to 'pi' for key access
-chown root:pi server.key server.crt
+# Service will run as 'luigi-api' user, so set group to 'luigi-api' for key access
+chown root:luigi-api server.key server.crt
 
 # Clean up CSR
 rm server.csr

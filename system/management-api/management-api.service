@@ -5,8 +5,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
+User=luigi-api
+Group=luigi-api
 WorkingDirectory=/home/pi/luigi/system/management-api
 
 # Create log directory before starting
