@@ -974,8 +974,9 @@ EOF
         # Extract current card and device from asound.conf
         local card
         local device
-        card=$(grep -oP 'card \K[0-9]+' /etc/asound.conf | head -1)
-        device=$(grep -oP 'device \K[0-9]+' /etc/asound.conf | head -1)
+        # Use sed for better portability than grep -P
+        card=$(grep 'card [0-9]' /etc/asound.conf | sed -n 's/.*card \([0-9]\+\).*/\1/p' | head -1)
+        device=$(grep 'device [0-9]' /etc/asound.conf | sed -n 's/.*device \([0-9]\+\).*/\1/p' | head -1)
         
         if [ -z "$card" ] || [ -z "$device" ]; then
             log_error "Could not determine audio card/device from /etc/asound.conf"
@@ -1049,7 +1050,8 @@ EOF
         for dir in "${test_dirs[@]}"; do
             if [ -d "$dir" ]; then
                 local test_sound
-                test_sound=$(find "$dir" -name "*.wav" | head -1)
+                # Use -print -quit for efficiency - stops after first match
+                test_sound=$(find "$dir" -name "*.wav" -print -quit 2>/dev/null)
                 if [ -n "$test_sound" ]; then
                     log_info "Testing audio with new configuration..."
                     if aplay -q "$test_sound" 2>/dev/null; then
