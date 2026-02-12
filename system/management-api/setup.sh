@@ -31,21 +31,31 @@ log_debug() { echo -e "\033[0;34m[DEBUG]\033[0m $1"; }
 # Dedicated service user for management-api
 readonly SERVICE_USER="luigi-api"
 readonly SERVICE_GROUP="luigi-api"
+readonly SERVICE_USER_HOME="/var/lib/luigi-api"
 
 # Function to create service user if it doesn't exist
 create_service_user() {
     if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
         log_info "Creating dedicated service user: $SERVICE_USER"
         
-        # Create system user with no home directory and no login shell
-        if useradd --system --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER" 2>/dev/null; then
-            log_success "Created system user: $SERVICE_USER"
+        # Create system user with home directory for application deployment
+        # Home directory will be /var/lib/luigi-api (standard for system services)
+        if useradd --system --home-dir "$SERVICE_USER_HOME" --create-home --shell /usr/sbin/nologin "$SERVICE_USER" 2>/dev/null; then
+            log_success "Created system user: $SERVICE_USER with home: $SERVICE_USER_HOME"
         else
             log_error "Failed to create user: $SERVICE_USER"
             exit 1
         fi
     else
         log_info "Service user already exists: $SERVICE_USER"
+        
+        # Ensure home directory exists even if user was created differently
+        if [ ! -d "$SERVICE_USER_HOME" ]; then
+            log_info "Creating home directory for existing user: $SERVICE_USER_HOME"
+            mkdir -p "$SERVICE_USER_HOME"
+            chown "$SERVICE_USER:$SERVICE_GROUP" "$SERVICE_USER_HOME"
+            chmod 755 "$SERVICE_USER_HOME"
+        fi
     fi
 }
 
@@ -76,9 +86,9 @@ else
     readonly BUILD_USER_HOME="/tmp"
 fi
 
-# Use the actual script directory as the application directory
-# This allows the installation to work regardless of where the repo is cloned
-readonly APP_DIR="${SCRIPT_DIR}"
+# Deploy to dedicated service user home directory
+# This separates source code (SCRIPT_DIR) from deployment (APP_DIR)
+readonly APP_DIR="${SERVICE_USER_HOME}/management-api"
 readonly CONFIG_DIR="/etc/luigi/system/management-api"
 readonly SERVICE_NAME="management-api.service"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
@@ -305,51 +315,45 @@ install() {
     mkdir -p "$AUDIT_LOG_DIR"
     mkdir -p "$CERTS_DIR"
     
-    # 3. Copy application files (only if deploying to a different location)
-    if [ "$APP_DIR" != "$SCRIPT_DIR" ]; then
-        log_info "Copying production files to deployment location..."
-        mkdir -p "$APP_DIR"
+    # 3. Deploy application files to dedicated location
+    log_info "Deploying production files to: $APP_DIR"
+    mkdir -p "$APP_DIR"
+    
+    # Core application files
+    cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
+    cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
+    cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
+    cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
+    cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
+    
+    # Copy directories
+    cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
+    
+    # Copy backend dependencies (built by build() function)
+    log_info "Copying built node_modules..."
+    cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
+    
+    # Handle frontend - copy only necessary files
+    if [ -d "$SCRIPT_DIR/frontend" ]; then
+        mkdir -p "$APP_DIR/frontend"
         
-        # Core application files
-        cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
-        cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
-        cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
-        cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
-        cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
-        
-        # Copy directories
-        cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
-        cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
-        cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
-        
-        # Copy backend dependencies (built by build() function)
-        log_info "Copying built node_modules..."
-        cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
-        
-        # Handle frontend - copy only necessary files
-        if [ -d "$SCRIPT_DIR/frontend" ]; then
-            mkdir -p "$APP_DIR/frontend"
-            
-            # Always copy only built frontend assets (source is never copied)
-            # Frontend is built in source before this point
-            log_info "Copying built frontend dist..."
-            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-                cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
-                # Copy package.json for reference
-                cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
-            else
-                log_error "Frontend dist directory not found - frontend should have been built"
-                exit 1
-            fi
+        # Always copy only built frontend assets (source is never copied)
+        # Frontend is built in source before this point
+        log_info "Copying built frontend dist..."
+        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+            cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
+            # Copy package.json for reference
+            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
+        else
+            log_error "Frontend dist directory not found - frontend should have been built"
+            exit 1
         fi
-        
-        # Set ownership to service user
-        chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "$APP_DIR"
-    else
-        log_info "Running in-place (APP_DIR equals SCRIPT_DIR), skipping file copy..."
-        # For in-place installation, set ownership to service user
-        chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "$SCRIPT_DIR"
     fi
+    
+    # Set ownership to service user
+    chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "$APP_DIR"
     
     # 4. Deploy configuration
     log_info "Deploying configuration..."
@@ -394,11 +398,11 @@ install() {
     
     # Generate service file with correct user and paths
     # Always read template from SCRIPT_DIR (source), write to system location
-    sed -e "s|User=pi|User=${SERVICE_USER}|g" \
-        -e "s|Group=pi|Group=${SERVICE_GROUP}|g" \
-        -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
-        -e "s|ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
-        -e "s|ExecStartPre=+/home/pi/luigi/system/management-api/scripts/pre-start-check.sh|ExecStartPre=+${APP_DIR}/scripts/pre-start-check.sh|g" \
+    sed -e "s|User=luigi-api|User=${SERVICE_USER}|g" \
+        -e "s|Group=luigi-api|Group=${SERVICE_GROUP}|g" \
+        -e "s|WorkingDirectory=/var/lib/luigi-api/management-api|WorkingDirectory=${APP_DIR}|g" \
+        -e "s|ExecStart=/usr/bin/node /var/lib/luigi-api/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
+        -e "s|ExecStartPre=+/var/lib/luigi-api/management-api/scripts/pre-start-check.sh|ExecStartPre=+${APP_DIR}/scripts/pre-start-check.sh|g" \
         "$SCRIPT_DIR/management-api.service" > "$SERVICE_FILE"
     
     chmod 644 "$SERVICE_FILE"
@@ -613,14 +617,10 @@ uninstall() {
         systemctl daemon-reload
     fi
     
-    # 3. Remove application files (only if deployed to separate location)
-    # DO NOT remove if APP_DIR equals SCRIPT_DIR (in-place installation from repo)
-    if [ -d "$APP_DIR" ] && [ "$APP_DIR" != "$SCRIPT_DIR" ]; then
+    # 3. Remove application files from deployment directory
+    if [ -d "$APP_DIR" ]; then
         log_info "Removing application directory: $APP_DIR"
         rm -rf "$APP_DIR"
-    elif [ "$APP_DIR" = "$SCRIPT_DIR" ]; then
-        log_info "Skipping source directory removal (in-place installation)"
-        log_info "Application is running from repository: $SCRIPT_DIR"
     fi
     
     # 4. Handle configuration removal
