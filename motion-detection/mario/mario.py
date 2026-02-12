@@ -587,6 +587,11 @@ class MotionDetectionApp:
         # Validate sound directory at startup
         self._validate_sound_directory()
         
+        # Initialize Home Assistant motion sensor state to OFF
+        # This ensures HA recognizes the sensor on startup with a known state
+        logging.info("Initializing motion sensor state to OFF for Home Assistant")
+        publish_sensor_value('mario_motion', 'OFF', is_binary=True)
+        
         # Load last trigger time
         last_time_str = safe_read_file(self.config.TIMER_FILE, "0")
         try:
