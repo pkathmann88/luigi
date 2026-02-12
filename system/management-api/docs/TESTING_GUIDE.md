@@ -39,8 +39,8 @@ HTTPS Enabled: true
 ✓ Configuration validation passed
 ==========================================
 ...
-✓ Certificate file found: /home/pi/certs/server.crt
-✓ Key file found: /home/pi/certs/server.key
+✓ Certificate file found: /etc/luigi/system/management-api/certs/server.crt
+✓ Key file found: /etc/luigi/system/management-api/certs/server.key
 ...
 ✓ Server started successfully!
 ```

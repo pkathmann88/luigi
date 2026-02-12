@@ -50,7 +50,7 @@ Feature Request → DESIGN_ANALYSIS.md (✅ Approved) → IMPLEMENTATION_PLAN.md
 - **File locations:**
   - Application: `/home/pi/luigi/system/management-api/`
   - Configuration: `/etc/luigi/system/management-api/`
-  - Certificates: `/home/pi/certs/`
+  - Certificates: `/etc/luigi/system/management-api/certs/`
   - Logs: `/var/log/luigi/management-api.log`, `/var/log/luigi/audit.log`
 
 ---

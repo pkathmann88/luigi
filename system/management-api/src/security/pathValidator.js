@@ -12,7 +12,7 @@ const ALLOWED_DIRECTORIES = [
   config.paths.modules,
   config.paths.config,
   config.paths.logs,
-  '/home/pi/certs',
+  '/etc/luigi/system/management-api/certs',
   '/tmp',
 ];
 
