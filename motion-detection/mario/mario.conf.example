@@ -12,6 +12,10 @@ SENSOR_PIN=23
 COOLDOWN_SECONDS=1800
 # Main loop sleep interval in seconds
 MAIN_LOOP_SLEEP=100
+# MQTT OFF message delay in seconds after last motion (0 = disabled)
+# After motion stops, wait this many seconds before sending OFF to Home Assistant
+# If new motion detected, timer resets. Recommended: 5 seconds
+MQTT_OFF_DELAY=5
 
 [Files]
 # Sound directory containing WAV/MP3 files
