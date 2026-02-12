@@ -27,18 +27,30 @@ class AuthService {
   }
 
   /**
-   * Load static credentials from credentials.txt
+   * Load static credentials from environment variables
    * 
-   * WARNING: In production, this should be loaded server-side and validated
-   * via an authentication endpoint. The current implementation hardcodes
-   * credentials in the client, making them visible to anyone with browser access.
+   * Credentials are injected at build time via Vite environment variables:
+   * - VITE_AUTH_USERNAME: Username (default: admin)
+   * - VITE_AUTH_PASSWORD: Password (default: changeme123)
    * 
-   * TODO: Implement proper server-side authentication endpoint
+   * These are set during setup.sh build/install from user prompts.
+   * Falls back to defaults if not set (development mode).
+   * 
+   * SECURITY NOTE: In production, these should be set during build.
+   * For development without setup, defaults are used but will fail backend auth.
    */
   private loadStaticCredentials() {
-    // SECURITY WARNING: These credentials are hardcoded and visible to anyone
-    // In production, validate credentials server-side via an /auth endpoint
-    this.staticCredentials.set('admin', 'changeme123');
+    // Read from environment variables (set at build time)
+    // Fall back to defaults for development
+    const username = import.meta.env.VITE_AUTH_USERNAME || 'admin';
+    const password = import.meta.env.VITE_AUTH_PASSWORD || 'changeme123';
+    
+    this.staticCredentials.set(username, password);
+    
+    // Log warning if using defaults (development mode)
+    if (!import.meta.env.VITE_AUTH_USERNAME || !import.meta.env.VITE_AUTH_PASSWORD) {
+      console.warn('[Auth] Using default credentials - ensure backend .env matches for development');
+    }
   }
 
   /**

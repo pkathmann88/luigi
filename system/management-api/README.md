@@ -36,23 +36,18 @@ sudo ./setup.sh install
 ```
 
 The installer will:
-1. Check prerequisites and install Node.js if needed
-2. Copy application files to `~/luigi/system/management-api`
-3. **Detect pre-built artifacts** (from `build` command) or build if needed
-4. Generate TLS certificates
-5. Configure the service
-6. Start the API server
+1. **Prompt for secure credentials** (username and password)
+2. Check prerequisites and install Node.js if needed
+3. Copy application files to `~/luigi/system/management-api`
+4. **Detect pre-built artifacts** (from `build` command) or build if needed
+5. **Apply credentials to both frontend and backend automatically**
+6. Generate TLS certificates
+7. Configure and start the service
+
+**Important**: During installation, you'll be prompted to set credentials. These will be automatically applied to both the frontend (built into the application) and backend (stored in `/etc/luigi/system/management-api/.env`). **No manual synchronization needed!**
 
 **Pre-built Deployment:**
 If you've run `./setup.sh build` first, the installer will automatically detect and use the pre-built frontend/backend, making installation much faster (no rebuild needed).
-
-**IMPORTANT:** After installation, edit the configuration file and set a strong password:
-
-```bash
-sudo nano /etc/luigi/system/management-api/.env
-```
-
-Change `AUTH_PASSWORD` to a secure password (minimum 12 characters).
 
 ### Build Then Deploy Workflow (Recommended)
 
@@ -61,13 +56,14 @@ For the fastest installation, especially on slow hardware:
 ```bash
 # Step 1: Build in repository (development location)
 cd system/management-api
-sudo ./setup.sh build  # Builds in place: ~/repos/luigi/system/management-api
+sudo ./setup.sh build  # Prompts for credentials, builds in place
 
 # Step 2: Deploy pre-built application
-sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api (uses pre-built)
+sudo ./setup.sh install  # Copies to: ~/luigi/system/management-api (uses same credentials)
 ```
 
 **Benefits:**
+- Credentials prompted once during build, automatically applied to both frontend and backend
 - Build once in your development location
 - Install copies pre-built artifacts (no rebuild, very fast)
 - Can build on faster machine, deploy on Raspberry Pi
@@ -85,11 +81,21 @@ sudo ./setup.sh build
 ./setup.sh build --skip-packages
 ```
 
+**You will be prompted for credentials during build:**
+```
+Configure Authentication Credentials
+Enter username [admin]: myuser  
+Enter password: ********
+Confirm password: ********
+✓ Credentials configured: myuser / ****
+```
+
 The build command:
+- **Prompts for credentials** and applies them to both frontend and backend
 - **Builds in place** (in the repository directory, not in `~/luigi`)
 - Installs Node.js dependencies (backend and frontend)
-- Builds the React/TypeScript frontend
-- Skips: configuration deployment, certificates, service installation
+- Builds the React/TypeScript frontend with embedded credentials
+- Skips: service installation, certificate generation
 
 **Key Difference from Install:**
 - `build` - Builds in your repository location (e.g., `~/repos/luigi/system/management-api`)
@@ -165,11 +171,26 @@ After installation, access the web interface at:
 https://<raspberry-pi-ip>:8443/
 ```
 
-Default credentials:
-- Username: `admin`
-- Password: `changeme123`
+**Login Credentials:**
 
-**Important:** Change the default password in `/etc/luigi/system/management-api/.env`
+Use the credentials you set during installation. If you need to change them:
+
+1. **Rebuild with new credentials:**
+   ```bash
+   cd system/management-api
+   sudo ./setup.sh build  # Enter new credentials when prompted
+   ```
+   
+   This automatically updates both frontend (rebuilt with new creds) and backend (.env file).
+
+2. **Restart service:**
+   ```bash
+   sudo systemctl restart management-api
+   ```
+
+**Alternative (Manual Edit - Advanced Users):**
+
+If you only want to change backend credentials without rebuilding the frontend, you can manually edit `/etc/luigi/system/management-api/.env`. Note that this will cause authentication to fail if the frontend has different credentials embedded.
 
 ### Building the Frontend
 
