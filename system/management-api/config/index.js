@@ -37,8 +37,8 @@ const config = {
 
   // TLS
   tls: {
-    certPath: process.env.TLS_CERT_PATH || '/home/pi/certs/server.crt',
-    keyPath: process.env.TLS_KEY_PATH || '/home/pi/certs/server.key',
+    certPath: process.env.TLS_CERT_PATH || '/etc/luigi/system/management-api/certs/server.crt',
+    keyPath: process.env.TLS_KEY_PATH || '/etc/luigi/system/management-api/certs/server.key',
   },
 
   // Rate Limiting

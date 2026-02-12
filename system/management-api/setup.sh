@@ -54,7 +54,7 @@ readonly APP_DIR="${SCRIPT_DIR}"
 readonly CONFIG_DIR="/etc/luigi/system/management-api"
 readonly SERVICE_NAME="management-api.service"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
-readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
+readonly CERTS_DIR="${CONFIG_DIR}/certs"
 readonly LOG_DIR="/var/log"
 readonly AUDIT_LOG_DIR="/var/log/luigi"
 
@@ -335,8 +335,22 @@ install() {
     if [ ! -f "$CERTS_DIR/server.crt" ] || [ ! -f "$CERTS_DIR/server.key" ]; then
         log_info "Generating self-signed TLS certificates..."
         bash "$SCRIPT_DIR/scripts/generate-certs.sh"
+        
+        # Set ownership so service user can read certificates
+        # Private key needs to be readable by the service user
+        chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key"
+        chmod 640 "$CERTS_DIR/server.key"
+        
+        log_success "Certificates generated and permissions set for user '${INSTALL_USER}'"
     else
         log_info "TLS certificates already exist"
+        
+        # Ensure existing certificates have correct permissions
+        if [ -f "$CERTS_DIR/server.key" ]; then
+            chown root:"${INSTALL_USER}" "$CERTS_DIR/server.key"
+            chmod 640 "$CERTS_DIR/server.key"
+            log_info "Updated certificate permissions for user '${INSTALL_USER}'"
+        fi
     fi
     
     # 7. Deploy systemd service

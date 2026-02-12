@@ -36,6 +36,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/var/log/luigi
+ReadOnlyPaths=/etc/luigi/system/management-api/certs
 
 # Resource limits (Raspberry Pi Zero W constraints)
 LimitNOFILE=1024
