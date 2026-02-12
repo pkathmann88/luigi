@@ -99,6 +99,7 @@ Each registry entry contains metadata about the installed module:
   "installed_by": "setup.sh",
   "install_method": "manual",
   "source_hash": "a3f5c9d2e1b4...",
+  "capabilities": ["service", "hardware", "sensor", "config"],
   "dependencies": ["iot/ha-mqtt"],
   "apt_packages": ["python3-rpi.gpio", "alsa-utils"],
   "hardware": {
@@ -130,6 +131,7 @@ Each registry entry contains metadata about the installed module:
 #### Optional Fields (From module.json)
 
 - **`description`** (string): Brief description of module purpose
+- **`capabilities`** (array): Module capability types (see Capability System below)
 - **`dependencies`** (array): List of module paths this module depends on
 - **`apt_packages`** (array): List of apt packages required
 - **`author`** (string): Module author/maintainer
@@ -137,6 +139,129 @@ Each registry entry contains metadata about the installed module:
   - **`gpio_pins`** (array): GPIO pins used
   - **`sensors`** (array): Sensors/hardware components required
 - **`provides`** (array): Commands, utilities, or services provided
+
+## Module Capability System
+
+The **capabilities** field declares what features and functionality a module provides. This enables dynamic management interfaces and automated feature discovery.
+
+### Standard Capability Types
+
+1. **`service`** - Module provides a systemd service
+   - Indicates the module has a background daemon that can be managed
+   - Management interfaces can show start/stop/restart controls
+   - Example: mario (motion detection service), management-api (API server)
+
+2. **`cli-tools`** - Module provides command-line utilities
+   - Indicates the module installs executable scripts
+   - Management interfaces can list and document available commands
+   - Example: ha-mqtt (luigi-publish, luigi-discover, luigi-mqtt-status)
+
+3. **`api`** - Module provides HTTP/REST API endpoints
+   - Indicates the module exposes web services
+   - Management interfaces can show API documentation
+   - Example: management-api (REST API for system management)
+
+4. **`config`** - Module has user-configurable settings
+   - Indicates the module has configuration files
+   - Management interfaces can show configuration editors
+   - Example: most modules with `/etc/luigi/{module-path}/` configs
+
+5. **`hardware`** - Module interacts with GPIO/hardware
+   - Indicates the module requires physical hardware connections
+   - Management interfaces can show wiring diagrams
+   - Example: mario (PIR sensor), future relay/LED modules
+
+6. **`sensor`** - Module provides sensor data
+   - Indicates the module reads and publishes measurements
+   - Management interfaces can show current values/graphs
+   - Example: motion detection, temperature sensors, door sensors
+
+7. **`integration`** - Module integrates with external systems
+   - Indicates the module connects to third-party services
+   - Management interfaces can show connection status
+   - Example: ha-mqtt (Home Assistant), future cloud integrations
+
+### Using Capabilities in Management Interfaces
+
+**Frontend Example:**
+```javascript
+// React component showing dynamic controls based on capabilities
+function ModuleCard({ module }) {
+  const hasService = module.capabilities?.includes('service');
+  const hasConfig = module.capabilities?.includes('config');
+  const hasAPI = module.capabilities?.includes('api');
+  
+  return (
+    <div className="module-card">
+      <h3>{module.name}</h3>
+      <p>{module.description}</p>
+      
+      {/* Show service controls only if module has service capability */}
+      {hasService && (
+        <div className="service-controls">
+          <button onClick={() => startModule(module.name)}>Start</button>
+          <button onClick={() => stopModule(module.name)}>Stop</button>
+          <button onClick={() => restartModule(module.name)}>Restart</button>
+        </div>
+      )}
+      
+      {/* Show config button only if module is configurable */}
+      {hasConfig && (
+        <button onClick={() => editConfig(module.name)}>Configure</button>
+      )}
+      
+      {/* Show API docs link only if module provides API */}
+      {hasAPI && (
+        <a href={`/api/docs/${module.name}`}>API Documentation</a>
+      )}
+    </div>
+  );
+}
+```
+
+**Query Modules by Capability:**
+```bash
+# Find all modules with service capability (can be started/stopped)
+jq -r 'select(.capabilities[]? == "service") | .module_path' \
+    /etc/luigi/modules/*.json
+
+# Find all sensor modules for dashboard
+jq -r 'select(.capabilities[]? == "sensor") | 
+    {name, description, category}' /etc/luigi/modules/*.json
+
+# Find all modules with API capability
+jq -r 'select(.capabilities[]? == "api") | .name' \
+    /etc/luigi/modules/*.json
+```
+
+**Management API Integration:**
+```javascript
+// API endpoint to get manageable services
+app.get('/api/modules/services', async (req, res) => {
+  const modules = await loadModules();
+  const services = modules.filter(m => 
+    m.capabilities?.includes('service')
+  );
+  res.json(services);
+});
+
+// API endpoint to get configurable modules
+app.get('/api/modules/configurable', async (req, res) => {
+  const modules = await loadModules();
+  const configurable = modules.filter(m => 
+    m.capabilities?.includes('config')
+  );
+  res.json(configurable);
+});
+```
+
+### Capability Benefits
+
+- **Dynamic UI:** Frontend shows/hides features based on module capabilities
+- **Feature Discovery:** Tools can find modules by capability type
+- **API Filtering:** Management APIs can filter modules by capability
+- **Documentation:** Clear declaration of what each module provides
+- **Extensibility:** New capability types can be added without breaking existing code
 
 #### Installation Tracking Fields
 

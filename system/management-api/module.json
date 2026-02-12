@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "Secure Node.js API server for Luigi system management and Raspberry Pi control",
   "category": "system",
+  "capabilities": [
+    "service",
+    "api",
+    "config"
+  ],
   "dependencies": [],
   "apt_packages": [
     "nodejs",

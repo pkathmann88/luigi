@@ -467,6 +467,8 @@ update_module_registry_full() {
     description=$(echo "$metadata" | jq -r '.description // ""' | jq -R .)
     local author
     author=$(echo "$metadata" | jq -r '.author // ""' | jq -R .)
+    local capabilities
+    capabilities=$(echo "$metadata" | jq -c '.capabilities // []')
     local dependencies
     dependencies=$(echo "$metadata" | jq -c '.dependencies // []')
     local apt_packages
@@ -489,6 +491,7 @@ update_module_registry_full() {
   "installed_by": "setup.sh",
   "install_method": "manual",
   "status": "$status",
+  "capabilities": $capabilities,
   "dependencies": $dependencies,
   "apt_packages": $apt_packages,
   "author": $author,

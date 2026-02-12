@@ -64,6 +64,7 @@ interface ModuleRegistryEntry {
   // Optional Module Metadata (from module.json)
   description?: string;         // Brief description
   author?: string;              // Module author/maintainer
+  capabilities?: string[];      // Module capabilities (service, cli-tools, api, config, hardware, sensor, integration)
   dependencies?: string[];      // List of module paths this depends on
   apt_packages?: string[];      // Required apt packages
   provides?: string[];          // Commands/utilities/services provided
@@ -199,6 +200,22 @@ interface ModuleRegistryEntry {
 - **Purpose:** Credit and contact information
 - **Source:** Copied from `module.json` if present
 
+#### `capabilities` (Optional)
+- **Type:** array of strings
+- **Description:** List of capability types this module provides
+- **Valid Values:**
+  - `"service"` - Provides systemd service (can start/stop/restart)
+  - `"cli-tools"` - Provides command-line utilities
+  - `"api"` - Provides HTTP/REST API endpoints
+  - `"config"` - Has user-configurable settings
+  - `"hardware"` - Interacts with GPIO/hardware
+  - `"sensor"` - Provides sensor data/measurements
+  - `"integration"` - Integrates with external systems
+- **Example:** `["service", "hardware", "sensor", "config"]`
+- **Purpose:** Enable dynamic management interfaces and feature discovery
+- **Usage:** Frontend checks capabilities to show/hide management options
+- **Source:** Copied from `module.json` if present
+
 #### `dependencies` (Optional)
 - **Type:** array of strings
 - **Description:** List of module paths this module depends on
@@ -291,6 +308,7 @@ interface ModuleRegistryEntry {
   "install_method": "manual",
   "source_hash": "a3f5c9d2e1b4f8c7a6d5e4f3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3",
   "status": "active",
+  "capabilities": ["service", "hardware", "sensor", "config"],
   "dependencies": ["iot/ha-mqtt"],
   "apt_packages": ["python3-rpi.gpio", "alsa-utils"],
   "author": "Luigi Project",
@@ -321,6 +339,7 @@ interface ModuleRegistryEntry {
   "install_method": "manual",
   "source_hash": "b2f4d8c1a9e7f5b3c6d4e2f1a8b9c7d5e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8",
   "status": "installed",
+  "capabilities": ["cli-tools", "integration", "config"],
   "dependencies": [],
   "apt_packages": ["mosquitto-clients", "jq"],
   "author": "Luigi Project",
@@ -333,6 +352,31 @@ interface ModuleRegistryEntry {
   "service_enabled": null,
   "config_path": "/etc/luigi/iot/ha-mqtt",
   "log_path": "/var/log/luigi/ha-mqtt.log"
+}
+```
+
+### Example 3: API Service Module (management-api)
+
+```json
+{
+  "module_path": "system/management-api",
+  "name": "management-api",
+  "version": "1.0.0",
+  "category": "system",
+  "description": "REST API and web interface for Luigi system management",
+  "installed_at": "2026-02-12T11:00:00.000Z",
+  "updated_at": "2026-02-12T11:00:00.000Z",
+  "installed_by": "setup.sh",
+  "install_method": "manual",
+  "status": "active",
+  "capabilities": ["service", "api", "config"],
+  "dependencies": [],
+  "apt_packages": ["nodejs", "npm"],
+  "author": "Luigi Project",
+  "service_name": "management-api.service",
+  "service_enabled": true,
+  "config_path": "/etc/luigi/system/management-api",
+  "log_path": "/var/log/luigi/management-api.log"
 }
 ```
 
@@ -463,11 +507,35 @@ for file in /etc/luigi/modules/*.json; do
 done
 ```
 
+### Find Modules by Capability
+
+```bash
+# Find all modules with service capability (can be managed)
+jq -r 'select(.capabilities[]? == "service") | "\(.module_path) - \(.service_name)"' \
+    /etc/luigi/modules/*.json
+
+# Find all sensor modules
+jq -r 'select(.capabilities[]? == "sensor") | .module_path' \
+    /etc/luigi/modules/*.json
+
+# Find all modules with API capability
+jq -r 'select(.capabilities[]? == "api") | {name, description}' \
+    /etc/luigi/modules/*.json
+
+# Find all configurable modules
+jq -r 'select(.capabilities[]? == "config") | {name, config: .config_path}' \
+    /etc/luigi/modules/*.json
+
+# Find hardware modules with their GPIO pins
+jq -r 'select(.capabilities[]? == "hardware") | 
+    {name, pins: .hardware.gpio_pins}' /etc/luigi/modules/*.json
+```
+
 ### Find Modules by Category
 
 ```bash
-category="motion-detection"
-jq -r "select(.category == \"$category\" and .status != \"removed\") | .module_path" \
+# List all motion-detection modules
+jq -r 'select(.category == "motion-detection" and .status != "removed") | .module_path' \
     /etc/luigi/modules/*.json
 ```
 
@@ -492,6 +560,28 @@ jq -r "select(.hardware.gpio_pins[]? == $pin) | \"\(.module_path) uses GPIO $pin
 dependency="iot/ha-mqtt"
 jq -r "select(.dependencies[]? == \"$dependency\") | .module_path" \
     /etc/luigi/modules/*.json
+```
+
+### Complex Capability Queries
+
+```bash
+# Find all active services that are also sensors
+jq -r 'select(.status == "active" and 
+    (.capabilities | contains(["service", "sensor"]))) | .module_path' \
+    /etc/luigi/modules/*.json
+
+# Find modules with hardware AND config capabilities
+jq -r 'select((.capabilities | contains(["hardware"])) and
+    (.capabilities | contains(["config"]))) | 
+    {name, pins: .hardware.gpio_pins, config: .config_path}' \
+    /etc/luigi/modules/*.json
+
+# Count modules by capability type
+for cap in service cli-tools api config hardware sensor integration; do
+    count=$(jq -r "select(.capabilities[]? == \"$cap\")" \
+        /etc/luigi/modules/*.json | grep -c "module_path" || echo 0)
+    echo "$cap: $count"
+done
 ```
 
 ### Check for Updates
