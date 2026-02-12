@@ -28,6 +28,8 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security headers with Helmet
+// CSP disabled - frontend served separately via nginx, not by this API server
+// This is a backend API only, CSP is not applicable
 app.use(helmet({
   contentSecurityPolicy: false, // Disabled - frontend is separate
   hsts: {
