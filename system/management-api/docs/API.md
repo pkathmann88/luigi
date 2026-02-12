@@ -108,7 +108,7 @@ curl -u admin:changeme123 http://localhost:3000/api/modules
 
 **GET** `/api/modules`
 
-Returns a list of all Luigi modules found in the system.
+Returns a minimal list of all Luigi modules with only essential information for display in list view.
 
 **Response:**
 ```json
@@ -118,29 +118,21 @@ Returns a list of all Luigi modules found in the system.
   "modules": [
     {
       "name": "mario",
-      "path": "motion-detection/mario",
-      "category": "motion-detection",
-      "fullPath": "/home/pi/luigi/motion-detection/mario",
-      "metadata": {
-        "name": "mario",
-        "version": "1.0.0",
-        "description": "Mario-themed motion detection module",
-        "capabilities": ["service", "hardware", "sensor", "config"]
-      },
       "status": "active",
-      "pid": 1234,
-      "registry": {
-        "module_path": "motion-detection/mario",
-        "name": "mario",
-        "version": "1.0.0",
-        "category": "motion-detection",
-        "installed_at": "2024-01-15T10:30:00.000Z",
-        "updated_at": "2024-01-15T10:30:00.000Z",
-        "status": "active",
-        "capabilities": ["service", "hardware", "sensor", "config"],
-        "dependencies": ["iot/ha-mqtt"],
-        "service_name": "mario.service"
-      }
+      "version": "1.0.0",
+      "capabilities": ["service", "hardware", "sensor", "config"]
+    },
+    {
+      "name": "system-info",
+      "status": "active",
+      "version": "1.0.0",
+      "capabilities": ["service", "sensor", "integration"]
+    },
+    {
+      "name": "ha-mqtt",
+      "status": "installed",
+      "version": "1.0.0",
+      "capabilities": ["integration"]
     }
   ]
 }
@@ -148,21 +140,19 @@ Returns a list of all Luigi modules found in the system.
 
 **Fields:**
 - `name` (string) - Module name (directory name)
-- `path` (string) - Relative path from modules root
-- `category` (string) - Module category
-- `fullPath` (string) - Absolute filesystem path
-- `metadata` (object|null) - Contents of module.json if exists
-- `status` (string) - Service status: `active`, `inactive`, `failed`, `unknown`
-- `pid` (number|null) - Process ID if service is running
-- `registry` (object|null) - Registry entry if module is installed
+- `status` (string) - Service status: `active`, `inactive`, `failed`, `installed`, `unknown`
+- `version` (string) - Module version from registry
+- `capabilities` (array) - Module capabilities (e.g., "service", "hardware", "sensor")
+
+**Note:** This endpoint returns minimal data for efficient list rendering. Use `GET /api/modules/:name` for comprehensive module details.
 
 ---
 
-### Get Module Status
+### Get Module Details
 
 **GET** `/api/modules/:name`
 
-Get detailed status of a specific module.
+Get comprehensive details of a specific module including all registry data, runtime information, and service status.
 
 **Parameters:**
 - `name` (path) - Module name (e.g., `mario`)
@@ -171,22 +161,62 @@ Get detailed status of a specific module.
 ```json
 {
   "success": true,
-  "module": "mario",
-  "category": "motion-detection",
+  "name": "mario",
   "path": "motion-detection/mario",
-  "service": {
-    "name": "mario.service",
-    "active": true,
-    "enabled": true,
-    "status": "● mario.service - Mario Motion Detection\n   Loaded: loaded (/etc/systemd/system/mario.service; enabled)\n   Active: active (running) since...\n   Main PID: 1234"
-  },
+  "category": "motion-detection",
+  "fullPath": "/home/pi/luigi/motion-detection/mario",
   "metadata": {
     "name": "mario",
     "version": "1.0.0",
-    "description": "Mario-themed motion detection module"
+    "description": "Mario-themed motion detection module with sound effects",
+    "capabilities": ["service", "hardware", "sensor", "config"]
+  },
+  "status": "active",
+  "enabled": true,
+  "pid": 1234,
+  "uptime": 7200,
+  "memory": 12800,
+  "registry": {
+    "module_path": "motion-detection/mario",
+    "name": "mario",
+    "version": "1.0.0",
+    "category": "motion-detection",
+    "description": "Mario-themed motion detection module with sound effects",
+    "installed_at": "2024-01-15T10:30:00.000Z",
+    "updated_at": "2024-01-15T10:30:00.000Z",
+    "installed_by": "pi",
+    "install_method": "setup.sh",
+    "status": "active",
+    "capabilities": ["service", "hardware", "sensor", "config"],
+    "dependencies": ["iot/ha-mqtt"],
+    "apt_packages": ["python3-rpi.gpio", "alsa-utils"],
+    "author": "Luigi Project",
+    "hardware": {
+      "gpio_pins": [23],
+      "sensors": ["PIR Motion Sensor (HC-SR501)"]
+    },
+    "provides": ["motion detection", "MQTT integration"],
+    "service_name": "mario.service",
+    "config_path": "/etc/luigi/motion-detection/mario/mario.conf",
+    "log_path": "/var/log/luigi/mario.log"
   }
 }
 ```
+
+**Fields:**
+- `name` (string) - Module name
+- `path` (string) - Relative path from Luigi root
+- `category` (string) - Module category
+- `fullPath` (string) - Absolute filesystem path
+- `metadata` (object) - Module metadata (name, version, description, capabilities)
+- `status` (string) - Service status: `active`, `inactive`, `failed`, `installed`, `unknown`
+- `enabled` (boolean) - Whether module is enabled (always true for registry modules)
+- `pid` (number|null) - Process ID if service is running
+- `uptime` (number|null) - Service uptime in seconds (if running)
+- `memory` (number|null) - Memory usage in KB (if running)
+- `registry` (object) - Complete registry entry with all module information
+
+**Note:** This endpoint returns comprehensive module information for detail view. Runtime fields (pid, uptime, memory) are only populated for active services.
 
 ---
 

@@ -28,17 +28,17 @@ async function listModules(req, res, next) {
 
 /**
  * GET /api/modules/:name
- * Get status of a specific module
+ * Get comprehensive details of a specific module
  */
 async function getModuleStatus(req, res, next) {
   try {
     const { name } = req.params;
     
-    const status = await moduleService.getModuleStatus(name);
+    const module = await moduleService.getModuleStatus(name);
     
     res.json({
       success: true,
-      ...status,
+      ...module,
     });
   } catch (error) {
     logger.error(`Error in getModuleStatus: ${error.message}`);
