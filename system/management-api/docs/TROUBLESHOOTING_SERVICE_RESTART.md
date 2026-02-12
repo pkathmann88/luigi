@@ -38,8 +38,8 @@ sudo journalctl -u management-api -f
 
 1. Check if certificates exist:
 ```bash
-ls -l ~/certs/server.crt
-ls -l ~/certs/server.key
+ls -l /etc/luigi/system/management-api/certs/server.crt
+ls -l /etc/luigi/system/management-api/certs/server.key
 ```
 
 2. If certificates don't exist, generate them:
@@ -70,13 +70,12 @@ sudo systemctl restart management-api
 
 Check and fix permissions:
 ```bash
-# Make certificates readable by the service user
-chmod 644 ~/certs/server.crt
-chmod 600 ~/certs/server.key  # Keep private key secure
+# Make certificate readable
+sudo chmod 644 /etc/luigi/system/management-api/certs/server.crt
 
-# Verify ownership (replace 'pi' with your username if different)
-chown pi:pi ~/certs/server.crt
-chown pi:pi ~/certs/server.key
+# Make private key readable by service user group (pi)
+sudo chmod 640 /etc/luigi/system/management-api/certs/server.key
+sudo chown root:pi /etc/luigi/system/management-api/certs/server.key
 
 sudo systemctl restart management-api
 ```

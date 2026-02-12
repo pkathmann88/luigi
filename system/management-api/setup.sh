@@ -28,33 +28,71 @@ log_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 log_warn() { echo -e "\033[1;33m[WARN]\033[0m $1"; }
 log_debug() { echo -e "\033[0;34m[DEBUG]\033[0m $1"; }
 
-# Detect the user who invoked sudo (fallback to current user if not using sudo)
-INSTALL_USER="${SUDO_USER:-$(whoami)}"
-if [ "$INSTALL_USER" = "root" ]; then
-    # If running directly as root (not via sudo), try to use 'pi' if it exists
-    # This handles Raspberry Pi where 'pi' is the default user
-    if id -u pi >/dev/null 2>&1; then
-        INSTALL_USER="pi"
-        log_warn "Running as root without sudo. Defaulting to user 'pi'"
+# Dedicated service user for management-api
+readonly SERVICE_USER="luigi-api"
+readonly SERVICE_GROUP="luigi-api"
+readonly SERVICE_USER_HOME="/var/lib/luigi-api"
+
+# Function to create service user if it doesn't exist
+create_service_user() {
+    if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
+        log_info "Creating dedicated service user: $SERVICE_USER"
+        
+        # Create system user with home directory for application deployment
+        # Home directory will be /var/lib/luigi-api (standard for system services)
+        if useradd --system --home-dir "$SERVICE_USER_HOME" --create-home --shell /usr/sbin/nologin "$SERVICE_USER" 2>/dev/null; then
+            log_success "Created system user: $SERVICE_USER with home: $SERVICE_USER_HOME"
+        else
+            log_error "Failed to create user: $SERVICE_USER"
+            exit 1
+        fi
     else
-        log_error "Cannot determine non-root user for installation."
+        log_info "Service user already exists: $SERVICE_USER"
+        
+        # Ensure home directory exists even if user was created differently
+        if [ ! -d "$SERVICE_USER_HOME" ]; then
+            log_info "Creating home directory for existing user: $SERVICE_USER_HOME"
+            mkdir -p "$SERVICE_USER_HOME"
+            chown "$SERVICE_USER:$SERVICE_GROUP" "$SERVICE_USER_HOME"
+            chmod 755 "$SERVICE_USER_HOME"
+        fi
+    fi
+}
+
+# Detect the user who invoked sudo (for build operations)
+# Note: Service will run as SERVICE_USER, this is for build/npm operations
+BUILD_USER="${SUDO_USER:-$(whoami)}"
+if [ "$BUILD_USER" = "root" ]; then
+    # If running directly as root (not via sudo), try to use 'pi' if it exists
+    # Otherwise use the service user for building
+    if id -u pi >/dev/null 2>&1; then
+        BUILD_USER="pi"
+        log_warn "Running as root without sudo. Using 'pi' for build operations"
+    elif id -u "$SERVICE_USER" >/dev/null 2>&1; then
+        BUILD_USER="$SERVICE_USER"
+        log_info "Using service user '$SERVICE_USER' for build operations"
+    else
+        log_error "Cannot determine user for build operations."
         log_error "Please run this script with sudo as a regular user: sudo ./setup.sh install"
         exit 1
     fi
 fi
-readonly INSTALL_USER
+readonly BUILD_USER
 
-# Get user's home directory
-INSTALL_USER_HOME=$(getent passwd "$INSTALL_USER" | cut -d: -f6)
-readonly INSTALL_USER_HOME
+# Get build user's home directory (may not exist for system users)
+if BUILD_USER_HOME=$(getent passwd "$BUILD_USER" | cut -d: -f6 2>/dev/null); then
+    readonly BUILD_USER_HOME
+else
+    readonly BUILD_USER_HOME="/tmp"
+fi
 
-# Use the actual script directory as the application directory
-# This allows the installation to work regardless of where the repo is cloned
-readonly APP_DIR="${SCRIPT_DIR}"
+# Deploy to dedicated service user home directory
+# This separates source code (SCRIPT_DIR) from deployment (APP_DIR)
+readonly APP_DIR="${SERVICE_USER_HOME}/management-api"
 readonly CONFIG_DIR="/etc/luigi/system/management-api"
 readonly SERVICE_NAME="management-api.service"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}"
-readonly CERTS_DIR="${INSTALL_USER_HOME}/certs"
+readonly CERTS_DIR="${CONFIG_DIR}/certs"
 readonly LOG_DIR="/var/log"
 readonly AUDIT_LOG_DIR="/var/log/luigi"
 
@@ -181,7 +219,7 @@ generate_backend_env() {
     fi
     
     chmod 600 "$env_file"
-    chown "${INSTALL_USER}:${INSTALL_USER}" "$env_file"
+    chown "${SERVICE_USER}:${SERVICE_GROUP}" "$env_file"
     
     if [ "$username" = "admin" ] && [ "$password" = "changeme123" ]; then
         log_warn "Using default credentials (admin/changeme123)"
@@ -209,7 +247,7 @@ build_frontend_in_source() {
     if [ -d "$SCRIPT_DIR/frontend/dist" ] && [ -n "$(ls -A "$SCRIPT_DIR/frontend/dist" 2>/dev/null)" ]; then
         if [ "$prompt_user" = "true" ]; then
             log_info "Frontend build already exists in $SCRIPT_DIR/frontend/dist"
-            read -r -p "Do you want to rebuild the frontend? (y/N): " rebuild_choice
+            read -p "Do you want to rebuild the frontend? (y/N): " -n 1 -r rebuild_choice
             echo
             if [[ ! $rebuild_choice =~ ^[Yy]$ ]]; then
                 log_info "Skipping frontend rebuild (using existing build)"
@@ -232,8 +270,8 @@ build_frontend_in_source() {
             local build_user="$USER"
             local use_sudo=""
             if [ -n "${SUDO_USER:-}" ]; then
-                build_user="$INSTALL_USER"
-                use_sudo="sudo -u $INSTALL_USER"
+                build_user="$BUILD_USER"
+                use_sudo="sudo -u $BUILD_USER"
             fi
             
             # Install frontend dependencies
@@ -264,6 +302,9 @@ install() {
     check_root
     log_info "Installing ${MODULE_NAME}..."
     
+    # 0. Create dedicated service user
+    create_service_user
+    
     # 1. Build everything (backend + frontend) in source directory
     log_info "Building application first..."
     build
@@ -274,51 +315,45 @@ install() {
     mkdir -p "$AUDIT_LOG_DIR"
     mkdir -p "$CERTS_DIR"
     
-    # 3. Copy application files (only if deploying to a different location)
-    if [ "$APP_DIR" != "$SCRIPT_DIR" ]; then
-        log_info "Copying production files to deployment location..."
-        mkdir -p "$APP_DIR"
+    # 3. Deploy application files to dedicated location
+    log_info "Deploying production files to: $APP_DIR"
+    mkdir -p "$APP_DIR"
+    
+    # Core application files
+    cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
+    cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
+    cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
+    cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
+    cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
+    
+    # Copy directories
+    cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
+    cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
+    
+    # Copy backend dependencies (built by build() function)
+    log_info "Copying built node_modules..."
+    cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
+    
+    # Handle frontend - copy only necessary files
+    if [ -d "$SCRIPT_DIR/frontend" ]; then
+        mkdir -p "$APP_DIR/frontend"
         
-        # Core application files
-        cp "$SCRIPT_DIR/server.js" "$APP_DIR/"
-        cp "$SCRIPT_DIR/package.json" "$APP_DIR/"
-        cp "$SCRIPT_DIR/.env.example" "$APP_DIR/"
-        cp "$SCRIPT_DIR/management-api.service" "$APP_DIR/"
-        cp "$SCRIPT_DIR/module.json" "$APP_DIR/"
-        
-        # Copy directories
-        cp -r "$SCRIPT_DIR/src" "$APP_DIR/"
-        cp -r "$SCRIPT_DIR/config" "$APP_DIR/"
-        cp -r "$SCRIPT_DIR/scripts" "$APP_DIR/"
-        
-        # Copy backend dependencies (built by build() function)
-        log_info "Copying built node_modules..."
-        cp -r "$SCRIPT_DIR/node_modules" "$APP_DIR/"
-        
-        # Handle frontend - copy only necessary files
-        if [ -d "$SCRIPT_DIR/frontend" ]; then
-            mkdir -p "$APP_DIR/frontend"
-            
-            # Always copy only built frontend assets (source is never copied)
-            # Frontend is built in source before this point
-            log_info "Copying built frontend dist..."
-            if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-                cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
-                # Copy package.json for reference
-                cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
-            else
-                log_error "Frontend dist directory not found - frontend should have been built"
-                exit 1
-            fi
+        # Always copy only built frontend assets (source is never copied)
+        # Frontend is built in source before this point
+        log_info "Copying built frontend dist..."
+        if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+            cp -r "$SCRIPT_DIR/frontend/dist" "$APP_DIR/frontend/"
+            # Copy package.json for reference
+            cp "$SCRIPT_DIR/frontend/package.json" "$APP_DIR/frontend/" 2>/dev/null || true
+        else
+            log_error "Frontend dist directory not found - frontend should have been built"
+            exit 1
         fi
-        
-        # Set ownership
-        chown -R "${INSTALL_USER}:${INSTALL_USER}" "$APP_DIR"
-    else
-        log_info "Running in-place (APP_DIR equals SCRIPT_DIR), skipping file copy..."
-        # Ensure the script directory has correct ownership
-        chown -R "${INSTALL_USER}:${INSTALL_USER}" "$SCRIPT_DIR"
     fi
+    
+    # Set ownership to service user
+    chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "$APP_DIR"
     
     # 4. Deploy configuration
     log_info "Deploying configuration..."
@@ -335,8 +370,27 @@ install() {
     if [ ! -f "$CERTS_DIR/server.crt" ] || [ ! -f "$CERTS_DIR/server.key" ]; then
         log_info "Generating self-signed TLS certificates..."
         bash "$SCRIPT_DIR/scripts/generate-certs.sh"
+        
+        # Ensure ownership is correct for service user
+        # Generate-certs.sh sets this, but we enforce it here in case of any issues
+        chown root:"${SERVICE_GROUP}" "$CERTS_DIR/server.key" "$CERTS_DIR/server.crt"
+        chmod 640 "$CERTS_DIR/server.key"
+        chmod 644 "$CERTS_DIR/server.crt"
+        
+        log_success "Certificates generated and permissions set for service user '${SERVICE_USER}'"
     else
         log_info "TLS certificates already exist"
+        
+        # Ensure existing certificates have correct permissions and ownership
+        if [ -f "$CERTS_DIR/server.key" ]; then
+            chown root:"${SERVICE_GROUP}" "$CERTS_DIR/server.key"
+            chmod 640 "$CERTS_DIR/server.key"
+        fi
+        if [ -f "$CERTS_DIR/server.crt" ]; then
+            chown root:"${SERVICE_GROUP}" "$CERTS_DIR/server.crt"
+            chmod 644 "$CERTS_DIR/server.crt"
+        fi
+        log_info "Updated certificate permissions for service user '${SERVICE_USER}'"
     fi
     
     # 7. Deploy systemd service
@@ -344,11 +398,11 @@ install() {
     
     # Generate service file with correct user and paths
     # Always read template from SCRIPT_DIR (source), write to system location
-    sed -e "s|User=pi|User=${INSTALL_USER}|g" \
-        -e "s|Group=pi|Group=${INSTALL_USER}|g" \
-        -e "s|WorkingDirectory=/home/pi/luigi/system/management-api|WorkingDirectory=${APP_DIR}|g" \
-        -e "s|ExecStart=/usr/bin/node /home/pi/luigi/system/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
-        -e "s|ExecStartPre=/home/pi/luigi/system/management-api/scripts/pre-start-check.sh|ExecStartPre=${APP_DIR}/scripts/pre-start-check.sh|g" \
+    sed -e "s|User=luigi-api|User=${SERVICE_USER}|g" \
+        -e "s|Group=luigi-api|Group=${SERVICE_GROUP}|g" \
+        -e "s|WorkingDirectory=/var/lib/luigi-api/management-api|WorkingDirectory=${APP_DIR}|g" \
+        -e "s|ExecStart=/usr/bin/node /var/lib/luigi-api/management-api/server.js|ExecStart=/usr/bin/node ${APP_DIR}/server.js|g" \
+        -e "s|ExecStartPre=+/var/lib/luigi-api/management-api/scripts/pre-start-check.sh|ExecStartPre=+${APP_DIR}/scripts/pre-start-check.sh|g" \
         "$SCRIPT_DIR/management-api.service" > "$SERVICE_FILE"
     
     chmod 644 "$SERVICE_FILE"
@@ -428,12 +482,12 @@ build() {
     log_info "Building ${MODULE_NAME} in place..."
     
     # For build command, check if we're running with sudo
-    # If so, we'll use INSTALL_USER; otherwise use current user
+    # If so, we'll use BUILD_USER; otherwise use current user
     local build_user="$USER"
     local use_sudo=""
     if [ -n "${SUDO_USER:-}" ]; then
-        build_user="$INSTALL_USER"
-        use_sudo="sudo -u $INSTALL_USER"
+        build_user="$BUILD_USER"
+        use_sudo="sudo -u $BUILD_USER"
         log_info "Running as sudo, will build as user: $build_user"
     else
         log_info "Running as user: $build_user"
@@ -563,9 +617,9 @@ uninstall() {
         systemctl daemon-reload
     fi
     
-    # 3. Remove application files
+    # 3. Remove application files from deployment directory
     if [ -d "$APP_DIR" ]; then
-        log_info "Removing application directory..."
+        log_info "Removing application directory: $APP_DIR"
         rm -rf "$APP_DIR"
     fi
     

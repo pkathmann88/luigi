@@ -41,11 +41,11 @@ Luigi Management API - Server Startup
 ------------------------------------------
 TLS Configuration:
 [INFO] Using TLS certificates:
-[INFO]   Cert: /home/pi/certs/server.crt
-[INFO]   Key: /home/pi/certs/server.key
+[INFO]   Cert: /etc/luigi/system/management-api/certs/server.crt
+[INFO]   Key: /etc/luigi/system/management-api/certs/server.key
 Checking certificate files...
-✓ Certificate file found: /home/pi/certs/server.crt
-✓ Key file found: /home/pi/certs/server.key
+✓ Certificate file found: /etc/luigi/system/management-api/certs/server.crt
+✓ Key file found: /etc/luigi/system/management-api/certs/server.key
 Reading certificate files...
 ✓ Certificate files loaded successfully
 Creating HTTPS server...
@@ -106,12 +106,12 @@ Luigi Management API - Server Startup
 ------------------------------------------
 TLS Configuration:
 [INFO] Using TLS certificates:
-[INFO]   Cert: /home/pi/certs/server.crt
-[INFO]   Key: /home/pi/certs/server.key
+[INFO]   Cert: /etc/luigi/system/management-api/certs/server.crt
+[INFO]   Key: /etc/luigi/system/management-api/certs/server.key
 Checking certificate files...
-✗ Certificate file not found: /home/pi/certs/server.crt
+✗ Certificate file not found: /etc/luigi/system/management-api/certs/server.crt
 [ERROR] SSL certificate not found!
-[ERROR] Expected location: /home/pi/certs/server.crt
+[ERROR] Expected location: /etc/luigi/system/management-api/certs/server.crt
 [ERROR] Run: bash scripts/generate-certs.sh
 
 ==========================================
