@@ -629,7 +629,7 @@ sudo ./setup.sh install
        ipc_key 1024
        ipc_perm 0666
        slave {
-           pcm "hw_card"
+           pcm "hw:0,0"
            period_size 2048
            buffer_size 16384
            rate 44100
