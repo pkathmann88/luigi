@@ -123,6 +123,17 @@ export const ModuleDetail: React.FC = () => {
            (Array.isArray(metadataCaps) && metadataCaps.includes('service'));
   };
 
+  const extractModuleName = (dependencyPath: string): string => {
+    // Extract module name from path (e.g., "iot/ha-mqtt" -> "ha-mqtt")
+    const parts = dependencyPath.split('/');
+    return parts[parts.length - 1];
+  };
+
+  const handleDependencyClick = (dependencyPath: string) => {
+    const moduleName = extractModuleName(dependencyPath);
+    navigate(`/modules/${moduleName}`);
+  };
+
   if (loading) {
     return (
       <div className="module-detail">
@@ -317,7 +328,11 @@ export const ModuleDetail: React.FC = () => {
             <h2 className="module-detail__section-title">Dependencies</h2>
             <div className="module-detail__dependency-list">
               {registry.dependencies.map((dep) => (
-                <div key={dep} className="module-detail__dependency-item">
+                <div 
+                  key={dep} 
+                  className="module-detail__dependency-item module-detail__dependency-item--clickable"
+                  onClick={() => handleDependencyClick(dep)}
+                >
                   → {dep}
                 </div>
               ))}

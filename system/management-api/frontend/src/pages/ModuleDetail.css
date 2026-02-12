@@ -212,6 +212,19 @@
   color: var(--color-text);
 }
 
+.module-detail__dependency-item--clickable {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+}
+
+.module-detail__dependency-item--clickable:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: translateX(4px);
+}
+
 .module-detail__package-list {
   display: flex;
   flex-wrap: wrap;
