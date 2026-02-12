@@ -4,10 +4,9 @@ import { authService } from './services/authService';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-import { Modules } from './pages/Modules';
 import { ModuleDetail } from './pages/ModuleDetail';
-import { Logs } from './pages/Logs';
-import { Config } from './pages/Config';
+import { ModuleConfig } from './pages/ModuleConfig';
+import { ModuleLogs } from './pages/ModuleLogs';
 import './styles/globals.css';
 
 interface PrivateRouteProps {
@@ -36,14 +35,6 @@ export const App: React.FC = () => {
           }
         />
         <Route
-          path="/modules"
-          element={
-            <PrivateRoute>
-              <Modules />
-            </PrivateRoute>
-          }
-        />
-        <Route
           path="/modules/:moduleName"
           element={
             <PrivateRoute>
@@ -52,18 +43,18 @@ export const App: React.FC = () => {
           }
         />
         <Route
-          path="/logs"
+          path="/modules/:moduleName/config"
           element={
             <PrivateRoute>
-              <Logs />
+              <ModuleConfig />
             </PrivateRoute>
           }
         />
         <Route
-          path="/config"
+          path="/modules/:moduleName/logs"
           element={
             <PrivateRoute>
-              <Config />
+              <ModuleLogs />
             </PrivateRoute>
           }
         />

@@ -16,6 +16,17 @@
   margin: 0;
 }
 
+.dashboard__section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.dashboard__section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
 .dashboard__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -59,7 +70,8 @@
   flex-wrap: wrap;
 }
 
-.dashboard__loading {
+.dashboard__loading,
+.dashboard__empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -78,6 +90,155 @@
   margin-bottom: var(--spacing-lg);
 }
 
+.dashboard__error-banner {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+
+/* Module Cards */
+.dashboard__modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.dashboard__module-card {
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease-in-out;
+}
+
+.dashboard__module-card--clickable {
+  cursor: pointer;
+}
+
+.dashboard__module-card--clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  border-color: var(--color-primary);
+}
+
+.dashboard__module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.dashboard__module-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.dashboard__module-status {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.dashboard__module-status--active {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: var(--color-success);
+}
+
+.dashboard__module-status--inactive {
+  background-color: rgba(148, 163, 184, 0.2);
+  color: var(--color-text-muted);
+}
+
+.dashboard__module-status--installed {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.dashboard__module-status--failed {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--color-danger);
+}
+
+.dashboard__module-status--unknown {
+  background-color: rgba(251, 146, 60, 0.2);
+  color: var(--color-warning);
+}
+
+.dashboard__module-version {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.dashboard__module-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.dashboard__capability-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.dashboard__capability-badge--service {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.dashboard__capability-badge--hardware {
+  background-color: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.dashboard__capability-badge--sensor {
+  background-color: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.dashboard__capability-badge--api {
+  background-color: rgba(236, 72, 153, 0.1);
+  color: #ec4899;
+  border-color: rgba(236, 72, 153, 0.3);
+}
+
+.dashboard__capability-badge--integration {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.dashboard__module-click-hint {
+  margin-top: auto;
+  padding-top: var(--spacing-md);
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  text-align: right;
+  opacity: 0.7;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.dashboard__module-card--clickable:hover .dashboard__module-click-hint {
+  opacity: 1;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .dashboard__header {
@@ -87,6 +248,10 @@
   }
 
   .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__modules-grid {
     grid-template-columns: 1fr;
   }
 
