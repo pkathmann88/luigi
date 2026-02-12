@@ -3,7 +3,20 @@
  * Loads configuration from environment variables and provides defaults
  */
 
-require('dotenv').config({ path: '/etc/luigi/system/management-api/.env' });
+// Try to load from default production path, fall back to current directory
+const fs = require('fs');
+const path = require('path');
+
+const productionEnvPath = '/etc/luigi/system/management-api/.env';
+const localEnvPath = path.join(__dirname, '../.env');
+
+// Check which .env file exists
+let envPath = localEnvPath;
+if (fs.existsSync(productionEnvPath)) {
+  envPath = productionEnvPath;
+}
+
+require('dotenv').config({ path: envPath });
 
 const config = {
   // Environment
@@ -51,6 +64,7 @@ const config = {
     modules: process.env.MODULES_PATH || '/home/pi/luigi',
     config: process.env.CONFIG_PATH || '/etc/luigi',
     logs: process.env.LOGS_PATH || '/var/log',
+    registry: process.env.REGISTRY_PATH || '/etc/luigi/modules',
   },
 };
 

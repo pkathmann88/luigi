@@ -7,9 +7,10 @@
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
+const config = require('../../config');
 
-// Registry path constant
-const REGISTRY_PATH = '/etc/luigi/modules';
+// Registry path from config
+const REGISTRY_PATH = config.paths.registry;
 
 /**
  * Decode module path from registry filename
