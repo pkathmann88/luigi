@@ -10,8 +10,6 @@ Wants=network-online.target
 Type=simple
 User=root
 ExecStartPre=/bin/mkdir -p /var/log/luigi
-# Brief delay to ensure network services are fully ready
-ExecStartPre=/bin/sleep 3
 ExecStart=/usr/bin/python3 /usr/local/bin/system-info.py
 Restart=on-failure
 RestartSec=10

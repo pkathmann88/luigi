@@ -352,7 +352,12 @@ class SystemInfoMonitor:
         self.running = False
     
     def collect_and_publish_metrics(self):
-        """Collect all system metrics and publish to MQTT."""
+        """
+        Collect all system metrics and publish to MQTT.
+        
+        Returns:
+            int: Number of metrics successfully published
+        """
         logging.info("Collecting system metrics...")
         
         metrics_collected = 0
@@ -402,6 +407,8 @@ class SystemInfoMonitor:
         
         # Update last publish time
         self.last_publish_time = time.time()
+        
+        return metrics_published
     
     def should_publish(self):
         """
@@ -422,11 +429,35 @@ class SystemInfoMonitor:
         
         logging.info("System Info Monitor starting...")
         
-        # Publish metrics immediately on startup
-        try:
-            self.collect_and_publish_metrics()
-        except Exception as e:
-            logging.error(f"Error during initial metrics collection: {e}")
+        # Publish metrics on startup with retry logic
+        # Network may not be fully ready even after network-online.target
+        max_retries = 5
+        retry_delay = 5  # Start with 5 seconds
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                logging.info(f"Initial metrics publish attempt {attempt}/{max_retries}...")
+                published_count = self.collect_and_publish_metrics()
+                
+                # If at least one metric was published successfully, consider it a success
+                if published_count > 0:
+                    logging.info(f"Initial metrics published successfully ({published_count} metrics)")
+                    break
+                else:
+                    # No metrics were published, network might not be ready
+                    if attempt < max_retries:
+                        logging.warning(f"No metrics published (network not ready?), retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                        retry_delay = min(retry_delay * 2, 60)  # Exponential backoff, max 60s
+                    else:
+                        logging.warning("All retry attempts exhausted, continuing with main loop")
+                        logging.warning("MQTT broker may not be reachable - will retry on next interval")
+                        
+            except Exception as e:
+                logging.error(f"Error during initial metrics collection (attempt {attempt}): {e}")
+                if attempt < max_retries:
+                    time.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, 60)
         
         # Main loop
         while self.running:
