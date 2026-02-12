@@ -104,10 +104,28 @@ function validateConfig() {
 }
 
 // Validate on load
+console.log('==========================================');
+console.log('Luigi Management API - Configuration Loading');
+console.log('==========================================');
+console.log(`Loading configuration from: ${envPath}`);
+console.log(`Node Environment: ${config.env}`);
+console.log(`Port: ${config.port}`);
+console.log(`Host: ${config.host}`);
+console.log(`HTTPS Enabled: ${config.useHttps}`);
+console.log(`Modules Path: ${config.paths.modules}`);
+console.log(`Config Path: ${config.paths.config}`);
+console.log(`Registry Path: ${config.paths.registry}`);
+console.log(`Log File: ${config.logging.file}`);
+console.log('------------------------------------------');
+
 try {
+  console.log('Validating configuration...');
   validateConfig();
+  console.log('✓ Configuration validation passed');
+  console.log('==========================================');
 } catch (error) {
-  console.error('Configuration validation failed:', error.message);
+  console.error('✗ Configuration validation failed:', error.message);
+  console.error('==========================================');
   process.exit(1);
 }
 

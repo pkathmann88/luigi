@@ -3,6 +3,8 @@
  * Configures Express with all middleware and routes
  */
 
+console.log('Loading Express application modules...');
+
 const express = require('express');
 const path = require('path');
 const helmet = require('helmet');
@@ -17,6 +19,9 @@ const securityMonitor = require('./middleware/securityMonitor');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { localNetworkOnly } = require('./middleware/ipFilter');
 const config = require('../config');
+
+console.log('✓ All modules loaded successfully');
+console.log('Initializing Express application...');
 
 const app = express();
 
@@ -117,5 +122,8 @@ app.use(notFoundHandler);
 
 // Error handler (must be last)
 app.use(errorHandler);
+
+console.log('✓ Express application configured successfully');
+console.log('✓ All middleware and routes registered');
 
 module.exports = app;
