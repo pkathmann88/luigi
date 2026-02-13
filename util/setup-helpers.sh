@@ -479,6 +479,8 @@ update_module_registry_full() {
     provides=$(echo "$metadata" | jq -c '.provides // []')
     
     # Create full registry entry
+    # Note: config_path should always point to the actual config file, not a directory
+    # Standard format: /etc/luigi/<module-path>/<module-name>.conf
     cat > "$registry_file" <<EOF
 {
   "module_path": "$module_path",
@@ -498,7 +500,7 @@ update_module_registry_full() {
   "hardware": $hardware,
   "provides": $provides,
   "service_name": "$name.service",
-  "config_path": "/etc/luigi/$module_path",
+  "config_path": "/etc/luigi/$module_path/$name.conf",
   "log_path": "/var/log/luigi/$name.log"
 }
 EOF
