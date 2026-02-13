@@ -315,6 +315,23 @@ install() {
     if systemctl is-active --quiet "$SERVICE_NAME"; then
         log_info "Service is running ✓"
         
+        # Setup permissions for config directory and log directory
+        setup_config_permissions "$CONFIG_DIR" || {
+            log_warn "Failed to set config permissions (non-fatal)"
+        }
+        
+        # Create audit log directory and set permissions
+        mkdir -p "$AUDIT_LOG_DIR"
+        chown root:luigi-api "$AUDIT_LOG_DIR"
+        chmod 755 "$AUDIT_LOG_DIR"
+        
+        # Setup log permissions (management-api logs go to systemd journal and files)
+        if [ -f "/var/log/management-api.log" ]; then
+            setup_log_permissions "/var/log/management-api.log" "luigi-api" || {
+                log_warn "Failed to set log permissions (non-fatal)"
+            }
+        fi
+        
         # Test API
         local health_url="https://localhost:8443/health"
         if curl -k -s "$health_url" | grep -q "ok"; then
