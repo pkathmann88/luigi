@@ -368,12 +368,13 @@ install_reset_script() {
 create_mario_service_user() {
     log_step "Creating dedicated service user..."
     
-    # Create luigi-mario user with gpio group access
+    # Create luigi-mario user with gpio and audio group access
     # GPIO group is required for RPi.GPIO library to access hardware
+    # Audio group is required for ALSA/aplay to access audio devices
     create_service_user "luigi-mario" \
                         "Mario Motion Detection Service" \
                         "/var/lib/luigi-mario" \
-                        "gpio" || {
+                        "gpio,audio" || {
         log_error "Failed to create service user"
         exit 1
     }
