@@ -17,6 +17,40 @@
 
 This repository includes **Agent Skills** that provide specialized guidance for common tasks. Copilot will automatically load these skills when relevant to your work.
 
+### Development Skill (PRIMARY)
+
+**Location:** `.github/skills/development/`
+
+**Use when:**
+- Starting any Luigi development task (module, feature, fix, enhancement)
+- Planning complete development workflow from design to deployment
+- Determining which specialized skills to use and in what order
+- Understanding how different skills complement each other
+- Making architectural or design decisions
+- Following Luigi development best practices
+- Working with agentic (AI-assisted) software development patterns
+
+**Provides:**
+- **Complete 7-phase development workflow** (Requirements → Design → Planning → Implementation → Testing → Documentation → Deployment)
+- Integration guide for all specialized skills
+- Agentic software development best practices
+- Quick reference for common scenarios
+- Success criteria and quality standards
+- Phase-by-phase guidance with clear deliverables
+
+**Key Phases:**
+1. Requirements Analysis and Design
+2. Implementation Planning
+3. Implementation (Python/Node.js/Shell/React)
+4. Testing and Validation
+5. Documentation
+6. Deployment and Integration
+7. Maintenance and Evolution
+
+**Note:** This is the **primary orchestration skill** that integrates all other skills below. Use it as your starting point for any development task, then follow its guidance to invoke specialized skills as needed.
+
+---
+
 ### Module Design Skill
 
 **Location:** `.github/skills/module-design/`
@@ -252,7 +286,16 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - Complete utility script examples
 - Migration guide for existing installations
 
-**Note:** These skills complement each other across the development lifecycle:
+**Note:** These skills work together across the complete development lifecycle:
+
+**The `development` skill** serves as the **primary orchestration skill** that:
+- Provides the **complete 7-phase development workflow** from requirements to deployment
+- Guides you on **which specialized skills to use and when**
+- Integrates **all skills below into a cohesive workflow**
+- Includes **agentic software development best practices**
+- Offers **quick reference for common scenarios**
+
+**Specialized skills** provide deep expertise for specific tasks:
 - The `module-design` skill guides you through the **design phase** before implementation
 - The `module-management` skill shows **how to manage module lifecycles** (install, update, remove)
 - The `documentation` skill defines **documentation standards** for all modules and the main README
@@ -263,7 +306,7 @@ This repository includes **Agent Skills** that provide specialized guidance for 
 - The `web-frontend-development` skill shows **how to build modern web UIs** that interact with backend APIs
 - The `system-setup` skill helps create **deployment automation** for the finished module
 
-Together they provide complete guidance for the entire lifecycle: design → implement (Python or Node.js backend + web frontend + shell scripts) → document (module READMEs + main README updates) → manage (install/update/track via registry) → deploy any type of Luigi module (motion detection, sensors, automation, APIs, web dashboards, etc.).
+**Together they provide complete guidance:** Use the `development` skill as your starting point to understand the workflow, then follow its phase-based guidance to invoke specialized skills as needed for design → implementation (Python/Node.js/Shell/React) → testing → documentation → deployment → management of any Luigi module type.
 
 ## Repository Structure
 
@@ -272,6 +315,9 @@ luigi/
 ├── .github/
 │   ├── copilot-instructions.md     # This file
 │   └── skills/                      # Agent Skills for specialized guidance
+│       ├── development/             # PRIMARY: Complete workflow orchestration
+│       │   ├── SKILL.md             # Main workflow skill (7 phases)
+│       │   └── README.md            # Skill overview
 │       ├── documentation/           # Documentation standards and templates
 │       │   ├── SKILL.md             # Main documentation skill
 │       │   ├── documentation-patterns.md  # Detailed examples and patterns
