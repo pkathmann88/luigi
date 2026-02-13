@@ -64,7 +64,8 @@ async function listConfigs() {
  * Tries multiple strategies:
  * 1. Use path as-is if it looks like a full file path
  * 2. Look up module in registry to get config_path
- * 3. Try common config file patterns
+ * 3. Check if config_path is a directory and find config file within it
+ * 4. Try common config file patterns
  */
 async function resolveConfigPath(moduleNameOrPath) {
   // If it already has a file extension, use as-is
@@ -76,6 +77,7 @@ async function resolveConfigPath(moduleNameOrPath) {
   try {
     // First, try as module name directly (e.g., "ha-mqtt" or "mario")
     let modulePath = moduleNameOrPath;
+    let moduleName = moduleNameOrPath;
     
     // If it's just a simple name, try to find it in the registry
     // by searching through registry entries
@@ -87,6 +89,9 @@ async function resolveConfigPath(moduleNameOrPath) {
       if (matchingEntry && matchingEntry.module_path) {
         modulePath = matchingEntry.module_path;
       }
+    } else {
+      // Extract module name from path (e.g., "iot/ha-mqtt" -> "ha-mqtt")
+      moduleName = path.basename(modulePath);
     }
     
     // Try to get registry entry
@@ -95,15 +100,67 @@ async function resolveConfigPath(moduleNameOrPath) {
     if (entry && entry.config_path) {
       // Extract relative path from absolute config_path
       // e.g., "/etc/luigi/iot/ha-mqtt/ha-mqtt.conf" -> "iot/ha-mqtt/ha-mqtt.conf"
+      // or "/etc/luigi/iot/ha-mqtt" -> "iot/ha-mqtt"
       const configBase = config.paths.config; // "/etc/luigi"
+      let relativePath = entry.config_path;
+      
       if (entry.config_path.startsWith(configBase)) {
-        const relativePath = entry.config_path.substring(configBase.length).replace(/^\//, '');
-        logger.info(`Resolved module '${moduleNameOrPath}' to config path: ${relativePath}`);
+        relativePath = entry.config_path.substring(configBase.length).replace(/^\//, '');
+      }
+      
+      // Check if this path is a directory
+      const fullPath = path.join(configBase, relativePath);
+      try {
+        const stats = await fs.stat(fullPath);
+        
+        if (stats.isDirectory()) {
+          // Path is a directory - need to find config file within it
+          logger.debug(`Config path is directory: ${relativePath}, searching for config files`);
+          
+          // Try to find a config file in the directory
+          const files = await fs.readdir(fullPath);
+          
+          // Preferred patterns in order of priority
+          const patterns = [
+            `${moduleName}.conf`,           // e.g., ha-mqtt.conf
+            `${moduleName}.json`,           // e.g., ha-mqtt.json
+            '.env',                         // .env file
+            'config.conf',                  // generic config.conf
+            'config.json',                  // generic config.json
+          ];
+          
+          // Find first matching file
+          for (const pattern of patterns) {
+            if (files.includes(pattern)) {
+              const configFile = path.join(relativePath, pattern);
+              logger.info(`Resolved module '${moduleNameOrPath}' to config file: ${configFile}`);
+              return configFile;
+            }
+          }
+          
+          // No specific pattern matched, try any .conf, .json, or .env file
+          const configFile = files.find(f => 
+            f.endsWith('.conf') || f.endsWith('.json') || f === '.env'
+          );
+          
+          if (configFile) {
+            const fullConfigPath = path.join(relativePath, configFile);
+            logger.info(`Resolved module '${moduleNameOrPath}' to config file: ${fullConfigPath}`);
+            return fullConfigPath;
+          }
+          
+          // No config files found in directory
+          throw new Error(`No config files found in directory: ${relativePath}`);
+        } else {
+          // Path is a file - use it directly
+          logger.info(`Resolved module '${moduleNameOrPath}' to config path: ${relativePath}`);
+          return relativePath;
+        }
+      } catch (statErr) {
+        // Path doesn't exist or can't be accessed, return as-is and let validation handle it
+        logger.debug(`Could not stat config path ${fullPath}: ${statErr.message}`);
         return relativePath;
       }
-      // If config_path doesn't start with expected base, use the absolute path value as-is
-      // and let validateConfigPath handle it
-      return entry.config_path;
     }
   } catch (err) {
     // Registry lookup failed, continue with fallback strategies
