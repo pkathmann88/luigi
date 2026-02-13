@@ -603,6 +603,25 @@ def safe_file_path(base_dir, filename):
 
 ### systemd Service Design (Recommended)
 
+**CRITICAL: Service User Requirement**
+
+**ALL services MUST run as dedicated system users, NEVER as root.** This is a mandatory security requirement.
+
+**Service User Pattern:**
+
+1. **Username Convention:** `luigi-{module-name}`
+   - Examples: `luigi-mario`, `luigi-sysinfo`, `luigi-api`
+
+2. **Group Membership:**
+   - **REQUIRED:** Member of `luigi` group (for shared file access)
+   - **OPTIONAL:** Hardware groups as needed: `gpio`, `spi`, `i2c`
+
+3. **User Properties:**
+   - System user (UID < 1000)
+   - No password (passwordless)
+   - Login shell: `/usr/sbin/nologin` (prevents interactive login)
+   - Home directory: `/var/lib/luigi-{module-name}`
+
 **Service Unit File Template:**
 
 ```ini
@@ -614,32 +633,89 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+# Service runs as dedicated user (member of luigi + hardware groups)
+User=luigi-{module-name}
+Group=luigi-{module-name}
 ExecStart=/usr/bin/python3 /usr/local/bin/{module-name}.py
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:/var/log/{module-name}.log
-StandardError=append:/var/log/{module-name}.log
+StandardOutput=append:/var/log/luigi/{module-name}.log
+StandardError=append:/var/log/luigi/{module-name}.log
 
 # Security hardening
 PrivateTmp=yes
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/var/log /tmp /etc/luigi
+ReadWritePaths=/var/log/luigi /tmp
+ReadOnlyPaths=/etc/luigi
 
 [Install]
 WantedBy=multi-user.target
 ```
 
+**Setup Script User Creation:**
+
+```bash
+# In setup.sh install function
+create_service_user() {
+    log_step "Creating dedicated service user..."
+    
+    # Args: username, description, home_dir, additional_groups
+    create_service_user "luigi-mario" \
+                        "Mario Motion Detection Service" \
+                        "/var/lib/luigi-mario" \
+                        "gpio" || {
+        log_error "Failed to create service user"
+        exit 1
+    }
+    
+    log_success "Service user created and configured"
+}
+
+install() {
+    check_root
+    check_files
+    install_dependencies
+    create_service_user      # Create user BEFORE installing files
+    install_script
+    install_config
+    install_service
+    start_service
+}
+```
+
 **Service Design Principles:**
 1. Use `Type=simple` for foreground applications
-2. Run as `root` only if GPIO access required (document alternative with gpio group)
-3. `Restart=on-failure` for automatic recovery
-4. Output to both log file and journalctl
-5. Enable security hardening options
-6. Set reasonable restart delay (10s default)
-7. Use `KillSignal=SIGTERM` for graceful shutdown (default)
-8. Document service management commands in README
+2. **NEVER run as root** - use dedicated system user with appropriate groups
+3. Hardware access via group membership (gpio, spi, i2c) - NOT via root
+4. Service user is member of luigi group for shared file access
+5. `Restart=on-failure` for automatic recovery
+6. Output to both log file and journalctl
+7. Enable security hardening options (PrivateTmp, NoNewPrivileges, ProtectSystem)
+8. Set reasonable restart delay (10s default)
+9. Use `KillSignal=SIGTERM` for graceful shutdown (default)
+10. Document service management commands in README
+
+**GPIO Access Without Root:**
+
+Users need GPIO access via group membership, not root privileges:
+```bash
+# Service user is added to gpio group during creation
+create_service_user "luigi-mario" "Mario Motion Detection" "/var/lib/luigi-mario" "gpio"
+
+# In service file
+[Service]
+User=luigi-mario
+Group=luigi-mario
+# User is member of gpio group, can access GPIO hardware
+```
+
+**Security Benefits:**
+- ✅ Principle of least privilege
+- ✅ Process isolation per module
+- ✅ Contained security breaches
+- ✅ No unnecessary root access
+- ✅ Shared file access via luigi group
 
 ### Setup Script Design
 

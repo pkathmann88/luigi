@@ -552,6 +552,87 @@ The project is designed for extensibility. When adding new modules (whether for 
 6. **Consider modularity:** Make components independent when possible, shared libraries when needed
 7. **Consider IoT integration:** For sensor modules, integrate with Home Assistant via ha-mqtt (see below)
 
+### Service User Convention
+
+**CRITICAL: All services MUST run as dedicated system users, NEVER as root.**
+
+This is a mandatory security requirement for all Luigi modules with service capability.
+
+**User Naming Convention:**
+- Format: `luigi-{module-name}`
+- Examples: `luigi-mario`, `luigi-sysinfo`, `luigi-api`
+
+**Group Membership:**
+- **REQUIRED:** All service users MUST be members of `luigi` group (for shared file access)
+- **OPTIONAL:** Add hardware groups as needed: `gpio`, `spi`, `i2c`
+
+**User Properties:**
+- System user (UID < 1000)
+- No password (passwordless)
+- Login shell: `/usr/sbin/nologin` (prevents interactive login)
+- Home directory: `/var/lib/luigi-{module-name}`
+
+**Implementation:**
+
+In your module's `setup.sh`:
+```bash
+# Create dedicated service user
+create_service_user() {
+    log_step "Creating dedicated service user..."
+    
+    # Args: username, description, home_dir, additional_groups
+    create_service_user "luigi-mario" \
+                        "Mario Motion Detection Service" \
+                        "/var/lib/luigi-mario" \
+                        "gpio" || {
+        log_error "Failed to create service user"
+        exit 1
+    }
+    
+    log_success "Service user created and configured"
+}
+
+install() {
+    check_root
+    check_files
+    install_dependencies
+    create_service_user      # Create user BEFORE installing files
+    install_script
+    install_config
+    install_service
+    start_service
+}
+```
+
+In your systemd service file:
+```ini
+[Service]
+Type=simple
+# Service runs as dedicated user (member of luigi + hardware groups)
+User=luigi-mario
+Group=luigi-mario
+# User has GPIO access via gpio group membership (no root needed)
+```
+
+**Security Benefits:**
+- ✅ Principle of least privilege - only necessary permissions
+- ✅ Process isolation - each module has dedicated user
+- ✅ Contained security breaches - limited blast radius
+- ✅ No unnecessary root access
+- ✅ Shared file access via luigi group membership
+- ✅ Hardware access via group membership (gpio, spi, i2c) instead of root
+
+**Helper Function:**
+
+The `create_service_user()` helper function is provided in `util/setup-helpers.sh`:
+- Creates system user if it doesn't exist
+- Adds user to luigi group automatically
+- Optionally adds user to hardware groups (gpio, spi, i2c)
+- Creates home directory with proper permissions
+- Handles idempotent installation (safe to run multiple times)
+
+See `.github/skills/shell-scripting/SKILL.md` for complete documentation.
+
 ### Integrating Modules with Home Assistant (ha-mqtt)
 
 **When to use iot/ha-mqtt:**
