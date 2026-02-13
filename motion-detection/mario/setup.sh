@@ -492,6 +492,34 @@ install_service() {
     log_info "systemd service installed and enabled"
 }
 
+# Prepare log file
+prepare_log_file() {
+    log_step "Preparing log file..."
+    
+    # Ensure log directory exists
+    mkdir -p "$(dirname "$LOG_FILE")" || {
+        log_error "Failed to create log directory"
+        exit 1
+    }
+    
+    # Create log file if it doesn't exist
+    if [ ! -f "$LOG_FILE" ]; then
+        touch "$LOG_FILE" || {
+            log_error "Failed to create log file"
+            exit 1
+        }
+        log_info "Created log file: $LOG_FILE"
+    fi
+    
+    # Set proper ownership and permissions
+    setup_log_permissions "$LOG_FILE" "luigi-mario" || {
+        log_error "Failed to set log permissions"
+        exit 1
+    }
+    
+    log_info "Log file prepared with correct permissions"
+}
+
 # Start the service
 start_service() {
     log_step "Starting mario.service..."
@@ -509,11 +537,6 @@ start_service() {
     # Check if service is running
     if systemctl is-active --quiet mario.service; then
         log_info "Service started successfully"
-        
-        # Setup log file permissions after service has created it
-        setup_log_permissions "$LOG_FILE" "luigi-mario" || {
-            log_warn "Failed to set log permissions (non-fatal)"
-        }
     else
         log_error "Service failed to start"
         systemctl status mario.service --no-pager
@@ -816,6 +839,7 @@ install() {
     install_reset_script
     install_config
     deploy_ha_mqtt_descriptor
+    prepare_log_file           # Create log file with proper ownership BEFORE starting service
     install_service
     start_service
     

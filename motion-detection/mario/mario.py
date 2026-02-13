@@ -401,8 +401,10 @@ class GPIOManager:
             
             # Try to provide helpful context
             if "not permitted" in str(e).lower() or "permission" in str(e).lower():
-                logging.error("DIAGNOSIS: Permission denied - GPIO access requires root privileges")
-                logging.error("  Solution: Ensure service runs as root or user is in gpio group")
+                logging.error("DIAGNOSIS: Permission denied - GPIO access requires proper permissions")
+                logging.error("  Solution 1: Add user to gpio group: sudo usermod -a -G gpio <username>")
+                logging.error("  Solution 2: Verify /dev/gpiochip0 permissions (should be crw-rw----)")
+                logging.error("  Solution 3: Check service user is member of gpio group")
             elif "already" in str(e).lower():
                 logging.error("DIAGNOSIS: GPIO mode already set")
                 logging.error("  Solution: Call GPIO.cleanup() before setmode")
@@ -878,12 +880,22 @@ def run_startup_diagnostics():
     
     # Check user/permissions
     import os
+    import grp
     logging.info(f"User ID: {os.getuid()}, Effective: {os.geteuid()}")
     logging.info(f"Group ID: {os.getgid()}, Effective: {os.getegid()}")
-    if os.geteuid() != 0:
-        logging.warning("⚠ NOT running as root - GPIO access may fail")
-    else:
-        logging.info("✓ Running as root")
+    
+    # Check if user is in gpio group (proper way to access GPIO without root)
+    try:
+        user_groups = [grp.getgrgid(g).gr_name for g in os.getgroups()]
+        if 'gpio' in user_groups:
+            logging.info("✓ User is member of 'gpio' group (proper GPIO access)")
+        elif os.geteuid() == 0:
+            logging.info("✓ Running as root (has GPIO access)")
+        else:
+            logging.warning("⚠ User not in 'gpio' group and not root - GPIO access may fail")
+            logging.warning("  Add user to gpio group: sudo usermod -a -G gpio <username>")
+    except Exception as e:
+        logging.warning(f"Could not check group membership: {e}")
     
     # Check GPIO library
     logging.info(f"RPi.GPIO library: {'MOCK MODE' if MOCK_MODE else 'Hardware mode'}")
@@ -959,11 +971,23 @@ def main():
     logging.info("Mario Motion Detection Application Starting")
     logging.info("=" * 60)
     
-    # Check permissions
+    # Check permissions (allow non-root if user is in gpio group)
     if not MOCK_MODE and os.geteuid() != 0:
-        logging.error("This script requires root privileges for GPIO access")
-        print("Please run with: sudo python3", sys.argv[0])
-        sys.exit(1)
+        try:
+            import grp
+            user_groups = [grp.getgrgid(g).gr_name for g in os.getgroups()]
+            if 'gpio' not in user_groups:
+                logging.error("This script requires GPIO access permissions")
+                logging.error("User is not root and not in 'gpio' group")
+                print("Solutions:")
+                print(f"  1. Add user to gpio group: sudo usermod -a -G gpio {os.getlogin()}")
+                print(f"  2. Run as root: sudo python3 {sys.argv[0]}")
+                sys.exit(1)
+            else:
+                logging.info("✓ User has GPIO access via 'gpio' group membership")
+        except Exception as e:
+            logging.warning(f"Could not verify gpio group membership: {e}")
+            logging.warning("Proceeding anyway - GPIO access may fail")
     
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
