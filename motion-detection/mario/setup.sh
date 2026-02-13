@@ -378,22 +378,20 @@ install_config() {
     if [ -f "$INSTALL_CONFIG" ]; then
         log_warn "Config file already exists at $INSTALL_CONFIG"
         log_info "Keeping existing configuration"
-        return 0
+    else
+        # Copy example config as the default config
+        cp "$SCRIPT_DIR/$CONFIG_EXAMPLE" "$INSTALL_CONFIG" || {
+            log_error "Failed to copy configuration file"
+            exit 1
+        }
+        log_info "Configuration file installed to $INSTALL_CONFIG"
     fi
     
-    # Copy example config as the default config
-    cp "$SCRIPT_DIR/$CONFIG_EXAMPLE" "$INSTALL_CONFIG" || {
-        log_error "Failed to copy configuration file"
-        exit 1
+    # Setup permissions for management-api access
+    setup_config_permissions "$INSTALL_CONFIG_DIR" || {
+        log_warn "Failed to set config permissions (non-fatal)"
     }
     
-    # Set permissions
-    chmod 644 "$INSTALL_CONFIG" || {
-        log_error "Failed to set config permissions"
-        exit 1
-    }
-    
-    log_info "Configuration file installed to $INSTALL_CONFIG"
     log_info "Edit $INSTALL_CONFIG to customize settings"
 }
 
@@ -494,6 +492,11 @@ start_service() {
     # Check if service is running
     if systemctl is-active --quiet mario.service; then
         log_info "Service started successfully"
+        
+        # Setup log file permissions after service has created it
+        setup_log_permissions "$LOG_FILE" "root" || {
+            log_warn "Failed to set log permissions (non-fatal)"
+        }
     else
         log_error "Service failed to start"
         systemctl status mario.service --no-pager

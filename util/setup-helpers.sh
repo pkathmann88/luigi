@@ -628,3 +628,125 @@ get_registry_file() {
     echo "$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
 }
 
+################################################################################
+# Permission Management Functions
+################################################################################
+
+# Management API service runs as 'luigi-api' user and needs read access to:
+# - Log files in /var/log/luigi/
+# - Config directories and files in /etc/luigi/
+#
+# Strategy: Use group permissions with 'luigi-api' as the shared group
+# - Module services run as their own users (root, pi, etc.)
+# - Files are owned by the module user but group is 'luigi-api'
+# - Group has read permission, allowing management-api to access them
+
+# Ensure luigi-api group exists
+# Usage: ensure_luigi_api_group
+# Returns: 0 on success, 1 on failure
+ensure_luigi_api_group() {
+    if ! getent group luigi-api >/dev/null 2>&1; then
+        log_info "Creating luigi-api group for management API access"
+        if groupadd --system luigi-api; then
+            log_success "Created luigi-api group"
+        else
+            log_error "Failed to create luigi-api group"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Setup base Luigi directories with correct permissions
+# Usage: setup_luigi_base_permissions
+# Creates /etc/luigi and /var/log/luigi if needed
+setup_luigi_base_permissions() {
+    ensure_luigi_api_group || return 1
+    
+    # Create and set permissions on /etc/luigi
+    if [ ! -d "/etc/luigi" ]; then
+        log_info "Creating /etc/luigi directory"
+        mkdir -p /etc/luigi
+    fi
+    chown root:luigi-api /etc/luigi
+    chmod 755 /etc/luigi
+    
+    # Create and set permissions on /var/log/luigi
+    if [ ! -d "/var/log/luigi" ]; then
+        log_info "Creating /var/log/luigi directory"
+        mkdir -p /var/log/luigi
+    fi
+    chown root:luigi-api /var/log/luigi
+    chmod 755 /var/log/luigi
+    
+    log_info "Base Luigi directories configured with proper permissions"
+    return 0
+}
+
+# Setup permissions for a module's log file
+# Usage: setup_log_permissions "/var/log/luigi/mario.log" "root"
+# Args:
+#   $1 - Full path to log file
+#   $2 - Owner user (optional, defaults to root)
+# Permissions: 640 (rw-r-----) owner:luigi-api
+setup_log_permissions() {
+    local log_file="$1"
+    local owner="${2:-root}"
+    
+    ensure_luigi_api_group || return 1
+    
+    # Create parent directory if needed
+    local log_dir
+    log_dir=$(dirname "$log_file")
+    if [ ! -d "$log_dir" ]; then
+        mkdir -p "$log_dir"
+        chown root:luigi-api "$log_dir"
+        chmod 755 "$log_dir"
+    fi
+    
+    # Create log file if it doesn't exist
+    if [ ! -f "$log_file" ]; then
+        touch "$log_file"
+    fi
+    
+    # Set ownership and permissions
+    chown "$owner:luigi-api" "$log_file"
+    chmod 640 "$log_file"
+    
+    log_info "Set permissions on log file: $log_file (owner: $owner, group: luigi-api, mode: 640)"
+    return 0
+}
+
+# Setup permissions for a module's config directory and files
+# Usage: setup_config_permissions "/etc/luigi/motion-detection/mario"
+# Args:
+#   $1 - Full path to config directory
+# Permissions:
+#   - Directory: 755 (rwxr-xr-x) root:luigi-api
+#   - Files: 644 (rw-r--r--) root:luigi-api
+setup_config_permissions() {
+    local config_dir="$1"
+    
+    ensure_luigi_api_group || return 1
+    
+    # Create directory if it doesn't exist
+    if [ ! -d "$config_dir" ]; then
+        mkdir -p "$config_dir"
+    fi
+    
+    # Set directory ownership and permissions
+    chown root:luigi-api "$config_dir"
+    chmod 755 "$config_dir"
+    
+    # Set permissions on all files in the directory
+    if [ -n "$(ls -A "$config_dir" 2>/dev/null)" ]; then
+        find "$config_dir" -type f -exec chown root:luigi-api {} \;
+        find "$config_dir" -type f -exec chmod 644 {} \;
+        log_info "Set permissions on config directory and files: $config_dir (root:luigi-api)"
+    else
+        log_info "Set permissions on config directory: $config_dir (root:luigi-api, no files yet)"
+    fi
+    
+    return 0
+}
+
