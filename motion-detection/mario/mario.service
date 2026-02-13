@@ -8,9 +8,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Note: root is required for GPIO access via RPi.GPIO library
-# TODO: Consider using gpio group and udev rules for non-root access
-User=root
+# Service runs as dedicated user luigi-mario (member of gpio group for hardware access)
+# No root privileges needed - gpio group provides necessary hardware access
+User=luigi-mario
+Group=luigi-mario
 # Ensure log directory exists before starting
 ExecStartPre=/bin/mkdir -p /var/log/luigi
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py

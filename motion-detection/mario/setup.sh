@@ -364,6 +364,23 @@ install_reset_script() {
     log_info "Reset script installed to $INSTALL_RESET_SCRIPT"
 }
 
+# Create dedicated service user
+create_mario_service_user() {
+    log_step "Creating dedicated service user..."
+    
+    # Create luigi-mario user with gpio group access
+    # GPIO group is required for RPi.GPIO library to access hardware
+    create_service_user "luigi-mario" \
+                        "Mario Motion Detection Service" \
+                        "/var/lib/luigi-mario" \
+                        "gpio" || {
+        log_error "Failed to create service user"
+        exit 1
+    }
+    
+    log_success "Service user luigi-mario created and configured"
+}
+
 # Install configuration file
 install_config() {
     log_step "Installing configuration file..."
@@ -494,7 +511,7 @@ start_service() {
         log_info "Service started successfully"
         
         # Setup log file permissions after service has created it
-        setup_log_permissions "$LOG_FILE" "root" || {
+        setup_log_permissions "$LOG_FILE" "luigi-mario" || {
             log_warn "Failed to set log permissions (non-fatal)"
         }
     else
@@ -792,6 +809,7 @@ install() {
     check_root
     check_files
     install_dependencies
+    create_mario_service_user  # Create dedicated user before installing files
     install_sounds
     configure_audio  # Will skip if already configured by root setup.sh
     install_script

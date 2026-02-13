@@ -750,3 +750,108 @@ setup_config_permissions() {
     return 0
 }
 
+################################################################################
+# Service User Management Functions
+################################################################################
+
+# Create a dedicated service user for running a module service
+# Usage: create_service_user "luigi-mario" "Mario Motion Detection Service" "/var/lib/luigi-mario"
+# Args:
+#   $1 - Username (e.g., "luigi-mario")
+#   $2 - Description/comment (e.g., "Mario Motion Detection Service")
+#   $3 - Home directory (e.g., "/var/lib/luigi-mario")
+#   $4 - Additional groups (optional, e.g., "gpio,spi,i2c")
+# Creates:
+#   - System user (no password, no login shell)
+#   - Home directory at specified path
+#   - Member of luigi group (for shared file access)
+#   - Member of additional groups if specified
+# Returns: 0 on success, 1 on failure
+create_service_user() {
+    local username="$1"
+    local description="$2"
+    local home_dir="$3"
+    local additional_groups="$4"
+    
+    if [ -z "$username" ] || [ -z "$description" ] || [ -z "$home_dir" ]; then
+        log_error "create_service_user requires username, description, and home_dir"
+        return 1
+    fi
+    
+    # Ensure luigi group exists
+    ensure_luigi_group || return 1
+    
+    # Check if user already exists
+    if id -u "$username" >/dev/null 2>&1; then
+        log_info "Service user already exists: $username"
+        
+        # Ensure home directory exists even if user was created differently
+        if [ ! -d "$home_dir" ]; then
+            log_info "Creating home directory for existing user: $home_dir"
+            mkdir -p "$home_dir"
+            chown "$username:$username" "$home_dir"
+            chmod 755 "$home_dir"
+        fi
+    else
+        log_info "Creating dedicated service user: $username"
+        log_info "  Description: $description"
+        log_info "  Home directory: $home_dir"
+        
+        # Create system user with home directory
+        # --system: Creates a system user (UID < 1000)
+        # --home-dir: Specifies home directory
+        # --create-home: Creates the home directory
+        # --shell: Sets login shell (nologin prevents interactive login)
+        # --comment: Sets description in /etc/passwd
+        if useradd --system \
+                   --home-dir "$home_dir" \
+                   --create-home \
+                   --shell /usr/sbin/nologin \
+                   --comment "$description" \
+                   "$username" 2>/dev/null; then
+            log_success "Created system user: $username"
+        else
+            log_error "Failed to create user: $username"
+            return 1
+        fi
+    fi
+    
+    # Add user to luigi group for shared file access
+    if ! groups "$username" 2>/dev/null | grep -q "\bluigi\b"; then
+        log_info "Adding $username to luigi group..."
+        if usermod -a -G luigi "$username"; then
+            log_success "Added $username to luigi group"
+        else
+            log_warn "Failed to add $username to luigi group"
+        fi
+    fi
+    
+    # Add user to additional groups if specified
+    if [ -n "$additional_groups" ]; then
+        log_info "Adding $username to additional groups: $additional_groups"
+        IFS=',' read -ra groups <<< "$additional_groups"
+        for group in "${groups[@]}"; do
+            # Trim whitespace
+            group=$(echo "$group" | xargs)
+            
+            # Check if group exists
+            if getent group "$group" >/dev/null 2>&1; then
+                if ! groups "$username" 2>/dev/null | grep -q "\b$group\b"; then
+                    if usermod -a -G "$group" "$username"; then
+                        log_success "Added $username to $group group"
+                    else
+                        log_warn "Failed to add $username to $group group"
+                    fi
+                else
+                    log_info "User $username already in $group group"
+                fi
+            else
+                log_warn "Group $group does not exist, skipping"
+            fi
+        done
+    fi
+    
+    log_success "Service user $username is ready"
+    return 0
+}
+
