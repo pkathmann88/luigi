@@ -1,0 +1,46 @@
+climate:
+  enabled: true
+  
+  # Sensor configuration
+  sensor:
+    type: "dht22"           # Options: dht22, bme280
+    gpio_pin: 4             # GPIO pin for DHT22 (BCM numbering)
+    i2c_address: 0x76       # I2C address for BME280 (0x76 or 0x77)
+  
+  # Reading and logging intervals
+  intervals:
+    reading_seconds: 30     # How often to read sensor (minimum 2 seconds for DHT22)
+    logging_seconds: 300    # How often to log to database (5 minutes)
+  
+  # Threshold configuration
+  thresholds:
+    temperature:
+      min_celsius: 15       # Minimum comfortable temperature
+      max_celsius: 30       # Maximum comfortable temperature
+      unit_display: "celsius"  # Options: celsius, fahrenheit, both
+    humidity:
+      min_percent: 30       # Minimum comfortable humidity
+      max_percent: 70       # Maximum comfortable humidity
+  
+  # Alert configuration
+  alerts:
+    enabled: true           # Enable/disable alerts
+    cooldown_minutes: 30    # Minimum time between same alert type
+    audio_enabled: true     # Enable/disable audio alerts
+    sounds:
+      too_hot: "/usr/share/sounds/climate/alert_hot.wav"
+      too_cold: "/usr/share/sounds/climate/alert_cold.wav"
+      too_humid: "/usr/share/sounds/climate/alert_humid.wav"
+      too_dry: "/usr/share/sounds/climate/alert_dry.wav"
+  
+  # Database configuration
+  database:
+    path: "/var/lib/luigi/climate.db"
+    retention_days: 30      # Days to retain historical data
+  
+  # Logging configuration
+  logging:
+    level: "INFO"           # Options: DEBUG, INFO, WARNING, ERROR
+    file: "/var/log/luigi/climate.log"
+    max_bytes: 10485760     # 10 MB
+    backup_count: 5         # Number of backup files

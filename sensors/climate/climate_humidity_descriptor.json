@@ -1,0 +1,9 @@
+{
+  "sensor_id": "climate_humidity",
+  "name": "Climate Humidity",
+  "module": "sensors/climate",
+  "device_class": "humidity",
+  "state_class": "measurement",
+  "unit_of_measurement": "%",
+  "icon": "mdi:water-percent"
+}

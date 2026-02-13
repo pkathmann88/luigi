@@ -1,0 +1,31 @@
+{
+  "name": "climate",
+  "version": "1.0.0",
+  "description": "Temperature and humidity monitoring with DHT22/BME280 sensors, database logging, and alerting",
+  "category": "sensors",
+  "capabilities": [
+    "service",
+    "hardware",
+    "sensor",
+    "config"
+  ],
+  "dependencies": [
+    "iot/ha-mqtt"
+  ],
+  "apt_packages": [
+    "python3-pip",
+    "python3-venv",
+    "sqlite3",
+    "python3-yaml",
+    "alsa-utils"
+  ],
+  "author": "Luigi Project",
+  "hardware": {
+    "gpio_pins": [4],
+    "sensors": ["DHT22", "BME280"]
+  },
+  "provides": [
+    "climate-export",
+    "climate-stats"
+  ]
+}
