@@ -492,14 +492,88 @@ install_service() {
     log_info "systemd service installed and enabled"
 }
 
+# Configure GPIO access via udev rules
+configure_gpio_udev() {
+    log_step "Configuring GPIO device permissions..."
+    
+    local udev_rules_file="/etc/udev/rules.d/99-luigi-gpio.rules"
+    
+    # Create udev rules for GPIO access
+    cat > "$udev_rules_file" << 'EOF'
+# Luigi GPIO Access Rules
+# Allows members of 'gpio' group to access GPIO devices without root
+#
+# GPIO chip devices (character devices)
+SUBSYSTEM=="gpio", KERNEL=="gpiochip*", GROUP="gpio", MODE="0660"
+
+# GPIO memory device (for direct memory-mapped GPIO access)
+SUBSYSTEM=="bcm2835-gpiomem", KERNEL=="gpiomem", GROUP="gpio", MODE="0660"
+
+# Legacy GPIO sysfs interface (if present)
+SUBSYSTEM=="gpio", GROUP="gpio", MODE="0660"
+EOF
+    
+    if [ $? -eq 0 ]; then
+        log_info "Created udev rules: $udev_rules_file"
+    else
+        log_error "Failed to create udev rules"
+        return 1
+    fi
+    
+    # Reload udev rules
+    log_info "Reloading udev rules..."
+    if udevadm control --reload-rules 2>/dev/null; then
+        log_info "Udev rules reloaded"
+    else
+        log_warn "Failed to reload udev rules (may require reboot)"
+    fi
+    
+    # Trigger udev to apply rules immediately
+    log_info "Applying udev rules to GPIO devices..."
+    if udevadm trigger --subsystem-match=gpio --subsystem-match=bcm2835-gpiomem 2>/dev/null; then
+        log_info "Udev rules applied"
+    else
+        log_warn "Failed to trigger udev (may require reboot)"
+    fi
+    
+    # Verify GPIO device permissions
+    if [ -e "/dev/gpiochip0" ]; then
+        local perms=$(stat -c "%a %G" /dev/gpiochip0 2>/dev/null)
+        log_info "/dev/gpiochip0 permissions: $perms"
+        if echo "$perms" | grep -q "gpio"; then
+            log_success "✓ GPIO device has correct group"
+        else
+            log_warn "⚠ GPIO device group not yet applied (may need reboot or re-trigger)"
+        fi
+    else
+        log_warn "/dev/gpiochip0 not found (may appear after reboot)"
+    fi
+    
+    log_success "GPIO udev configuration complete"
+}
+
 # Prepare log file
 prepare_log_file() {
     log_step "Preparing log file..."
     
-    # Ensure log directory exists
-    mkdir -p "$(dirname "$LOG_FILE")" || {
-        log_error "Failed to create log directory"
-        exit 1
+    local log_dir="$(dirname "$LOG_FILE")"
+    
+    # Ensure log directory exists with proper permissions
+    if [ ! -d "$log_dir" ]; then
+        mkdir -p "$log_dir" || {
+            log_error "Failed to create log directory"
+            exit 1
+        }
+        log_info "Created log directory: $log_dir"
+    fi
+    
+    # Set log directory permissions: root:luigi 750 (rwxr-x---)
+    # This allows luigi group members (including luigi-api) to read logs
+    chown root:luigi "$log_dir" 2>/dev/null || {
+        log_warn "Failed to set log directory ownership (continuing anyway)"
+    }
+    chmod 750 "$log_dir" 2>/dev/null || {
+        log_warn "Failed to set log directory permissions (continuing anyway)"
     }
     
     # Create log file if it doesn't exist
@@ -511,13 +585,14 @@ prepare_log_file() {
         log_info "Created log file: $LOG_FILE"
     fi
     
-    # Set proper ownership and permissions
+    # Set proper ownership and permissions on log file
+    # luigi-mario:luigi 640 (rw-r-----) - owner writes, group reads
     setup_log_permissions "$LOG_FILE" "luigi-mario" || {
         log_error "Failed to set log permissions"
         exit 1
     }
     
-    log_info "Log file prepared with correct permissions"
+    log_success "Log file prepared with correct permissions"
 }
 
 # Start the service
@@ -833,6 +908,7 @@ install() {
     check_files
     install_dependencies
     create_mario_service_user  # Create dedicated user before installing files
+    configure_gpio_udev        # Configure GPIO device permissions via udev rules
     install_sounds
     configure_audio  # Will skip if already configured by root setup.sh
     install_script

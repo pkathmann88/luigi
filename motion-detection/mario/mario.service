@@ -22,9 +22,10 @@ ExecStartPre=/bin/chown luigi-mario:luigi-mario /var/lib/luigi-mario
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
-# Dual logging: both journalctl (automatic) and /var/log/luigi/mario.log (file)
-StandardOutput=append:/var/log/luigi/mario.log
-StandardError=append:/var/log/luigi/mario.log
+
+# Logging: Python logging module writes to /var/log/luigi/mario.log
+# Systemd journal captures stdout/stderr for 'journalctl -u mario.service'
+# No StandardOutput/StandardError redirect to avoid duplicate logging
 
 # Security hardening
 PrivateTmp=yes
