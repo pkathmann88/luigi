@@ -43,14 +43,14 @@ LUIGI_REGISTRY_PATH="${LUIGI_REGISTRY_PATH:-/etc/luigi/modules}"
 LOG_DIR="/var/log/luigi"
 CONFIG_BASE="/etc/luigi"
 
-# Ensure luigi-api group exists
-ensure_luigi_api_group() {
+# Ensure luigi group exists
+ensure_luigi_group() {
     if ! getent group luigi-api >/dev/null 2>&1; then
-        log_info "Creating luigi-api group"
+        log_info "Creating luigi group"
         if groupadd --system luigi-api; then
-            log_info "Created luigi-api group"
+            log_info "Created luigi group"
         else
-            log_error "Failed to create luigi-api group"
+            log_error "Failed to create luigi group"
             return 1
         fi
     fi
@@ -63,24 +63,24 @@ fix_base_directories() {
     
     # /etc/luigi
     if [ -d "$CONFIG_BASE" ]; then
-        chown root:luigi-api "$CONFIG_BASE"
+        chown root:luigi "$CONFIG_BASE"
         chmod 755 "$CONFIG_BASE"
-        log_info "Fixed: $CONFIG_BASE (root:luigi-api, 755)"
+        log_info "Fixed: $CONFIG_BASE (root:luigi, 755)"
     fi
     
     # /var/log/luigi
     if [ -d "$LOG_DIR" ]; then
-        chown root:luigi-api "$LOG_DIR"
+        chown root:luigi "$LOG_DIR"
         chmod 755 "$LOG_DIR"
-        log_info "Fixed: $LOG_DIR (root:luigi-api, 755)"
+        log_info "Fixed: $LOG_DIR (root:luigi, 755)"
     fi
     
     # Registry directory
     if [ -d "$LUIGI_REGISTRY_PATH" ]; then
-        chown -R root:luigi-api "$LUIGI_REGISTRY_PATH"
+        chown -R root:luigi "$LUIGI_REGISTRY_PATH"
         chmod 755 "$LUIGI_REGISTRY_PATH"
         find "$LUIGI_REGISTRY_PATH" -type f -exec chmod 644 {} \;
-        log_info "Fixed: $LUIGI_REGISTRY_PATH (root:luigi-api)"
+        log_info "Fixed: $LUIGI_REGISTRY_PATH (root:luigi)"
     fi
 }
 
@@ -99,7 +99,7 @@ fix_log_permissions() {
     while IFS= read -r -d '' log_file; do
         # Set ownership and permissions
         # Files owned by their module user, group luigi-api, mode 640
-        chown "$(stat -c '%U' "$log_file"):luigi-api" "$log_file" 2>/dev/null || chown "root:luigi-api" "$log_file"
+        chown "$(stat -c '%U' "$log_file"):luigi-api" "$log_file" 2>/dev/null || chown "root:luigi" "$log_file"
         chmod 640 "$log_file"
         log_info "Fixed: $log_file ($(stat -c '%U' "$log_file"):luigi-api, 640)"
         ((fixed_count++))
@@ -132,18 +132,18 @@ fix_config_permissions() {
         fi
         
         # Set directory permissions
-        chown root:luigi-api "$config_dir"
+        chown root:luigi "$config_dir"
         chmod 755 "$config_dir"
         ((fixed_dirs++))
         
         # Set file permissions in this directory
         while IFS= read -r -d '' config_file; do
-            chown root:luigi-api "$config_file"
+            chown root:luigi "$config_file"
             chmod 644 "$config_file"
             ((fixed_files++))
         done < <(find "$config_dir" -maxdepth 1 -type f -print0 2>/dev/null)
         
-        log_info "Fixed: $config_dir (root:luigi-api)"
+        log_info "Fixed: $config_dir (root:luigi)"
     done < <(find "$CONFIG_BASE" -type d -print0 2>/dev/null)
     
     log_info "Fixed permissions on $fixed_dirs directories and $fixed_files files"
@@ -188,13 +188,13 @@ fix_from_registry() {
         # Fix config path
         if [ -n "$config_path" ] && [ "$config_path" != "null" ]; then
             if [ -f "$config_path" ]; then
-                chown root:luigi-api "$config_path"
+                chown root:luigi "$config_path"
                 chmod 644 "$config_path"
                 log_info "  Config file: $config_path"
             elif [ -d "$config_path" ]; then
-                chown root:luigi-api "$config_path"
+                chown root:luigi "$config_path"
                 chmod 755 "$config_path"
-                find "$config_path" -type f -exec chown root:luigi-api {} \;
+                find "$config_path" -type f -exec chown root:luigi {} \;
                 find "$config_path" -type f -exec chmod 644 {} \;
                 log_info "  Config directory: $config_path"
             fi
@@ -203,7 +203,7 @@ fix_from_registry() {
         # Fix log path
         if [ -n "$log_path" ] && [ "$log_path" != "null" ]; then
             if [ -f "$log_path" ]; then
-                chown "$(stat -c '%U' "$log_path"):luigi-api" "$log_path" 2>/dev/null || chown "root:luigi-api" "$log_path"
+                chown "$(stat -c '%U' "$log_path"):luigi-api" "$log_path" 2>/dev/null || chown "root:luigi" "$log_path"
                 chmod 640 "$log_path"
                 log_info "  Log file: $log_path"
             fi
@@ -228,8 +228,8 @@ main() {
     
     log_info "Starting permission fixes..."
     
-    # Ensure luigi-api group exists
-    ensure_luigi_api_group || exit 1
+    # Ensure luigi group exists
+    ensure_luigi_group || exit 1
     
     # Fix permissions
     fix_base_directories

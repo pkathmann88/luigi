@@ -57,6 +57,18 @@ create_service_user() {
             chmod 755 "$SERVICE_USER_HOME"
         fi
     fi
+    
+    # Add service user to luigi group for shared file access
+    # This allows management-api to read module configs and logs
+    ensure_luigi_group
+    if ! groups "$SERVICE_USER" 2>/dev/null | grep -q "\bluigi\b"; then
+        log_info "Adding $SERVICE_USER to luigi group..."
+        if usermod -a -G luigi "$SERVICE_USER"; then
+            log_success "Added $SERVICE_USER to luigi group"
+        else
+            log_warn "Failed to add $SERVICE_USER to luigi group"
+        fi
+    fi
 }
 
 # Detect the user who invoked sudo (for build operations)

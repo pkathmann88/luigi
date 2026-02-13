@@ -425,7 +425,7 @@ install_module() {
     # ha-mqtt doesn't have a dedicated log file (uses syslog/journal)
     # but ensure sensors.d directory is accessible
     if [ -d "$SENSORS_DIR" ]; then
-        chown -R root:luigi-api "$SENSORS_DIR"
+        chown -R root:luigi "$SENSORS_DIR"
         chmod 755 "$SENSORS_DIR"
         find "$SENSORS_DIR" -type f -exec chmod 644 {} \;
     fi

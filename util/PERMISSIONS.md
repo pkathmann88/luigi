@@ -65,11 +65,11 @@ setup_log_permissions "/var/log/luigi/your-module.log" "root" || {
 
 ### Helper Functions
 
-#### `ensure_luigi_api_group()`
+#### `ensure_luigi_group()`
 Creates the `luigi-api` system group if it doesn't exist.
 
 ```bash
-ensure_luigi_api_group || exit 1
+ensure_luigi_group || exit 1
 ```
 
 #### `setup_log_permissions(log_file, owner)`
@@ -86,7 +86,7 @@ setup_log_permissions "/var/log/luigi/mario.log" "root"
 
 **Result:**
 - Creates log file if it doesn't exist
-- Sets ownership to `owner:luigi-api`
+- Sets ownership to `owner:luigi`
 - Sets permissions to `640`
 
 #### `setup_config_permissions(config_dir)`
@@ -102,8 +102,8 @@ setup_config_permissions "/etc/luigi/motion-detection/mario"
 
 **Result:**
 - Creates directory if it doesn't exist
-- Sets directory to `root:luigi-api` with `755`
-- Sets all files to `root:luigi-api` with `644`
+- Sets directory to `root:luigi` with `755`
+- Sets all files to `root:luigi` with `644`
 
 ## For System Administrators
 
@@ -238,17 +238,17 @@ This follows the principle of least privilege.
 ```bash
 # Log file
 /var/log/luigi/mario.log
-  Owner: root:luigi-api
+  Owner: root:luigi
   Permissions: 640 (rw-r-----)
 
 # Config directory
 /etc/luigi/motion-detection/mario/
-  Owner: root:luigi-api
+  Owner: root:luigi
   Permissions: 755 (rwxr-xr-x)
 
 # Config file
 /etc/luigi/motion-detection/mario/mario.conf
-  Owner: root:luigi-api
+  Owner: root:luigi
   Permissions: 644 (rw-r--r--)
 ```
 
@@ -257,7 +257,7 @@ This follows the principle of least privilege.
 ```bash
 # Config directory
 /etc/luigi/system/management-api/
-  Owner: root:luigi-api
+  Owner: root:luigi
   Permissions: 755 (rwxr-xr-x)
 
 # Config files
@@ -266,7 +266,7 @@ This follows the principle of least privilege.
   Permissions: 600 (rw-------)  # More restrictive due to credentials
 
 /etc/luigi/system/management-api/certs/
-  Owner: root:luigi-api
+  Owner: root:luigi
   Permissions: 755 (rwxr-xr-x)
 ```
 
