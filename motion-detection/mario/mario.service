@@ -12,8 +12,13 @@ Type=simple
 # No root privileges needed - gpio group provides necessary hardware access
 User=luigi-mario
 Group=luigi-mario
-# Ensure log directory exists before starting
+# Working directory must be writable by service user for lgpio library
+# The lgpio library creates temporary files (.lgd-nfy*) in the working directory
+WorkingDirectory=/var/lib/luigi-mario
+# Ensure directories exist before starting
 ExecStartPre=/bin/mkdir -p /var/log/luigi
+ExecStartPre=/bin/mkdir -p /var/lib/luigi-mario
+ExecStartPre=/bin/chown luigi-mario:luigi-mario /var/lib/luigi-mario
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
