@@ -19,7 +19,7 @@ export interface ModuleRegistry {
   };
   provides?: string[];
   service_name?: string | null;
-  config_path?: string | null;
+  config_path?: string | null;  // Format: /etc/luigi/<module-path>/<module-name>.conf
   log_path?: string | null;
   _registryFile?: string;
 }
