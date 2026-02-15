@@ -199,6 +199,18 @@
   border-color: rgba(14, 165, 233, 0.3);
 }
 
+.module-detail__capability-badge--sound {
+  background-color: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.module-detail__capability-badge--config {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
 .module-detail__actions {
   display: flex;
   gap: var(--spacing-md);

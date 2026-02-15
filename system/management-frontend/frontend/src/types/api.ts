@@ -21,6 +21,7 @@ export interface ModuleRegistry {
   service_name?: string | null;
   config_path?: string | null;  // Format: /etc/luigi/<module-path>/<module-name>.conf
   log_path?: string | null;
+  sound_directory?: string | null;  // Format: /usr/share/sounds/<module-name>/
   _registryFile?: string;
 }
 
@@ -118,4 +119,28 @@ export interface ApiResponse<T> {
 export interface Credentials {
   username: string;
   password: string;
+}
+
+export interface SoundModule {
+  name: string;
+  module_path: string;
+  sound_directory: string | null;
+  version: string;
+  description?: string;
+}
+
+export interface SoundFile {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
+  extension: string;
+}
+
+export interface ModuleSounds {
+  module: string;
+  sound_directory: string;
+  exists: boolean;
+  files: SoundFile[];
+  count?: number;
 }

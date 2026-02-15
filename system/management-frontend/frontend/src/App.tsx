@@ -7,6 +7,8 @@ import { Dashboard } from './pages/Dashboard';
 import { ModuleDetail } from './pages/ModuleDetail';
 import { ModuleConfig } from './pages/ModuleConfig';
 import { ModuleLogs } from './pages/ModuleLogs';
+import { ModuleSounds } from './pages/ModuleSounds';
+import { Sounds } from './pages/Sounds';
 import './styles/globals.css';
 
 interface PrivateRouteProps {
@@ -55,6 +57,22 @@ export const App: React.FC = () => {
           element={
             <PrivateRoute>
               <ModuleLogs />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/modules/:moduleName/sounds"
+          element={
+            <PrivateRoute>
+              <ModuleSounds />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/sounds"
+          element={
+            <PrivateRoute>
+              <Sounds />
             </PrivateRoute>
           }
         />

@@ -237,6 +237,34 @@ class ApiService {
   async getMetrics(): Promise<ApiResponse<SystemStatus>> {
     return this.request('/api/monitoring/metrics');
   }
+
+  // ============================================================================
+  // Sound Management
+  // ============================================================================
+
+  /**
+   * List all modules with sound capability
+   */
+  async getSoundModules(): Promise<ApiResponse<{ modules: import('../types/api').SoundModule[]; count: number }>> {
+    return this.request('/api/sounds');
+  }
+
+  /**
+   * Get sound files for a module
+   */
+  async getModuleSounds(moduleName: string): Promise<ApiResponse<import('../types/api').ModuleSounds>> {
+    return this.request(`/api/sounds/${moduleName}`);
+  }
+
+  /**
+   * Play a sound file
+   */
+  async playSound(moduleName: string, fileName: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this.request(`/api/sounds/${moduleName}/play`, {
+      method: 'POST',
+      body: JSON.stringify({ file: fileName }),
+    });
+  }
 }
 
 export const apiService = new ApiService();
