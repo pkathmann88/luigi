@@ -79,6 +79,17 @@
   border-bottom: 2px solid var(--color-border);
 }
 
+.module-detail__quick-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.module-detail__quick-actions button {
+  flex: 1;
+  min-width: 200px;
+}
+
 .module-detail__description {
   color: var(--color-text);
   font-size: 1rem;

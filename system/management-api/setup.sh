@@ -57,6 +57,18 @@ create_service_user() {
             chmod 755 "$SERVICE_USER_HOME"
         fi
     fi
+    
+    # Add service user to luigi group for shared file access
+    # This allows management-api to read module configs and logs
+    ensure_luigi_group
+    if ! groups "$SERVICE_USER" 2>/dev/null | grep -q "\bluigi\b"; then
+        log_info "Adding $SERVICE_USER to luigi group..."
+        if usermod -a -G luigi "$SERVICE_USER"; then
+            log_success "Added $SERVICE_USER to luigi group"
+        else
+            log_warn "Failed to add $SERVICE_USER to luigi group"
+        fi
+    fi
 }
 
 # Detect the user who invoked sudo (for build operations)
@@ -314,6 +326,23 @@ install() {
     log_info "Verifying installation..."
     if systemctl is-active --quiet "$SERVICE_NAME"; then
         log_info "Service is running ✓"
+        
+        # Setup permissions for config directory and log directory
+        setup_config_permissions "$CONFIG_DIR" || {
+            log_warn "Failed to set config permissions (non-fatal)"
+        }
+        
+        # Create audit log directory and set permissions
+        mkdir -p "$AUDIT_LOG_DIR"
+        chown root:luigi-api "$AUDIT_LOG_DIR"
+        chmod 755 "$AUDIT_LOG_DIR"
+        
+        # Setup log permissions (management-api logs go to systemd journal and files)
+        if [ -f "/var/log/management-api.log" ]; then
+            setup_log_permissions "/var/log/management-api.log" "luigi-api" || {
+                log_warn "Failed to set log permissions (non-fatal)"
+            }
+        fi
         
         # Test API
         local health_url="https://localhost:8443/health"

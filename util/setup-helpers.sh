@@ -479,6 +479,8 @@ update_module_registry_full() {
     provides=$(echo "$metadata" | jq -c '.provides // []')
     
     # Create full registry entry
+    # Note: config_path should always point to the actual config file, not a directory
+    # Standard format: /etc/luigi/<module-path>/<module-name>.conf
     cat > "$registry_file" <<EOF
 {
   "module_path": "$module_path",
@@ -498,7 +500,7 @@ update_module_registry_full() {
   "hardware": $hardware,
   "provides": $provides,
   "service_name": "$name.service",
-  "config_path": "/etc/luigi/$module_path",
+  "config_path": "/etc/luigi/$module_path/$name.conf",
   "log_path": "/var/log/luigi/$name.log"
 }
 EOF
@@ -624,5 +626,232 @@ update_registry_service_status() {
 get_registry_file() {
     local module_path="$1"
     echo "$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+}
+
+################################################################################
+# Permission Management Functions
+################################################################################
+
+# Management API service runs as 'luigi-api' user and needs read access to:
+# - Log files in /var/log/luigi/
+# - Config directories and files in /etc/luigi/
+#
+# Strategy: Use group permissions with 'luigi-api' as the shared group
+# - Module services run as their own users (root, pi, etc.)
+# - Files are owned by the module user but group is 'luigi-api'
+# - Group has read permission, allowing management-api to access them
+
+# Ensure luigi-api group exists
+# Usage: ensure_luigi_group
+# Returns: 0 on success, 1 on failure
+ensure_luigi_group() {
+    if ! getent group luigi >/dev/null 2>&1; then
+        log_info "Creating luigi group for management API access"
+        if groupadd --system luigi; then
+            log_success "Created luigi group"
+        else
+            log_error "Failed to create luigi group"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Setup base Luigi directories with correct permissions
+# Usage: setup_luigi_base_permissions
+# Creates /etc/luigi and /var/log/luigi if needed
+setup_luigi_base_permissions() {
+    ensure_luigi_group || return 1
+    
+    # Create and set permissions on /etc/luigi
+    if [ ! -d "/etc/luigi" ]; then
+        log_info "Creating /etc/luigi directory"
+        mkdir -p /etc/luigi
+    fi
+    chown root:luigi /etc/luigi
+    chmod 755 /etc/luigi
+    
+    # Create and set permissions on /var/log/luigi
+    if [ ! -d "/var/log/luigi" ]; then
+        log_info "Creating /var/log/luigi directory"
+        mkdir -p /var/log/luigi
+    fi
+    chown root:luigi /var/log/luigi
+    chmod 755 /var/log/luigi
+    
+    log_info "Base Luigi directories configured with proper permissions"
+    return 0
+}
+
+# Setup permissions for a module's log file
+# Usage: setup_log_permissions "/var/log/luigi/mario.log" "root"
+# Args:
+#   $1 - Full path to log file
+#   $2 - Owner user (optional, defaults to root)
+# Permissions: 640 (rw-r-----) owner:luigi
+setup_log_permissions() {
+    local log_file="$1"
+    local owner="${2:-root}"
+    
+    ensure_luigi_group || return 1
+    
+    # Create parent directory if needed
+    local log_dir
+    log_dir=$(dirname "$log_file")
+    if [ ! -d "$log_dir" ]; then
+        mkdir -p "$log_dir"
+        chown root:luigi "$log_dir"
+        chmod 755 "$log_dir"
+    fi
+    
+    # Create log file if it doesn't exist
+    if [ ! -f "$log_file" ]; then
+        touch "$log_file"
+    fi
+    
+    # Set ownership and permissions
+    chown "$owner:luigi" "$log_file"
+    chmod 640 "$log_file"
+    
+    log_info "Set permissions on log file: $log_file (owner: $owner, group: luigi-api, mode: 640)"
+    return 0
+}
+
+# Setup permissions for a module's config directory and files
+# Usage: setup_config_permissions "/etc/luigi/motion-detection/mario"
+# Args:
+#   $1 - Full path to config directory
+# Permissions:
+#   - Directory: 755 (rwxr-xr-x) root:luigi
+#   - Files: 644 (rw-r--r--) root:luigi
+setup_config_permissions() {
+    local config_dir="$1"
+    
+    ensure_luigi_group || return 1
+    
+    # Create directory if it doesn't exist
+    if [ ! -d "$config_dir" ]; then
+        mkdir -p "$config_dir"
+    fi
+    
+    # Set directory ownership and permissions
+    chown root:luigi "$config_dir"
+    chmod 755 "$config_dir"
+    
+    # Set permissions on all files in the directory
+    if [ -n "$(ls -A "$config_dir" 2>/dev/null)" ]; then
+        find "$config_dir" -type f -exec chown root:luigi {} \;
+        find "$config_dir" -type f -exec chmod 644 {} \;
+        log_info "Set permissions on config directory and files: $config_dir (root:luigi)"
+    else
+        log_info "Set permissions on config directory: $config_dir (root:luigi, no files yet)"
+    fi
+    
+    return 0
+}
+
+################################################################################
+# Service User Management Functions
+################################################################################
+
+# Create a dedicated service user for running a module service
+# Usage: create_service_user "luigi-mario" "Mario Motion Detection Service" "/var/lib/luigi-mario"
+# Args:
+#   $1 - Username (e.g., "luigi-mario")
+#   $2 - Description/comment (e.g., "Mario Motion Detection Service")
+#   $3 - Home directory (e.g., "/var/lib/luigi-mario")
+#   $4 - Additional groups (optional, e.g., "gpio,spi,i2c")
+# Creates:
+#   - System user (no password, no login shell)
+#   - Home directory at specified path
+#   - Member of luigi group (for shared file access)
+#   - Member of additional groups if specified
+# Returns: 0 on success, 1 on failure
+create_service_user() {
+    local username="$1"
+    local description="$2"
+    local home_dir="$3"
+    local additional_groups="$4"
+    
+    if [ -z "$username" ] || [ -z "$description" ] || [ -z "$home_dir" ]; then
+        log_error "create_service_user requires username, description, and home_dir"
+        return 1
+    fi
+    
+    # Ensure luigi group exists
+    ensure_luigi_group || return 1
+    
+    # Check if user already exists
+    if id -u "$username" >/dev/null 2>&1; then
+        log_info "Service user already exists: $username"
+        
+        # Ensure home directory exists even if user was created differently
+        if [ ! -d "$home_dir" ]; then
+            log_info "Creating home directory for existing user: $home_dir"
+            mkdir -p "$home_dir"
+            chown "$username:$username" "$home_dir"
+            chmod 755 "$home_dir"
+        fi
+    else
+        log_info "Creating dedicated service user: $username"
+        log_info "  Description: $description"
+        log_info "  Home directory: $home_dir"
+        
+        # Create system user with home directory
+        # --system: Creates a system user (UID < 1000)
+        # --home-dir: Specifies home directory
+        # --create-home: Creates the home directory
+        # --shell: Sets login shell (nologin prevents interactive login)
+        # --comment: Sets description in /etc/passwd
+        if useradd --system \
+                   --home-dir "$home_dir" \
+                   --create-home \
+                   --shell /usr/sbin/nologin \
+                   --comment "$description" \
+                   "$username" 2>/dev/null; then
+            log_success "Created system user: $username"
+        else
+            log_error "Failed to create user: $username"
+            return 1
+        fi
+    fi
+    
+    # Add user to luigi group for shared file access
+    if ! groups "$username" 2>/dev/null | grep -q "\bluigi\b"; then
+        log_info "Adding $username to luigi group..."
+        if usermod -a -G luigi "$username"; then
+            log_success "Added $username to luigi group"
+        else
+            log_warn "Failed to add $username to luigi group"
+        fi
+    fi
+    
+    # Add user to additional groups if specified
+    if [ -n "$additional_groups" ]; then
+        log_info "Adding $username to additional groups: $additional_groups"
+        IFS=',' read -ra groups <<< "$additional_groups"
+        for group in "${groups[@]}"; do
+            # Trim whitespace
+            group=$(echo "$group" | xargs)
+            
+            # Check if group exists
+            if getent group "$group" >/dev/null 2>&1; then
+                if ! groups "$username" 2>/dev/null | grep -q "\b$group\b"; then
+                    if usermod -a -G "$group" "$username"; then
+                        log_success "Added $username to $group group"
+                    else
+                        log_warn "Failed to add $username to $group group"
+                    fi
+                else
+                    log_info "User $username already in $group group"
+                fi
+            else
+                log_warn "Group $group does not exist, skipping"
+            fi
+        done
+    fi
+    
+    log_success "Service user $username is ready"
+    return 0
 }
 

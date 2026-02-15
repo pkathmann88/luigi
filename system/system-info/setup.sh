@@ -166,6 +166,23 @@ install_script() {
     log_info "Python script installed to $INSTALL_BIN"
 }
 
+# Create dedicated service user
+create_sysinfo_service_user() {
+    log_step "Creating dedicated service user..."
+    
+    # Create luigi-sysinfo user
+    # No special groups needed - system info doesn't require hardware access
+    create_service_user "luigi-sysinfo" \
+                        "System Info Monitor Service" \
+                        "/var/lib/luigi-sysinfo" \
+                        "" || {
+        log_error "Failed to create service user"
+        exit 1
+    }
+    
+    log_success "Service user luigi-sysinfo created and configured"
+}
+
 # Install configuration file
 install_config() {
     log_step "Installing configuration file..."
@@ -317,6 +334,11 @@ start_service() {
     # Check service status
     if systemctl is-active --quiet system-info.service; then
         log_info "Service started successfully"
+        
+        # Setup log file permissions after service has created it
+        setup_log_permissions "$LOG_FILE" "luigi-sysinfo" || {
+            log_warn "Failed to set log permissions (non-fatal)"
+        }
     else
         log_error "Service failed to start"
         log_info "Check logs with: sudo journalctl -u system-info.service -n 50"
@@ -331,6 +353,7 @@ install() {
     check_root "$@"
     check_files
     install_dependencies
+    create_sysinfo_service_user  # Create dedicated user before installing files
     install_script
     install_config
     deploy_ha_mqtt_descriptors

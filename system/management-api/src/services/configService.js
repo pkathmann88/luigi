@@ -8,6 +8,7 @@ const path = require('path');
 const logger = require('../utils/logger');
 const { validateConfigPath } = require('../security/pathValidator');
 const config = require('../../config');
+const registryService = require('./registryService');
 
 /**
  * List all module configuration files
@@ -59,12 +60,81 @@ async function listConfigs() {
 }
 
 /**
+ * Resolve module name or path to actual config file path
+ * Tries multiple strategies:
+ * 1. Use path as-is if it looks like a full file path
+ * 2. Look up module in registry to get config_path
+ * 3. Try common config file patterns
+ */
+async function resolveConfigPath(moduleNameOrPath) {
+  // If it already has a file extension, use as-is
+  if (moduleNameOrPath.includes('.conf') || moduleNameOrPath.includes('.json') || moduleNameOrPath.includes('.env')) {
+    return moduleNameOrPath;
+  }
+
+  // Try to find module in registry and get config_path
+  try {
+    // First, try as module name directly (e.g., "ha-mqtt" or "mario")
+    let modulePath = moduleNameOrPath;
+    
+    // If it's just a simple name, try to find it in the registry
+    // by searching through registry entries
+    if (!moduleNameOrPath.includes('/')) {
+      // Simple module name - need to search registry
+      const entries = await registryService.listRegistry();
+      const matchingEntry = entries.find(entry => entry.name === moduleNameOrPath);
+      
+      if (matchingEntry && matchingEntry.module_path) {
+        modulePath = matchingEntry.module_path;
+      }
+    }
+    
+    // Try to get registry entry
+    const entry = await registryService.getRegistryEntry(modulePath);
+    
+    if (entry && entry.config_path) {
+      // Extract relative path from absolute config_path
+      // e.g., "/etc/luigi/iot/ha-mqtt/ha-mqtt.conf" -> "iot/ha-mqtt/ha-mqtt.conf"
+      const configBase = config.paths.config; // "/etc/luigi"
+      if (entry.config_path.startsWith(configBase)) {
+        const relativePath = entry.config_path.substring(configBase.length).replace(/^\//, '');
+        logger.info(`Resolved module '${moduleNameOrPath}' to config path: ${relativePath}`);
+        return relativePath;
+      }
+      // If config_path doesn't start with expected base, use the absolute path value as-is
+      // and let validateConfigPath handle it
+      return entry.config_path;
+    }
+  } catch (err) {
+    // Registry lookup failed, continue with fallback strategies
+    logger.debug(`Registry lookup failed for '${moduleNameOrPath}': ${err.message}`);
+  }
+
+  // Fallback: try common patterns
+  // Pattern 1: module/module.conf (e.g., "ha-mqtt" -> "iot/ha-mqtt/ha-mqtt.conf")
+  // Pattern 2: module.conf (e.g., "ha-mqtt" -> "ha-mqtt.conf")
+  
+  // If path contains slashes, assume it's a partial path and try adding extensions
+  if (moduleNameOrPath.includes('/')) {
+    const baseName = path.basename(moduleNameOrPath);
+    return `${moduleNameOrPath}/${baseName}.conf`;
+  }
+
+  // Simple name without slashes - cannot reliably determine path
+  // Return as-is and let the error message be clear
+  return moduleNameOrPath;
+}
+
+/**
  * Read configuration file
  */
 async function readConfig(configPath) {
   try {
+    // Resolve module name to actual config file path
+    const resolvedPath = await resolveConfigPath(configPath);
+    
     // Validate path
-    const validatedPath = validateConfigPath(configPath);
+    const validatedPath = validateConfigPath(resolvedPath);
 
     // Check if file exists
     try {
@@ -92,8 +162,8 @@ async function readConfig(configPath) {
     }
 
     return {
-      file: path.basename(configPath),
-      path: configPath,
+      file: path.basename(resolvedPath),
+      path: resolvedPath,
       content,
       parsed,
       format: ext === '.json' ? 'json' : 'ini',
@@ -109,8 +179,11 @@ async function readConfig(configPath) {
  */
 async function updateConfig(configPath, updates) {
   try {
+    // Resolve module name to actual config file path
+    const resolvedPath = await resolveConfigPath(configPath);
+    
     // Validate path
-    const validatedPath = validateConfigPath(configPath);
+    const validatedPath = validateConfigPath(resolvedPath);
 
     // Check if file exists
     try {
@@ -146,8 +219,8 @@ async function updateConfig(configPath, updates) {
 
     return {
       success: true,
-      file: path.basename(configPath),
-      path: configPath,
+      file: path.basename(resolvedPath),
+      path: resolvedPath,
       backup: backupPath,
       updates,
     };
