@@ -855,3 +855,38 @@ create_service_user() {
     return 0
 }
 
+# Update registry with additional field
+# Usage: update_registry_field "motion-detection/mario" "sound_directory" "/usr/share/sounds/mario"
+# Returns: 0 on success, 1 on failure
+update_registry_field() {
+    local module_path="$1"
+    local field_name="$2"
+    local field_value="$3"
+    local registry_file="$LUIGI_REGISTRY_PATH/${module_path/\//__}.json"
+    
+    if [ ! -f "$registry_file" ]; then
+        log_warn "Registry entry not found for $module_path"
+        return 1
+    fi
+    
+    if ! command_exists jq; then
+        log_warn "jq not available, cannot update registry field"
+        return 1
+    fi
+    
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+    
+    # Update field and timestamp
+    jq ".$field_name = \"$field_value\" | .updated_at = \"$timestamp\"" \
+        "$registry_file" > /tmp/registry.json
+    
+    if mv /tmp/registry.json "$registry_file"; then
+        log_info "Updated registry field '$field_name' for $module_path"
+        return 0
+    else
+        log_error "Failed to update registry field for $module_path"
+        return 1
+    fi
+}
+
