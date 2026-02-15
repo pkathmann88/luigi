@@ -368,9 +368,9 @@ uninstall() {
         log_success "Deployment directory removed"
     fi
     
-    # 5. Unregister from Luigi registry
-    log_info "Unregistering from Luigi registry..."
-    unregister_module_from_registry "$MODULE_CATEGORY/$MODULE_NAME"
+    # 5. Mark module as removed in registry
+    log_info "Updating module registry..."
+    mark_module_removed "$MODULE_CATEGORY/$MODULE_NAME"
     
     log_success "Uninstallation complete!"
 }

@@ -345,7 +345,7 @@ Returns all module registry entries with aggregated statistics.
       "author": "Luigi Project",
       "provides": ["luigi-publish", "luigi-discover", "luigi-mqtt-status"],
       "service_name": "ha-mqtt.service",
-      "config_path": "/etc/luigi/iot/ha-mqtt",
+      "config_path": "/etc/luigi/iot/ha-mqtt/ha-mqtt.conf",
       "log_path": "/var/log/luigi/ha-mqtt.log",
       "_registryFile": "iot__ha-mqtt.json"
     }
@@ -370,7 +370,7 @@ Returns all module registry entries with aggregated statistics.
 - `author` (string) - Module author
 - `provides` (array) - Commands/utilities/services provided
 - `service_name` (string|null) - Systemd service name
-- `config_path` (string|null) - Configuration directory path
+- `config_path` (string|null) - Configuration file path (format: `/etc/luigi/<module-path>/<module-name>.conf`)
 - `log_path` (string|null) - Log file path
 - `_registryFile` (string) - Registry filename (internal)
 
@@ -427,7 +427,7 @@ GET /api/registry/system/management-api
       "sensors": ["HC-SR501"]
     },
     "service_name": "mario.service",
-    "config_path": "/etc/luigi/motion-detection/mario",
+    "config_path": "/etc/luigi/motion-detection/mario/mario.conf",
     "log_path": "/var/log/luigi/mario.log",
     "_registryFile": "motion-detection__mario.json"
   }

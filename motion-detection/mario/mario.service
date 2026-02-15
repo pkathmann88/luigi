@@ -8,17 +8,24 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Note: root is required for GPIO access via RPi.GPIO library
-# TODO: Consider using gpio group and udev rules for non-root access
-User=root
-# Ensure log directory exists before starting
+# Service runs as dedicated user luigi-mario (member of gpio group for hardware access)
+# No root privileges needed - gpio group provides necessary hardware access
+User=luigi-mario
+Group=luigi-mario
+# Working directory must be writable by service user for lgpio library
+# The lgpio library creates temporary files (.lgd-nfy*) in the working directory
+WorkingDirectory=/var/lib/luigi-mario
+# Ensure directories exist before starting
 ExecStartPre=/bin/mkdir -p /var/log/luigi
+ExecStartPre=/bin/mkdir -p /var/lib/luigi-mario
+ExecStartPre=/bin/chown luigi-mario:luigi-mario /var/lib/luigi-mario
 ExecStart=/usr/bin/python3 /usr/local/bin/mario.py
 Restart=on-failure
 RestartSec=10
-# Dual logging: both journalctl (automatic) and /var/log/luigi/mario.log (file)
-StandardOutput=append:/var/log/luigi/mario.log
-StandardError=append:/var/log/luigi/mario.log
+
+# Logging: Python logging module writes to /var/log/luigi/mario.log
+# Systemd journal captures stdout/stderr for 'journalctl -u mario.service'
+# No StandardOutput/StandardError redirect to avoid duplicate logging
 
 # Security hardening
 PrivateTmp=yes

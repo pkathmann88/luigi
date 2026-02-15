@@ -8,7 +8,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=root
+# Service runs as dedicated user luigi-sysinfo (no special privileges needed)
+User=luigi-sysinfo
+Group=luigi-sysinfo
 ExecStartPre=/bin/mkdir -p /var/log/luigi
 ExecStart=/usr/bin/python3 /usr/local/bin/system-info.py
 Restart=on-failure

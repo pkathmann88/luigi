@@ -167,9 +167,9 @@ export const ModuleDetail: React.FC = () => {
           <Button 
             variant="secondary" 
             size="small"
-            onClick={() => navigate('/modules')}
+            onClick={() => navigate('/dashboard')}
           >
-            ← Back to Modules
+            ← Back to Dashboard
           </Button>
           <h1 className="module-detail__title">{module.name}</h1>
           {getStatusBadge(module.status)}
@@ -186,6 +186,25 @@ export const ModuleDetail: React.FC = () => {
       )}
 
       <div className="module-detail__content">
+        {/* Quick Actions Card */}
+        <Card className="module-detail__card">
+          <h2 className="module-detail__section-title">Quick Actions</h2>
+          <div className="module-detail__quick-actions">
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/modules/${module.name}/config`)}
+            >
+              📝 View Configuration
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/modules/${module.name}/logs`)}
+            >
+              📄 View Logs
+            </Button>
+          </div>
+        </Card>
+
         {/* Main Information Card */}
         <Card className="module-detail__card">
           <h2 className="module-detail__section-title">Module Information</h2>

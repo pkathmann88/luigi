@@ -416,6 +416,20 @@ install_module() {
         log_warn "module.json not found, skipping registry update"
     fi
     
+    # Setup permissions for management-api access
+    log_step "Setting up permissions..."
+    setup_config_permissions "$INSTALL_CONFIG_DIR" || {
+        log_warn "Failed to set config permissions (non-fatal)"
+    }
+    
+    # ha-mqtt doesn't have a dedicated log file (uses syslog/journal)
+    # but ensure sensors.d directory is accessible
+    if [ -d "$SENSORS_DIR" ]; then
+        chown -R root:luigi "$SENSORS_DIR"
+        chmod 755 "$SENSORS_DIR"
+        find "$SENSORS_DIR" -type f -exec chmod 644 {} \;
+    fi
+    
     echo ""
     echo "========================================="
     log_success "Installation complete!"

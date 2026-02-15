@@ -674,6 +674,85 @@ read -p "Continue? (y/N): " -n 1 -r
 echo
 ```
 
+### Service User Creation
+
+**IMPORTANT: No service should run as root.**
+
+All Luigi modules with service capability MUST create a dedicated system user for the service. This follows the principle of least privilege and provides process isolation.
+
+**Standard Pattern:**
+
+```bash
+# Create dedicated service user
+create_service_user() {
+    log_step "Creating dedicated service user..."
+    
+    # Create luigi-{module} user with optional hardware groups
+    # Args: username, description, home_dir, additional_groups
+    create_service_user "luigi-mario" \
+                        "Mario Motion Detection Service" \
+                        "/var/lib/luigi-mario" \
+                        "gpio" || {
+        log_error "Failed to create service user"
+        exit 1
+    }
+    
+    log_success "Service user luigi-mario created and configured"
+}
+```
+
+**User Naming Convention:**
+- Format: `luigi-{module-name}`
+- Examples: `luigi-mario`, `luigi-sysinfo`, `luigi-api`
+
+**Group Membership:**
+- **luigi group** (REQUIRED): All service users MUST be members of the luigi group
+- **Hardware groups** (OPTIONAL): Add gpio, spi, i2c, etc. as needed
+- Examples:
+  - GPIO access: `"gpio"`
+  - SPI + I2C: `"gpio,spi,i2c"`
+  - No hardware: `""` (empty string)
+
+**Properties:**
+- System user (UID < 1000)
+- No password
+- Login shell: `/usr/sbin/nologin` (no interactive login)
+- Home directory: `/var/lib/luigi-{module-name}`
+- Member of luigi group (for shared file access)
+
+**In systemd service file:**
+
+```ini
+[Service]
+Type=simple
+User=luigi-mario
+Group=luigi-mario
+# Service user has read access to all configs/logs via luigi group
+# Hardware access via gpio group membership (no root needed)
+```
+
+**Complete installation sequence:**
+
+```bash
+install() {
+    check_root
+    check_files
+    install_dependencies
+    create_service_user      # Step 1: Create user BEFORE installing files
+    install_script           # Step 2: Install application files
+    install_config           # Step 3: Install configuration
+    install_service          # Step 4: Install and enable service
+    start_service            # Step 5: Start service
+}
+```
+
+**Benefits:**
+- ✅ No root privileges - security best practice
+- ✅ Process isolation - contained security breaches
+- ✅ Shared file access - via luigi group membership
+- ✅ Hardware access - via gpio/spi/i2c groups
+- ✅ Consistent pattern across all modules
+
 ### Service Management
 
 **Systemd service operations:**
