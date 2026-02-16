@@ -765,12 +765,12 @@ const data: { success: boolean; data: { modules: SoundModule[]; count: number } 
 
 ### Get Module Sounds
 
-**GET** `/api/sounds/:moduleName`
+**GET** `/api/sounds/:name`
 
 Get sound files for a specific module.
 
 **Parameters:**
-- `moduleName` (path): Module name (e.g., "mario")
+- `name` (path): Module name (e.g., "mario")
 
 **Response:**
 ```json
@@ -840,12 +840,12 @@ const data: { success: boolean; data: ModuleSounds } = await response.json();
 
 ### Play Sound
 
-**POST** `/api/sounds/:moduleName/play`
+**POST** `/api/sounds/:name/play`
 
 Play a sound file using aplay.
 
 **Parameters:**
-- `moduleName` (path): Module name (e.g., "mario")
+- `name` (path): Module name (e.g., "mario")
 
 **Request Body:**
 ```json

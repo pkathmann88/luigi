@@ -20,14 +20,14 @@ router.use(operationLimiter);
 // GET /api/sounds - List all modules with sound capability
 router.get('/', soundsController.listSoundModules);
 
-// GET /api/sounds/:moduleName - Get sound files for a module
-router.get('/:moduleName', [
+// GET /api/sounds/:name - Get sound files for a module
+router.get('/:name', [
   moduleNameValidation,
   handleValidationErrors,
 ], soundsController.getModuleSounds);
 
-// POST /api/sounds/:moduleName/play - Play a sound file
-router.post('/:moduleName/play', [
+// POST /api/sounds/:name/play - Play a sound file
+router.post('/:name/play', [
   moduleNameValidation,
   handleValidationErrors,
 ], soundsController.playSound);

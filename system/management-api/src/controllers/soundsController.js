@@ -33,13 +33,13 @@ async function listSoundModules(req, res) {
 
 /**
  * Get sound files for a specific module
- * GET /api/sounds/:moduleName
+ * GET /api/sounds/:name
  */
 async function getModuleSounds(req, res) {
   try {
-    const { moduleName } = req.params;
+    const { name } = req.params;
     
-    const result = await soundService.getModuleSounds(moduleName);
+    const result = await soundService.getModuleSounds(name);
     
     res.json({
       success: true,
@@ -61,12 +61,12 @@ async function getModuleSounds(req, res) {
 
 /**
  * Play a sound file
- * POST /api/sounds/:moduleName/play
+ * POST /api/sounds/:name/play
  * Body: { file: "sound.wav" }
  */
 async function playSound(req, res) {
   try {
-    const { moduleName } = req.params;
+    const { name } = req.params;
     const { file } = req.body;
     
     if (!file) {
@@ -77,7 +77,7 @@ async function playSound(req, res) {
       });
     }
     
-    const result = await soundService.playSound(moduleName, file);
+    const result = await soundService.playSound(name, file);
     
     res.json({
       success: true,
