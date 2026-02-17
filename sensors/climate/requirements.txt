@@ -1,0 +1,9 @@
+# Climate Module Python Dependencies
+# Install with: pip3 install -r requirements.txt
+
+# Sensor libraries
+adafruit-circuitpython-dht>=3.7.0
+adafruit-circuitpython-bme280>=2.6.0
+
+# Configuration
+PyYAML>=6.0

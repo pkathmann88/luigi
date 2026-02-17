@@ -1,0 +1,21 @@
+[Unit]
+Description=Luigi Climate Monitoring Service
+Documentation=https://github.com/pkathmann88/luigi
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/usr/local/lib/climate
+ExecStart=/usr/bin/python3 /usr/local/lib/climate/climate_module.py --config /etc/luigi/sensors/climate/climate.conf
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

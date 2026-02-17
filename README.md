@@ -50,6 +50,7 @@ Luigi currently includes the following modules. See each module's README for det
 | Module | Category | Description |
 |--------|----------|-------------|
 | [Mario Motion Detection](motion-detection/mario/) | motion-detection | Plays random Mario-themed sounds when motion is detected via PIR sensor |
+| [Climate Monitoring](sensors/climate/) | sensors | Temperature and humidity monitoring with DHT22/BME280 sensors, database logging, threshold alerts, and Home Assistant integration |
 | [Home Assistant MQTT](iot/ha-mqtt/) | iot | Zero-touch MQTT bridge connecting Luigi sensors to Home Assistant for centralized monitoring and automation |
 | [Management API](system/management-api/) | system | REST API backend for monitoring and controlling Luigi modules via HTTPS |
 | [Management Frontend](system/management-frontend/) | system | React-based web interface for managing Luigi system, served via nginx |
