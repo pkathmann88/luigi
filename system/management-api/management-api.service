@@ -41,6 +41,12 @@ ProtectHome=read-only
 ReadWritePaths=/var/log/luigi
 ReadOnlyPaths=/etc/luigi/system/management-api/certs
 
+# Allow access to audio devices for sound playback
+DeviceAllow=/dev/snd/pcmC0D0p rw
+DeviceAllow=/dev/snd/controlC0 rw
+DeviceAllow=/dev/snd/timer r
+DevicePolicy=closed
+
 # Resource limits (Raspberry Pi Zero W constraints)
 LimitNOFILE=1024
 MemoryMax=200M

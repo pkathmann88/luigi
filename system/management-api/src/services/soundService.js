@@ -185,11 +185,18 @@ async function playSound(moduleName, soundFile) {
       args = ['-q', soundPath];
     }
     
-    // Execute command in background (don't wait for completion)
-    // Use timeout to prevent hanging
+    // Execute command and check result
+    // Don't wait for completion (audio plays in background)
+    // but do check if command starts successfully
     executeCommand(command, args, { 
       timeout: 30000,  // 30 second timeout
-      detached: true,  // Run in background
+    }).then(result => {
+      if (result.success) {
+        logger.info(`Successfully played sound: ${soundFile}`);
+      } else {
+        logger.error(`Sound playback failed: ${result.stderr || result.stdout}`);
+        logger.error(`Exit code: ${result.exitCode}`);
+      }
     }).catch(error => {
       logger.error(`Error playing sound: ${error.message}`);
     });
