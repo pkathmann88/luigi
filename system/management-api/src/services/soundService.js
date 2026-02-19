@@ -141,19 +141,60 @@ async function getModuleSounds(moduleName) {
  */
 async function playSound(moduleName, soundFile) {
   try {
+    logger.info('='.repeat(70));
+    logger.info(`SOUND PLAYBACK REQUEST: module=${moduleName}, file=${soundFile}`);
+    logger.info('='.repeat(70));
+    
+    // Log process information
+    logger.info(`Process UID: ${process.getuid()}, GID: ${process.getgid()}`);
+    logger.info(`Process user: ${process.env.USER || 'unknown'}`);
+    logger.info(`Groups: ${process.getgroups ? process.getgroups().join(', ') : 'unavailable'}`);
+    
+    // Check audio group membership
+    const { execSync } = require('child_process');
+    try {
+      const groups = execSync('groups', { encoding: 'utf8' }).trim();
+      logger.info(`Current user groups: ${groups}`);
+      const hasAudioGroup = groups.includes('audio');
+      logger.info(`Audio group membership: ${hasAudioGroup ? 'YES' : 'NO (PROBLEM!)'}`);
+      if (!hasAudioGroup) {
+        logger.warn('WARNING: Process user is not in audio group - sound playback will likely fail!');
+      }
+    } catch (err) {
+      logger.warn(`Could not check group membership: ${err.message}`);
+    }
+    
+    // Check audio devices
+    logger.info('Checking audio device availability...');
+    try {
+      const devices = execSync('ls -la /dev/snd/ 2>&1', { encoding: 'utf8' });
+      logger.info(`Audio devices:\n${devices}`);
+    } catch (err) {
+      logger.error(`Cannot access audio devices: ${err.message}`);
+    }
+    
     // Get module sounds to verify file exists
+    logger.info(`Retrieving sound files for module: ${moduleName}`);
     const moduleSounds = await getModuleSounds(moduleName);
     
     if (!moduleSounds.exists) {
+      logger.error(`Sound directory does not exist: ${moduleSounds.sound_directory}`);
       throw new Error(`Sound directory does not exist for module ${moduleName}`);
     }
+    
+    logger.info(`Sound directory exists: ${moduleSounds.sound_directory}`);
+    logger.info(`Available sound files: ${moduleSounds.files.map(f => f.name).join(', ')}`);
     
     // Find the requested sound file
     const soundFileInfo = moduleSounds.files.find(f => f.name === soundFile);
     
     if (!soundFileInfo) {
+      logger.error(`Requested file not found: ${soundFile}`);
+      logger.error(`Available files: ${moduleSounds.files.map(f => f.name).join(', ')}`);
       throw new Error(`Sound file not found: ${soundFile}`);
     }
+    
+    logger.info(`Found sound file: ${soundFileInfo.name} (${soundFileInfo.size} bytes)`);
     
     // Validate file path (security check - ensure it's within sound directory)
     const soundPath = soundFileInfo.path;
@@ -161,12 +202,27 @@ async function playSound(moduleName, soundFile) {
     const resolvedPath = path.resolve(soundPath);
     const resolvedDir = path.resolve(soundDir);
     
+    logger.info(`Resolved sound path: ${resolvedPath}`);
+    logger.info(`Resolved sound directory: ${resolvedDir}`);
+    
     if (!resolvedPath.startsWith(resolvedDir)) {
+      logger.error(`Security violation: Path traversal detected!`);
+      logger.error(`  Resolved path: ${resolvedPath}`);
+      logger.error(`  Allowed directory: ${resolvedDir}`);
       throw new Error('Invalid sound file path');
     }
     
-    // Play sound using aplay (non-blocking)
-    logger.info(`Playing sound: ${soundPath}`);
+    logger.info('Path validation: PASSED');
+    
+    // Check file permissions
+    try {
+      const stats = await fs.stat(soundPath);
+      logger.info(`File permissions: ${stats.mode.toString(8)}`);
+      logger.info(`File owner: uid=${stats.uid}, gid=${stats.gid}`);
+      logger.info(`File readable: ${(stats.mode & 0o004) ? 'YES' : 'NO'}`);
+    } catch (err) {
+      logger.error(`Could not stat file: ${err.message}`);
+    }
     
     // Use aplay for WAV files, mpg123 for MP3 (if available)
     const extension = path.extname(soundFile).toLowerCase();
@@ -174,16 +230,37 @@ async function playSound(moduleName, soundFile) {
     
     if (extension === '.wav') {
       command = 'aplay';
-      args = ['-q', soundPath];  // -q for quiet mode
+      args = [soundPath];  // Remove -q to see output
     } else if (extension === '.mp3') {
-      // Try mpg123, fall back to aplay
       command = 'mpg123';
-      args = ['-q', soundPath];  // -q for quiet mode
+      args = [soundPath];  // Remove -q to see output
     } else {
-      // For other formats, try aplay
       command = 'aplay';
-      args = ['-q', soundPath];
+      args = [soundPath];  // Remove -q to see output
     }
+    
+    logger.info(`Command to execute: ${command} ${args.join(' ')}`);
+    
+    // Check if command exists
+    try {
+      const commandPath = execSync(`which ${command} 2>&1`, { encoding: 'utf8' }).trim();
+      logger.info(`Command found at: ${commandPath}`);
+    } catch (err) {
+      logger.error(`Command not found: ${command}`);
+      logger.error(`Error: ${err.message}`);
+    }
+    
+    // Log environment
+    logger.info('Relevant environment variables:');
+    logger.info(`  HOME: ${process.env.HOME || 'not set'}`);
+    logger.info(`  USER: ${process.env.USER || 'not set'}`);
+    logger.info(`  PATH: ${process.env.PATH || 'not set'}`);
+    logger.info(`  AUDIODEV: ${process.env.AUDIODEV || 'not set'}`);
+    logger.info(`  ALSA_CARD: ${process.env.ALSA_CARD || 'not set'}`);
+    
+    logger.info('-'.repeat(70));
+    logger.info('Executing sound playback command...');
+    logger.info('-'.repeat(70));
     
     // Execute command and check result
     // Don't wait for completion (audio plays in background)
@@ -191,26 +268,63 @@ async function playSound(moduleName, soundFile) {
     executeCommand(command, args, { 
       timeout: 30000,  // 30 second timeout
     }).then(result => {
-      if (result.success) {
-        logger.info(`Successfully played sound: ${soundFile}`);
+      logger.info('='.repeat(70));
+      logger.info('SOUND PLAYBACK RESULT');
+      logger.info('='.repeat(70));
+      logger.info(`Success: ${result.success}`);
+      logger.info(`Exit code: ${result.exitCode}`);
+      logger.info(`Duration: ${result.duration}ms`);
+      
+      if (result.stdout) {
+        logger.info(`STDOUT:\n${result.stdout}`);
       } else {
-        logger.error(`Sound playback failed: ${result.stderr || result.stdout}`);
-        logger.error(`Exit code: ${result.exitCode}`);
+        logger.info('STDOUT: (empty)');
       }
+      
+      if (result.stderr) {
+        logger.info(`STDERR:\n${result.stderr}`);
+      } else {
+        logger.info('STDERR: (empty)');
+      }
+      
+      if (result.success) {
+        logger.info(`✓ Successfully played sound: ${soundFile}`);
+      } else {
+        logger.error(`✗ Sound playback failed with exit code ${result.exitCode}`);
+        if (result.stderr) {
+          logger.error(`Error output: ${result.stderr}`);
+        }
+        if (result.stdout) {
+          logger.error(`Standard output: ${result.stdout}`);
+        }
+      }
+      logger.info('='.repeat(70));
     }).catch(error => {
-      logger.error(`Error playing sound: ${error.message}`);
+      logger.error('='.repeat(70));
+      logger.error('SOUND PLAYBACK EXCEPTION');
+      logger.error('='.repeat(70));
+      logger.error(`Exception: ${error.message}`);
+      logger.error(`Stack trace:\n${error.stack}`);
+      logger.error('='.repeat(70));
     });
     
-    logger.info(`Started playback of ${soundFile} for module ${moduleName}`);
+    logger.info(`Playback request initiated for ${soundFile}`);
     
     return {
       success: true,
       module: moduleName,
       file: soundFile,
-      message: 'Sound playback started',
+      message: 'Sound playback started (check logs for detailed output)',
     };
   } catch (error) {
-    logger.error(`Error playing sound for module ${moduleName}: ${error.message}`);
+    logger.error('='.repeat(70));
+    logger.error('SOUND PLAYBACK ERROR (BEFORE EXECUTION)');
+    logger.error('='.repeat(70));
+    logger.error(`Module: ${moduleName}`);
+    logger.error(`File: ${soundFile}`);
+    logger.error(`Error: ${error.message}`);
+    logger.error(`Stack trace:\n${error.stack}`);
+    logger.error('='.repeat(70));
     throw error;
   }
 }
