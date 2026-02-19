@@ -47,18 +47,19 @@ class ApiService {
         throw new Error('Authentication failed');
       }
 
-      const data = await response.json();
+      const apiResponse = await response.json();
       
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || 'Request failed',
+          error: apiResponse.error || apiResponse.message || 'Request failed',
         };
       }
 
+      // Unwrap the API response: { success: true, data: {...} } -> return just the data
       return {
         success: true,
-        data,
+        data: apiResponse.data || apiResponse,
       };
     } catch (error) {
       console.error('API request failed:', error);
