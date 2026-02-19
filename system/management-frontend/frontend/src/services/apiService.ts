@@ -47,18 +47,19 @@ class ApiService {
         throw new Error('Authentication failed');
       }
 
-      const data = await response.json();
+      const apiResponse = await response.json();
       
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || 'Request failed',
+          error: apiResponse.error || apiResponse.message || 'Request failed',
         };
       }
 
+      // Unwrap the API response: { success: true, data: {...} } -> return just the data
       return {
         success: true,
-        data,
+        data: apiResponse.data || apiResponse,
       };
     } catch (error) {
       console.error('API request failed:', error);
@@ -236,6 +237,34 @@ class ApiService {
    */
   async getMetrics(): Promise<ApiResponse<SystemStatus>> {
     return this.request('/api/monitoring/metrics');
+  }
+
+  // ============================================================================
+  // Sound Management
+  // ============================================================================
+
+  /**
+   * List all modules with sound capability
+   */
+  async getSoundModules(): Promise<ApiResponse<{ modules: import('../types/api').SoundModule[]; count: number }>> {
+    return this.request('/api/sounds');
+  }
+
+  /**
+   * Get sound files for a module
+   */
+  async getModuleSounds(moduleName: string): Promise<ApiResponse<import('../types/api').ModuleSounds>> {
+    return this.request(`/api/sounds/${moduleName}`);
+  }
+
+  /**
+   * Play a sound file
+   */
+  async playSound(moduleName: string, fileName: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    return this.request(`/api/sounds/${moduleName}/play`, {
+      method: 'POST',
+      body: JSON.stringify({ file: fileName }),
+    });
   }
 }
 

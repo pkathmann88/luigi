@@ -16,7 +16,8 @@
 6. [System Operations](#system-operations)
 7. [Log Management](#log-management)
 8. [Configuration Management](#configuration-management)
-9. [Monitoring](#monitoring)
+9. [Sound Management](#sound-management)
+10. [Monitoring](#monitoring)
 
 ---
 
@@ -711,6 +712,192 @@ Update configuration file. Supports multi-segment paths.
   "success": true,
   "message": "Configuration updated successfully"
 }
+```
+
+---
+
+## Sound Management
+
+### List Sound Modules
+
+**GET** `/api/sounds`
+
+List all modules with sound capability.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "modules": [
+      {
+        "name": "mario",
+        "module_path": "motion-detection/mario",
+        "sound_directory": "/usr/share/sounds/mario",
+        "version": "1.0.0",
+        "description": "Mario-themed motion detection module using PIR sensors"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+**TypeScript:**
+```typescript
+interface SoundModule {
+  name: string;
+  module_path: string;
+  sound_directory: string | null;
+  version: string;
+  description?: string;
+}
+
+const response = await fetch('/api/sounds', {
+  headers: {
+    'Authorization': 'Basic ' + btoa('admin:changeme123')
+  }
+});
+const data: { success: boolean; data: { modules: SoundModule[]; count: number } } = await response.json();
+```
+
+---
+
+### Get Module Sounds
+
+**GET** `/api/sounds/:name`
+
+Get sound files for a specific module.
+
+**Parameters:**
+- `name` (path): Module name (e.g., "mario")
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "module": "mario",
+    "sound_directory": "/usr/share/sounds/mario",
+    "exists": true,
+    "files": [
+      {
+        "name": "callingmario1.wav",
+        "path": "/usr/share/sounds/mario/callingmario1.wav",
+        "size": 145678,
+        "modified": "2024-01-15T10:30:00.000Z",
+        "extension": "wav"
+      },
+      {
+        "name": "callingmario2.wav",
+        "path": "/usr/share/sounds/mario/callingmario2.wav",
+        "size": 132456,
+        "modified": "2024-01-15T10:30:00.000Z",
+        "extension": "wav"
+      }
+    ],
+    "count": 2
+  }
+}
+```
+
+**Error Cases:**
+- `404`: Module not found or module does not have sound capability
+- `500`: Failed to read sound directory
+
+**Example:**
+```bash
+curl -u admin:changeme123 http://localhost:3000/api/sounds/mario
+```
+
+**TypeScript:**
+```typescript
+interface SoundFile {
+  name: string;
+  path: string;
+  size: number;
+  modified: string;
+  extension: string;
+}
+
+interface ModuleSounds {
+  module: string;
+  sound_directory: string;
+  exists: boolean;
+  files: SoundFile[];
+  count: number;
+}
+
+const response = await fetch('/api/sounds/mario', {
+  headers: {
+    'Authorization': 'Basic ' + btoa('admin:changeme123')
+  }
+});
+const data: { success: boolean; data: ModuleSounds } = await response.json();
+```
+
+---
+
+### Play Sound
+
+**POST** `/api/sounds/:name/play`
+
+Play a sound file using aplay.
+
+**Parameters:**
+- `name` (path): Module name (e.g., "mario")
+
+**Request Body:**
+```json
+{
+  "file": "callingmario1.wav"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "module": "mario",
+    "file": "callingmario1.wav",
+    "message": "Sound playback started"
+  }
+}
+```
+
+**Error Cases:**
+- `400`: Missing required field 'file' or invalid sound file
+- `404`: Module not found, sound file not found, or sound directory doesn't exist
+- `500`: Failed to execute playback command
+
+**Notes:**
+- Sound playback is non-blocking (background process)
+- Uses `aplay` for WAV files, `mpg123` for MP3 files
+- 30-second timeout for playback execution
+- Security: File path validation prevents directory traversal
+
+**Example:**
+```bash
+curl -u admin:changeme123 \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"file": "callingmario1.wav"}' \
+  http://localhost:3000/api/sounds/mario/play
+```
+
+**TypeScript:**
+```typescript
+const response = await fetch('/api/sounds/mario/play', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Basic ' + btoa('admin:changeme123'),
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ file: 'callingmario1.wav' })
+});
+const data: { success: boolean; data: { success: boolean; message: string } } = await response.json();
 ```
 
 ---

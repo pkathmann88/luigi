@@ -91,6 +91,8 @@ export const ModuleDetail: React.FC = () => {
       sensor: 'module-detail__capability-badge--sensor',
       api: 'module-detail__capability-badge--api',
       integration: 'module-detail__capability-badge--integration',
+      sound: 'module-detail__capability-badge--sound',
+      config: 'module-detail__capability-badge--config',
     };
 
     const className = capabilityClasses[capability] || '';
@@ -202,6 +204,14 @@ export const ModuleDetail: React.FC = () => {
             >
               📄 View Logs
             </Button>
+            {capabilities.includes('sound') && (
+              <Button
+                variant="primary"
+                onClick={() => navigate(`/modules/${module.name}/sounds`)}
+              >
+                🔊 View Sounds
+              </Button>
+            )}
           </div>
         </Card>
 

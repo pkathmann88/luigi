@@ -49,6 +49,7 @@ app.disable('x-powered-by');
 
 // CORS configuration
 // Allow requests from nginx proxy (same-origin) and localhost for development
+// Also allow .local mDNS hostnames (common for Raspberry Pi local access)
 const allowedOrigins = [
   'http://localhost',
   'http://localhost:80',
@@ -64,6 +65,17 @@ app.use(cors({
     // Allow explicitly whitelisted origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
+    }
+    
+    // Allow .local mDNS hostnames (Raspberry Pi local network access)
+    // Examples: http://raspberrypi.local, http://luigi.local, https://luigi.local
+    try {
+      const originUrl = new URL(origin);
+      if (originUrl.hostname.endsWith('.local')) {
+        return callback(null, true);
+      }
+    } catch (err) {
+      // Invalid origin URL, will be rejected below
     }
     
     // In development, be slightly more permissive for localhost ports

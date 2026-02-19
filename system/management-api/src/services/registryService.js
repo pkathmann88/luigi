@@ -168,9 +168,42 @@ async function getRegistryStats() {
   }
 }
 
+/**
+ * Get a specific module's registry entry by module name
+ * Searches for the module in the registry by matching the module name
+ * @param {string} moduleName - Module name (e.g., "mario", "ha-mqtt")
+ * @returns {Promise<Object>} Registry entry
+ * @throws {Error} If module not found in registry
+ */
+async function getRegistryByModuleName(moduleName) {
+  try {
+    const entries = await listRegistry();
+    
+    // Find entry where module name matches
+    const entry = entries.find(e => {
+      const pathParts = e.module_path.split('/');
+      const name = pathParts[pathParts.length - 1];
+      return name === moduleName;
+    });
+    
+    if (!entry) {
+      throw new Error(`Module '${moduleName}' not found in registry`);
+    }
+    
+    return entry;
+  } catch (error) {
+    if (error.message.includes('not found in registry')) {
+      throw error;
+    }
+    logger.error(`Error finding registry entry for ${moduleName}: ${error.message}`);
+    throw new Error(`Failed to find registry entry for '${moduleName}'`);
+  }
+}
+
 module.exports = {
   listRegistry,
   getRegistryEntry,
+  getRegistryByModuleName,
   getRegistryStats,
   encodeModulePath,
   decodeModulePath,

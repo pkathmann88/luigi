@@ -69,6 +69,19 @@ create_service_user() {
             log_warn "Failed to add $SERVICE_USER to luigi group"
         fi
     fi
+    
+    # Add service user to audio group for sound playback via aplay
+    # This allows management-api to play sounds through /dev/snd/* devices
+    if ! groups "$SERVICE_USER" 2>/dev/null | grep -q "\baudio\b"; then
+        log_info "Adding $SERVICE_USER to audio group for sound playback..."
+        if usermod -a -G audio "$SERVICE_USER"; then
+            log_success "Added $SERVICE_USER to audio group"
+        else
+            log_warn "Failed to add $SERVICE_USER to audio group (sound playback may not work)"
+        fi
+    else
+        log_info "Service user already in audio group"
+    fi
 }
 
 # Detect the user who invoked sudo (for build operations)

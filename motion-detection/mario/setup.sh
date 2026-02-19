@@ -931,6 +931,9 @@ install() {
     if [ -f "$SCRIPT_DIR/module.json" ]; then
         update_module_registry_full "motion-detection/mario" "$SCRIPT_DIR/module.json" "installed"
         
+        # Update sound directory in registry (for sound capability)
+        update_registry_field "motion-detection/mario" "sound_directory" "$INSTALL_SOUNDS"
+        
         # Update status to active if service is running
         if systemctl is-active mario.service >/dev/null 2>&1; then
             update_registry_service_status "motion-detection/mario" "active" true

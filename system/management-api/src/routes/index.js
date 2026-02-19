@@ -10,6 +10,7 @@ const logsRoutes = require('./logs');
 const configRoutes = require('./config');
 const monitoringRoutes = require('./monitoring');
 const registryRoutes = require('./registry');
+const soundsRoutes = require('./sounds');
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/logs', logsRoutes);
 router.use('/config', configRoutes);
 router.use('/monitoring', monitoringRoutes);
 router.use('/registry', registryRoutes);
+router.use('/sounds', soundsRoutes);
 
 module.exports = router;

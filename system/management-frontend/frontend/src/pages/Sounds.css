@@ -1,0 +1,230 @@
+.sounds {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sounds__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.sounds__title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.sounds__container {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Sidebar */
+.sounds__sidebar {
+  position: sticky;
+  top: 2rem;
+}
+
+.sounds__sidebar h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.sounds__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sounds__item {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  background: #f8f9fa;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.sounds__item:hover {
+  background: #e9ecef;
+}
+
+.sounds__item--active {
+  background: #007bff;
+  color: white;
+}
+
+.sounds__item--active:hover {
+  background: #0056b3;
+}
+
+.sounds__item-name {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.sounds__item-description {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.sounds__item--active .sounds__item-description {
+  opacity: 0.9;
+}
+
+/* Content */
+.sounds__content {
+  min-height: 400px;
+}
+
+.sounds__content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.sounds__content-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.sounds__file-count {
+  background: #e9ecef;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  color: #495057;
+  font-weight: 500;
+}
+
+.sounds__loading,
+.sounds__empty {
+  text-align: center;
+  color: #6c757d;
+  padding: 3rem 1rem;
+  font-size: 0.95rem;
+}
+
+.sounds__error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #f5c6cb;
+}
+
+.sounds__warning {
+  background: #fff3cd;
+  color: #856404;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ffeaa7;
+}
+
+.sounds__warning code {
+  display: block;
+  margin-top: 0.5rem;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+/* Sound Files */
+.sounds__files {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sounds__directory {
+  background: #f8f9fa;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.sounds__directory strong {
+  color: #212529;
+  margin-right: 0.5rem;
+}
+
+.sounds__file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sounds__file {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.sounds__file:hover {
+  background: #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sounds__file-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.sounds__file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sounds__file-name {
+  font-weight: 500;
+  color: #212529;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sounds__file-meta {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sounds {
+    padding: 1rem;
+  }
+
+  .sounds__container {
+    grid-template-columns: 1fr;
+  }
+
+  .sounds__sidebar {
+    position: static;
+  }
+
+  .sounds__title {
+    font-size: 1.5rem;
+  }
+}

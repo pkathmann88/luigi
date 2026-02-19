@@ -7,7 +7,8 @@
     "service",
     "hardware",
     "sensor",
-    "config"
+    "config",
+    "sound"
   ],
   "dependencies": [
     "iot/ha-mqtt"
